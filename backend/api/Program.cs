@@ -16,6 +16,14 @@ builder.Services.AddDbContext<AppDBContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
         new MySqlServerVersion(new Version(9, 2, 0))));
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend",
+        policy => policy.WithOrigins("http://localhost:5173") // địa chỉ của frontend Vue
+                        .AllowAnyHeader()
+                        .AllowAnyMethod());
+});
+
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(
     options =>
     {
@@ -75,6 +83,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
