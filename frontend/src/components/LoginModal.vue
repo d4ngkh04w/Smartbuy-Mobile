@@ -1,7 +1,68 @@
 <script setup>
     import { ref } from "vue";
-    const username = ref('');
+    import { login, register } from "../services/authService.js"; 
+    const phoneNumber = ref('');
     const password = ref('');
+    const password_confirm = ref('');
+    const email = ref('');
+
+    const errorMessage = ref('');
+    const successMessage = ref('');
+
+    const handleLogin = async () => {
+      errorMessage.value = ''
+      try {
+        // Gửi thông tin đăng nhập tới backend
+        const response = await login({
+          username: phoneNumber.value,
+          password: password.value
+        })
+        
+        // Lưu token JWT vào localStorage
+        const token = response.data.token
+        localStorage.setItem('jwt', token)
+
+        successMessage.value = 'Đăng nhập thành công!'
+        
+        // Có thể redirect hoặc thực hiện hành động sau khi đăng nhập thành công
+        // ví dụ: router.push('/dashboard') hoặc emit sự kiện đóng modal
+      } catch (err) {
+        errorMessage.value = 'Sai tài khoản hoặc mật khẩu.'
+        console.error(err)
+      }
+    }
+    const handleRegister = async () => {
+      // Reset lỗi cũ
+      errorMessage.value = ''
+      successMessage.value = ''
+
+      // Kiểm tra nếu mật khẩu và xác nhận mật khẩu khớp
+      if (password.value !== passwordConfirm.value) {
+        errorMessage.value = 'Mật khẩu không khớp.'
+        return
+      }
+
+      try {
+        // Gửi dữ liệu đăng ký tới backend
+        const response = await register({
+          username: phoneNumber.value,
+          password: password.value,
+          email: email.value
+        })
+
+        // Nếu đăng ký thành công, bạn có thể đăng nhập người dùng ngay (nếu cần)
+        const token = response.data.token
+        localStorage.setItem('jwt', token)
+
+        successMessage.value = 'Đăng ký thành công!'
+
+        // Có thể chuyển hướng người dùng đến trang khác sau khi đăng ký thành công
+        // router.push('/dashboard') hoặc emit('close') để đóng modal
+      } catch (err) {
+        errorMessage.value = 'Đã có lỗi xảy ra khi đăng ký.'
+        console.error(err)
+      }
+    }
 
     const isRightPanelActive = ref(false);
 
@@ -21,10 +82,11 @@
           <div class="form-container register-container">
             <form action="#">
               <h1>Đăng ký</h1>
-              <input type="text" placeholder="Tên đăng nhập" v-model="username" />
-              <input type="email" placeholder="Email" v-model="email" />
+              <input type="text" placeholder="Số điện thoại" v-model="phoneNumber" />
               <input type="password" placeholder="Mật khẩu" v-model="password" />
-              <input type="email" placeholder="Email" v-model="password" />
+              <input type="password" placeholder="Xác nhận mật khẩu" v-model="password_confirm" />
+              <input type="email" placeholder="Email" v-model="email" />            
+              
               <div class="content">
                 <div class="checkbox">
                   <input type="checkbox" id="checkbox" name="checkbox"/>
@@ -33,15 +95,15 @@
                   </label>
                 </div>
               </div>
-              <button>Đăng ký</button>
+              <button @click.prevent="handleRegister">Đăng ký</button>
              
               <div class="separator">
                 <span>Hoặc</span>
               </div>
   
               <div class="social-container">
-                <a href="#" class="social"><img src="../assets/icon/google.png" alt="Google"></a>
-                <a href="#" class="social"><img src="../assets/icon/facebook.png" alt="Facebook"></a>
+                <a href="#" class="social"><img src="../assets/image/google.png" alt="Google"></a>
+                <a href="#" class="social"><img src="../assets/image/facebook.png" alt="Facebook"></a>
               </div>
             </form>
           </div>  
@@ -50,7 +112,7 @@
           <div class="form-container login-container">
             <form acction="#">
               <h1>Đăng nhập</h1>
-              <input type="text" placeholder="Tên đăng nhập" v-model="username" />
+              <input type="text" placeholder="Số điện thoại" v-model="phoneNumber" />
               <input type="password" placeholder="Mật khẩu" v-model="password" />
               <div class="content">
                 <div class="checkbox">
@@ -63,14 +125,14 @@
                   <a href="#">Quên mật khẩu?</a>
                 </div>
               </div>
-              <button>Tiếp tục</button>
+              <button @click.prevent="handleLogin">Tiếp tục</button>
               <div class="separator">
                 <span>Hoặc</span>
               </div>
   
               <div class="social-container">
-                <a href="#" class="social"><img src="../assets/icon/google.png" alt="Google"></a>
-                <a href="#" class="social"><img src="../assets/icon/facebook.png" alt="Facebook"></a>
+                <a href="#" class="social"><img src="../assets/image/google.png" alt="Google"></a>
+                <a href="#" class="social"><img src="../assets/image/facebook.png" alt="Facebook"></a>
               </div>
   
             </form>
