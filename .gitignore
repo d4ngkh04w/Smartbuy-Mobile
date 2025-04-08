@@ -29,7 +29,9 @@ coverage
 
 *.tsbuildinfo
 
-backend/api/appsettings.json
-backend/api/appsettings.Development.json
-backend/api/bin
-backend/api/obj
+# Backend configuration files
+appsettings.json
+appsettings.Development.json
+bin/
+obj/
+uploads/
