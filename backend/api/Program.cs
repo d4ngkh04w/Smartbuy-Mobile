@@ -1,6 +1,7 @@
 using System.Text;
 using api.Database;
-using api.Interfaces;
+using api.Interfaces.Services;
+using api.Repositories;
 using api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -27,6 +28,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(
     options =>
     {
+        // TODO: Setting strong password
         options.Password.RequiredLength = 6;
         options.Password.RequireDigit = false;
         options.Password.RequireLowercase = false;
@@ -71,6 +73,8 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IBrandRepository, BrandRepository>();
+builder.Services.AddScoped<IBrandService, BrandService>();
 
 builder.Services.AddControllers();
 
