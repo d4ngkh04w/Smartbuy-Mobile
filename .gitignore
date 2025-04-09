@@ -36,3 +36,5 @@ bin/
 obj/
 uploads/
 Migrations/
+
+.env

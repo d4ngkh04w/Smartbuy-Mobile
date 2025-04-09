@@ -10,7 +10,7 @@ namespace api.DTOs.Brand
         public string? Name { get; set; } = null;
 
         [DataType(DataType.Upload)]
-        [AllowExtension(Extensions: [".jpg", ".jpeg", ".png"], ErrorMessage = "Logo must be a valid image (jpg, jpeg, png)")]
+        [AllowFileExtension(Extensions: [".jpg", ".jpeg", ".png"], ErrorMessage = "Logo must be a valid image (jpg, jpeg, png)")]
         public IFormFile? Logo { get; set; } = null;
     }
 }

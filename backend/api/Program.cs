@@ -25,10 +25,10 @@ builder.Services.AddDbContext<AppDBContext>(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
-        policy => policy.WithOrigins("http://localhost:5173") // địa chỉ của frontend Vue
+        policy => policy.WithOrigins("http://localhost:5173") // Địa chỉ của frontend Vue
                         .AllowAnyHeader()
                         .AllowAnyMethod()
-                        .AllowCredentials());
+                        .AllowCredentials()); // Quan trọng: Cho phép Credentials (cookie hoặc token)
 });
 
 // Set up API behavior to return custom error messages
@@ -52,8 +52,9 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(
         options.Password.RequireUppercase = false;
         options.Password.RequireNonAlphanumeric = false;
     }
-).AddEntityFrameworkStores<AppDBContext>()
-    .AddDefaultTokenProviders();
+)
+.AddEntityFrameworkStores<AppDBContext>()
+.AddDefaultTokenProviders();
 
 builder.Services.AddAuthentication(
     options =>
@@ -104,6 +105,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
 
 app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();

@@ -2,10 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace api.Extensions
 {
-    public class AllowExtension : ValidationAttribute
+    public class AllowFileExtension : ValidationAttribute
     {
         private readonly string[] _extensions;
-        public AllowExtension(string[] Extensions)
+        public AllowFileExtension(string[] Extensions)
         {
             _extensions = Extensions;
         }
