@@ -15,8 +15,6 @@ namespace api.Models
 
         [Required]
         [Column(TypeName = "varchar(100)")]
-        [StringLength(100, MinimumLength = 1, ErrorMessage = "Categorie name must be between 1 and 100 characters")]
-        [RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "Categorie name can only contain letters and spaces")]
         public string Name { get; set; } = string.Empty;
 
         [Required]
@@ -24,6 +22,9 @@ namespace api.Models
 
         [ForeignKey(nameof(BrandId))]
         [InverseProperty("Categories")]
-        public required Brand Brand { get; set; }
+        public Brand? Brand { get; set; } = null!;
+
+        [InverseProperty("Category")]
+        public virtual ICollection<Product>? Products { get; set; } = null!;
     }
 }

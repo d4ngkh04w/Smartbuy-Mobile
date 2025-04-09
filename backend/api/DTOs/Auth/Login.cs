@@ -11,5 +11,5 @@ namespace api.DTOs.Auth
 
         [Required]
         public string Password { get; set; } = string.Empty;
-    } 
+    }
 }

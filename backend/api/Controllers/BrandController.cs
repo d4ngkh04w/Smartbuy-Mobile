@@ -16,25 +16,6 @@ namespace api.Controllers.Brand
             _brandService = brandService;
         }
 
-        [HttpGet("all")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAllBrands()
-        {
-            var (success, errorMessage, brands) = await _brandService.GetAllBrands();
-            if (!success && errorMessage != null)
-            {
-                if (errorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))
-                    return NotFound(new { Status = 404, Message = errorMessage });
-                if (errorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
-                    return StatusCode(500, new { Status = 500, Message = errorMessage });
-                return BadRequest(new { Status = 400, Message = errorMessage });
-            }
-            return Ok(brands);
-        }
-
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -42,7 +23,15 @@ namespace api.Controllers.Brand
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetBrand([FromQuery] int? id = null, [FromQuery] string? name = null)
         {
-            var (success, errorMessage, brand) = await _brandService.GetBrand(id, name);
+            bool success;
+            string? errorMessage;
+            object? brand;
+
+            if (id == null && name == null)
+                (success, errorMessage, brand) = await _brandService.GetAllBrands();
+            else
+                (success, errorMessage, brand) = await _brandService.GetBrand(id, name);
+
             if (!success && errorMessage != null)
             {
                 if (errorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))

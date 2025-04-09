@@ -13,15 +13,15 @@ namespace api.Database
 
         public DbSet<Brand> Brands { get; set; } = null!;
         public DbSet<Category> Categories { get; set; } = null!;
+        // public DbSet<Color> Colors { get; set; } = null!;
+        public DbSet<Product> Products { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
-            List<IdentityRole> roles = new List<IdentityRole>
-            {
+            builder.Entity<IdentityRole>().HasData(
                 new IdentityRole { Name = "admin", NormalizedName = "ADMIN" },
-                new IdentityRole { Name = "user", NormalizedName = "USER" },
-            };
-            builder.Entity<IdentityRole>().HasData(roles);
+                new IdentityRole { Name = "user", NormalizedName = "USER" }
+            );
 
             // Cấu hình mối quan hệ Brand - Category
             builder.Entity<Brand>()
@@ -30,11 +30,19 @@ namespace api.Database
                 .HasForeignKey(c => c.BrandId)
                 .OnDelete(DeleteBehavior.Cascade); // Xóa thương hiệu sẽ xóa tất cả danh mục của nó
 
+            // Cấu hình mối quan hệ Category - Product
+            builder.Entity<Category>()
+                .HasMany(c => c.Products)
+                .WithOne(p => p.Category)
+                .HasForeignKey(p => p.CategoryId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull); // Xóa danh mục sẽ không xóa sản phẩm, chỉ đặt CategoryId của sản phẩm thành null
+
             // Đảm bảo tên danh mục không trùng lặp trong cùng một thương hiệu
             builder.Entity<Category>()
                 .HasIndex(c => new { c.Name, c.BrandId })
                 .IsUnique();
-            
+
             base.OnModelCreating(builder);
         }
     }

@@ -44,7 +44,7 @@ namespace api.Repositories
 
             if (!string.IsNullOrEmpty(name))
                 query = query.Where(b => b.Name == name);
-            
+
             return await query.Include(b => b.Categories).FirstOrDefaultAsync();
         }
 
