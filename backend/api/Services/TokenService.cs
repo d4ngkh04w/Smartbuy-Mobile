@@ -22,7 +22,7 @@ namespace api.Services
         {
             var claims = new List<Claim>
             {
-                new Claim("phone_number", user.PhoneNumber!),
+                new Claim(ClaimTypes.Email, user.Email!),
                 new Claim(ClaimTypes.Role, roles),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };

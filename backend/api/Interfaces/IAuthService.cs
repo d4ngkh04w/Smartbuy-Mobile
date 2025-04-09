@@ -6,5 +6,8 @@ namespace api.Interfaces
     {
         public Task<(bool success, string? errors)> Register(Register registerDto, string role);
         public Task<(bool success, string? token)> Login(Login loginDto, string role);
+
+        public Task<(bool success, string? token, string message)> LoginWithGoogleAsync(GoogleLogin dto, string role);
+
     }
 }

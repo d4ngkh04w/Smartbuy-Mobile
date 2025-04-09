@@ -15,4 +15,7 @@
         "Audience": "YOUR_AUDIENCE",
         "ExpireMonths": "YOUR_EXPIRE_MONTHS"
     }
+    "Google": {
+        "ClientId": "YOUR_GOOGLE_CLIENT_ID",
+    }
 }

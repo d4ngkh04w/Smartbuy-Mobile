@@ -5,7 +5,7 @@ const instance = axios.create({
     timeout: 10000,
     headers: {
         "Content-Type": "application/json",
-    },
+    },    
 });
 
 // Trước mỗi request, kiểm tra xem token có trong localStorage không

@@ -1,5 +1,6 @@
 using api.DTOs.Auth;
 using api.Interfaces;
+using Google.Apis.Auth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,10 +11,13 @@ namespace api.Services
         private readonly UserManager<IdentityUser> _userManager;
         private readonly ITokenService _tokenService;
 
+        private readonly string _googleClientId;
+
         public AuthService(UserManager<IdentityUser> userManager, IConfiguration config)
         {
             _userManager = userManager;
             _tokenService = new TokenService(config);
+            _googleClientId = config["Google:ClientId"]!;
         }
 
         public async Task<(bool success, string? errors)> Register(Register registerDto, string role)
@@ -50,6 +54,46 @@ namespace api.Services
                 return (true, _tokenService.CreateToken(user, role));
             }
             return (false, null);
+        }
+
+        public async Task<(bool success, string? token, string message)> LoginWithGoogleAsync(GoogleLogin dto, string role)
+        {
+            try
+            {
+                var settings = new GoogleJsonWebSignature.ValidationSettings
+                {
+                    Audience = new List<string> { _googleClientId },
+                };
+                
+                var payload = await GoogleJsonWebSignature.ValidateAsync(dto.Token, settings);
+                if (payload == null){                   
+                    return (false, null, "Token không hợp lệ");
+                }
+                var user = await _userManager.FindByEmailAsync(payload.Email);
+                if (user == null)
+                {                       
+                    user = new IdentityUser
+                    {
+                        UserName = payload.Email,
+                        Email = payload.Email,
+                        PhoneNumber = null
+                    };
+
+                    var result = await _userManager.CreateAsync(user);
+                    if (!result.Succeeded){
+                        return (false, null, "Không thể tạo tài khoản người dùng");
+                    }
+
+                    await _userManager.AddToRoleAsync(user, role);
+                }
+
+                var token = _tokenService.CreateToken(user, role);
+                return (true, token, "Đăng nhập bằng Google thành công");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, $"Lỗi: {ex.Message}");
+            }
         }
     }
 }

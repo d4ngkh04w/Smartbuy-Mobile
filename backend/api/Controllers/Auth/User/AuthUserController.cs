@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace api.Controllers.Auth.User
 {
     [Route("api/user/auth")]
-    [ApiController]
+    [ApiController]    
     public class AccountController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -33,6 +33,16 @@ namespace api.Controllers.Auth.User
             var (success, token) = await _authService.Login(login, "user");
             if (success) return Ok(new { token, phoneNumber = login.PhoneNumber });
             return Unauthorized(new { Message = "Invalid phone number or password" });
+        }
+
+        [HttpPost("google-login")]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLogin dto)
+        {   
+            if (!ModelState.IsValid) return BadRequest(new { Message = "Invalid data" });
+
+            var (success, token, message) = await _authService.LoginWithGoogleAsync(dto, "user");
+            if (success) return Ok(new { token, message });
+            return Unauthorized(new { message });
         }
     }
 }

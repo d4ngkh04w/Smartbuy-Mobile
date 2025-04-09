@@ -9,3 +9,10 @@ export const login = (credentials) => {
 export const register = (userInfo) => {
     return axios.post("/user/auth/register", userInfo);
 };
+
+// Gửi token Google để xác minh, backend trả về JWT
+export const loginWithGoogle = (token) => {
+    return axios.post("/user/auth/google-login", {
+        token: token
+    });
+};

@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from "vue";
-import { login, register } from "../services/authService.js";
+import { login, register,loginWithGoogle } from "../services/authService.js";
+
 const phoneNumber = ref("");
 const password = ref("");
 const password_confirm = ref("");
@@ -8,6 +9,19 @@ const email = ref("");
 
 const errorMessage = ref("");
 const successMessage = ref("");
+
+// Đăng nhập bằng Google
+const handleGoogleLogin = async (response) => {
+  const credential = response.credential;  
+  try {
+    const res = await loginWithGoogle(credential);
+    const token = res.data.token;
+    localStorage.setItem("jwt", token);
+    console.log("Đăng nhập bằng Google thành công!");
+  } catch (err) {
+    console.error("Lỗi đăng nhập bằng Google:", err);
+  }
+};
 
 const handleLogin = async () => {
     errorMessage.value = "";
@@ -172,9 +186,10 @@ const showLogin = () => {
                     </div>
 
                     <div class="social-container">
-                        <a href="#" class="social"
+                        <GoogleLogin :callback="handleGoogleLogin" />
+                        <!-- <a href="#" class="social" @click.prevent="handleGoogleLogin"
                             ><img src="../assets/image/google.png" alt="Google"
-                        /></a>
+                        /></a> -->
                         <a href="#" class="social"
                             ><img
                                 src="../assets/image/facebook.png"
