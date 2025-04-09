@@ -35,3 +35,4 @@ appsettings.Development.json
 bin/
 obj/
 uploads/
+Migrations/
