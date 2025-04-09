@@ -37,7 +37,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     options.InvalidModelStateResponseFactory = context =>
     {
         var errors = context.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-        return new BadRequestObjectResult(new { Status = 500, Message = errors.FirstOrDefault() });
+        return new BadRequestObjectResult(new { Status = 400, Message = errors.FirstOrDefault() });
     };
 });
 

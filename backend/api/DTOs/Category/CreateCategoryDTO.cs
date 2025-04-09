@@ -10,7 +10,6 @@ namespace api.DTOs.Category
         public string Name { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Brand ID is required")]
-        [Range(1, int.MaxValue, ErrorMessage = "Brand ID must be a positive integer")]
         [RegularExpression(@"^\d+$", ErrorMessage = "Brand ID must be a positive integer")]
         public int BrandId { get; set; }
     }

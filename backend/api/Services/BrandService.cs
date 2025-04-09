@@ -16,17 +16,12 @@ namespace api.Services
             this.logger = logger;
         }
 
-        public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> CreateBrand(CreateBrandDTO brandDTO)
+        public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> CreateBrandAsync(CreateBrandDTO brandDTO)
         {
-            if (string.IsNullOrEmpty(brandDTO.Name))
-                return (false, "Brand name is required", null);
-            if (brandDTO.Logo == null)
-                return (false, "Brand logo is required", null);
-
             try
             {
-                var existsBrand = await repo.GetBrandAsync(name: brandDTO.Name);
-                if (existsBrand != null)
+                var existsBrand = await repo.BrandExistsAsync(brandDTO.Name);
+                if (existsBrand)
                     return (false, "Brand already exists", null);
 
                 var brand = new Brand
@@ -53,18 +48,21 @@ namespace api.Services
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage)> DeleteBrand(int? id = null, string? name = null)
+        public async Task<(bool Success, string? ErrorMessage)> DeleteBrandAsync(int id)
         {
             try
             {
-                if (id == null && string.IsNullOrEmpty(name))
-                    return (false, "Either id or name must be provided");
-
-                var success = await repo.DeleteBrandAsync(id, name);
-                if (!success)
+                var brand = await repo.GetBrandByIdAsync(id);
+                if (brand == null)
                     return (false, "Brand not found");
 
-                return (true, string.Empty);
+                var deleted = ImageHelper.DeleteImage(Directory.GetCurrentDirectory() + brand.Logo);
+                if (!deleted)
+                    return (false, "Error deleting brand logo");
+
+                await repo.DeleteBrandAsync(brand);
+
+                return (true, null);
             }
             catch (Exception ex)
             {
@@ -73,7 +71,7 @@ namespace api.Services
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage, IEnumerable<BrandDTO>? Brands)> GetAllBrands()
+        public async Task<(bool Success, string? ErrorMessage, IEnumerable<BrandDTO>? Brands)> GetAllBrandsAsync()
         {
             try
             {
@@ -90,14 +88,11 @@ namespace api.Services
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> GetBrand(int? id = null, string? name = null)
+        public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> GetBrandByIdAsync(int id)
         {
             try
             {
-                if (id == null && string.IsNullOrEmpty(name))
-                    return (false, "Either id or name must be provided", null);
-
-                var brand = await repo.GetBrandAsync(id, name);
+                var brand = await repo.GetBrandByIdAsync(id);
                 if (brand == null)
                     return (false, "Brand not found", null);
 
@@ -110,14 +105,14 @@ namespace api.Services
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage)> UpdateBrand(int id, UpdateBrandDTO brandDTO)
+        public async Task<(bool Success, string? ErrorMessage)> UpdateBrandAsync(int id, UpdateBrandDTO brandDTO)
         {
             try
             {
                 if (id <= 0)
                     return (false, "Invalid brand ID");
 
-                var brand = await repo.GetBrandAsync(id: id);
+                var brand = await repo.GetBrandByIdAsync(id);
                 if (brand == null)
                     return (false, "Brand not found");
 

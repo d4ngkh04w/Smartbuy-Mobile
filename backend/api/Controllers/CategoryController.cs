@@ -55,7 +55,7 @@ namespace api.Controllers
             var (success, errorMessage, category) = await _categoryService.CreateCategoryAsync(categoryDTO);
             if (!success && errorMessage != null)
             {
-                if (errorMessage.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+                if (errorMessage.Contains("Already exists", StringComparison.OrdinalIgnoreCase))
                     return Conflict(new { Status = 409, Message = errorMessage });
                 if (errorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
                     return StatusCode(500, new { Status = 500, Message = errorMessage });

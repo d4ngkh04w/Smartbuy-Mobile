@@ -13,6 +13,11 @@ namespace api.Repositories
             this.db = db;
         }
 
+        public async Task<bool> BrandExistsAsync(string name)
+        {
+            return await db.Brands.AnyAsync(b => b.Name == name);
+        }
+
         public async Task<Brand> CreateBrandAsync(Brand brand)
         {
             db.Brands.Add(brand);
@@ -20,15 +25,10 @@ namespace api.Repositories
             return brand;
         }
 
-        public async Task<bool> DeleteBrandAsync(int? id = null, string? name = null)
+        public async Task DeleteBrandAsync(Brand brand)
         {
-            var brand = await GetBrandAsync(id, name);
-            if (brand == null)
-                return false;
-
             db.Brands.Remove(brand);
             await db.SaveChangesAsync();
-            return true;
         }
 
         public async Task<IEnumerable<Brand>> GetAllBrandsAsync()
@@ -36,16 +36,9 @@ namespace api.Repositories
             return await db.Brands.Include(b => b.Categories).ToListAsync();
         }
 
-        public async Task<Brand?> GetBrandAsync(int? id = null, string? name = null)
+        public async Task<Brand?> GetBrandByIdAsync(int id)
         {
-            var query = db.Brands.AsQueryable();
-            if (id.HasValue)
-                query = query.Where(b => b.Id == id.Value);
-
-            if (!string.IsNullOrEmpty(name))
-                query = query.Where(b => b.Name == name);
-
-            return await query.Include(b => b.Categories).FirstOrDefaultAsync();
+            return await db.Brands.Include(b => b.Categories).FirstOrDefaultAsync(b => b.Id == id);
         }
 
         public async Task<bool> UpdateBrandAsync(Brand brand)

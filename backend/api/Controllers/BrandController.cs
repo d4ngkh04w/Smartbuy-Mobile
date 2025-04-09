@@ -17,20 +17,25 @@ namespace api.Controllers.Brand
         }
 
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetBrand([FromQuery] int? id = null, [FromQuery] string? name = null)
+        public async Task<IActionResult> GetAllBrands()
         {
-            bool success;
-            string? errorMessage;
-            object? brand;
+            var (success, errorMessage, brands) = await _brandService.GetAllBrandsAsync();
 
-            if (id == null && name == null)
-                (success, errorMessage, brand) = await _brandService.GetAllBrands();
-            else
-                (success, errorMessage, brand) = await _brandService.GetBrand(id, name);
+            if (!success && errorMessage != null)
+            {
+                if (errorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))
+                    return NotFound(new { Status = 404, Message = "No brands found" });
+                if (errorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
+                    return StatusCode(500, new { Status = 500, Message = errorMessage });
+                return BadRequest(new { Status = 400, Message = errorMessage });
+            }
+            return Ok(new { Status = 200, Message = "Brand retrieved successfully", Brands = brands });
+        }
+
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetBrandById([FromRoute] int id)
+        {
+            var (success, errorMessage, brand) = await _brandService.GetBrandByIdAsync(id);
 
             if (!success && errorMessage != null)
             {
@@ -43,16 +48,11 @@ namespace api.Controllers.Brand
             return Ok(new { Status = 200, Message = "Brand retrieved successfully", Brand = brand });
         }
 
-        [HttpDelete]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [HttpDelete("{id:int}")]
         // [Authorize(Roles = "admin")]
-        public async Task<IActionResult> DeleteBrand([FromQuery] int? id = null, [FromQuery] string? name = null)
+        public async Task<IActionResult> DeleteBrand(int id)
         {
-            var (success, errorMessage) = await _brandService.DeleteBrand(id, name);
+            var (success, errorMessage) = await _brandService.DeleteBrandAsync(id);
             if (!success && errorMessage != null)
             {
                 if (errorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))
@@ -61,41 +61,30 @@ namespace api.Controllers.Brand
                     return StatusCode(500, new { Status = 500, Message = errorMessage });
                 return BadRequest(new { Status = 400, Message = errorMessage });
             }
-            return Ok(new { Status = 200, Message = "Brand deleted successfully" });
+            return NoContent();
         }
 
         [HttpPost]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         // [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateBrand([FromForm] CreateBrandDTO brandDTO)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(new { Status = 400, Message = "Invalid data" });
-            var (success, errorMessage, brand) = await _brandService.CreateBrand(brandDTO);
+            var (success, errorMessage, brand) = await _brandService.CreateBrandAsync(brandDTO);
             if (!success && errorMessage != null)
             {
                 if (errorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
                     return StatusCode(500, new { Status = 500, Message = errorMessage });
+                if (errorMessage.Contains("Already exists", StringComparison.OrdinalIgnoreCase))
+                    return Conflict(new { Status = 409, Message = errorMessage });
                 return BadRequest(new { Status = 400, Message = errorMessage });
             }
-            return Ok(new { Status = 200, Message = "Brand created successfully", Brand = brand });
+            return CreatedAtAction(nameof(GetBrandById), new { id = brand!.Id }, new { Status = 201, Message = "Brand created successfully", Brand = brand });
         }
 
-        [HttpPut]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [HttpPut("{id:int}")]
         // [Authorize(Roles = "admin")]
-        public async Task<IActionResult> UpdateBrand([FromQuery] int id, [FromForm] UpdateBrandDTO brandDTO)
+        public async Task<IActionResult> UpdateBrand([FromRoute] int id, [FromForm] UpdateBrandDTO brandDTO)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(new { Status = 400, Message = "Invalid data" });
-            var (success, errorMessage) = await _brandService.UpdateBrand(id, brandDTO);
+            var (success, errorMessage) = await _brandService.UpdateBrandAsync(id, brandDTO);
             if (!success && errorMessage != null)
             {
                 if (errorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))
