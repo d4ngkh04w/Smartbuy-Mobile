@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from "vue";
-import { login, register,loginWithGoogle } from "../services/authService.js";
+import { login, register, loginWithGoogle } from "../services/authService.js";
 
 const phoneNumber = ref("");
 const password = ref("");
@@ -12,15 +12,18 @@ const successMessage = ref("");
 
 // Đăng nhập bằng Google
 const handleGoogleLogin = async (response) => {
-  const credential = response.credential;  
-  try {
-    const res = await loginWithGoogle(credential);
-    const token = res.data.token;
-    localStorage.setItem("jwt", token);
-    console.log("Đăng nhập bằng Google thành công!");
-  } catch (err) {
-    console.error("Lỗi đăng nhập bằng Google:", err);
-  }
+    const credential = response.credential;
+    try {
+        const res = await loginWithGoogle(credential);
+        const token = res.data.token;
+        localStorage.setItem("jwt", token);
+        console.log("Đăng nhập bằng Google thành công!");
+    } catch (err) {
+        console.error("Lỗi đăng nhập bằng Google:", err);
+    }
+};
+
+const handleFacebookLogin = () => {    
 };
 
 const handleLogin = async () => {
@@ -140,14 +143,27 @@ const showLogin = () => {
                     </div>
 
                     <div class="social-container">
-                        <a href="#" class="social"
-                            ><img src="../assets/image/google.png" alt="Google"
-                        /></a>
-                        <a href="#" class="social"
+                        <GoogleLogin
+                            :callback="handleGoogleLogin"
+                            :buttonConfig="{
+                                type: 'icon',
+                                size: 'large',
+                                theme: 'outline',
+                                text: 'continue_with',
+                                shape: 'pill',
+                                logo_alignment: 'center',
+                            }"
+                        />
+                        <button
+                            type="button"
+                            class="facebook-login-btn"
+                            @click="handleFacebookLogin"
+                        >
                             ><img
                                 src="../assets/image/facebook.png"
                                 alt="Facebook"
-                        /></a>
+                            />
+                        </button>                        
                     </div>
                 </form>
             </div>
@@ -186,15 +202,28 @@ const showLogin = () => {
                     </div>
 
                     <div class="social-container">
-                        <GoogleLogin :callback="handleGoogleLogin" />
-                        <!-- <a href="#" class="social" @click.prevent="handleGoogleLogin"
-                            ><img src="../assets/image/google.png" alt="Google"
-                        /></a> -->
-                        <a href="#" class="social"
+                        <GoogleLogin
+                            :callback="handleGoogleLogin"
+                            :buttonConfig="{
+                                type: 'icon',
+                                size: 'large',
+                                theme: 'outline',
+                                text: 'continue_with',
+                                shape: 'pill',
+                                logo_alignment: 'center',
+                            }"
+                        />
+                        <button
+                            type="button"
+                            class="facebook-login-btn"
+                            @click="handleFacebookLogin"
+                        >
                             ><img
                                 src="../assets/image/facebook.png"
                                 alt="Facebook"
-                        /></a>
+                            />
+                        </button>     
+
                     </div>
                 </form>
             </div>
@@ -225,6 +254,7 @@ const showLogin = () => {
 * {
     box-sizing: border-box;
 }
+
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -335,11 +365,11 @@ button {
     border-radius: 20px;
     border: 2px solid rgba(255, 148, 226, 1);
     background: rgba(255, 148, 226, 0.8);
-    color: #333;
+    color: #fff;
     font-size: 15px;
     font-weight: bold;
     margin: 5px;
-    padding: 12px 50px;
+    padding: 12px 80px;
     letter-spacing: 0px;
     text-transform: capitalize;
     transition: 0.3 ease-in-out;
@@ -386,7 +416,7 @@ button.ghost:hover i.login {
 }
 
 .separator {
-    padding: 10px 0 0 0;
+    padding: 0 0 0 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -395,9 +425,9 @@ button.ghost:hover i.login {
 }
 .separator span {
     background: white;
-    padding: 0 10px;
+    padding: 0 5px;
     font-size: 16px;
-    color: #555;
+    color: #dad7d7;
 
     text-align: center;
     margin: 10px 0;
@@ -408,28 +438,15 @@ button.ghost:hover i.login {
     content: "";
     flex: 1;
     height: 1px;
-    background: #ccc;
+    background: #dad7d7;
 }
 
 .social-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
     transition: 0.3s ease-in-out;
-}
-
-.social-container a {
-    margin: 0;
-}
-
-.social img {
-    width: 32px;
-    height: 32px;
-    border: 1px solid #dddddd;
-    border-radius: 50%; /* Làm viền hình tròn */
-    padding: 3px; /* Giúp viền không dính sát vào logo */
-    background-color: white; /* Đảm bảo nền ảnh không bị thay đổi */
 }
 
 form {
@@ -585,5 +602,32 @@ input {
 
 .container.right-panel-active .overlay-right {
     transform: translateX(20%);
+}
+
+.facebook-login-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgb(218, 220, 224); /* giống theme outline của Google */
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    padding: 0;
+    outline: none;
+    text-indent: -9999px;
+}
+
+.facebook-login-btn:hover {
+    border-color: #D2E3FC; /* màu xanh giống hover của Google */
+    background-color: #F8FAFF;
+    
+}
+
+.facebook-login-btn img {
+    width: 22px;
+    height: 22px;
 }
 </style>
