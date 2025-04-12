@@ -36,14 +36,9 @@ namespace api.Helpers
 
             return (true, null, $"/uploads/images/{folder}/{fileName}");
         }
-        
+
         public static bool DeleteImage(string filePath)
         {
-            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
-            {
-                return false;
-            }
-
             try
             {
                 File.Delete(filePath);

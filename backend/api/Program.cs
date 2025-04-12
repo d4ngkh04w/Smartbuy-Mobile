@@ -25,9 +25,9 @@ builder.Services.AddDbContext<AppDBContext>(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
-        policy => policy.WithOrigins("http://localhost:5173") // Địa chỉ của frontend Vue
+        policy => policy.WithOrigins("http://localhost:4000") // Địa chỉ của frontend Vue
+                        .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .AllowAnyHeader()
-                        .AllowAnyMethod()
                         .AllowCredentials()); // Quan trọng: Cho phép Credentials (cookie hoặc token)
 });
 
@@ -37,7 +37,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     options.InvalidModelStateResponseFactory = context =>
     {
         var errors = context.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-        return new BadRequestObjectResult(new { Status = 400, Message = errors.FirstOrDefault() });
+        return new BadRequestObjectResult(new { Message = "Invalid data", Error = errors.FirstOrDefault() });
     };
 });
 
@@ -96,6 +96,8 @@ builder.Services.AddScoped<IBrandRepository, BrandRepository>();
 builder.Services.AddScoped<IBrandService, BrandService>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 var app = builder.Build();
 

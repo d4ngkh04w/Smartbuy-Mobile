@@ -1,11 +1,14 @@
 import axios from "axios";
 
+// Use environment variable or default to current setup
+const apiUrl = import.meta.env.VITE_API_URL || "/api";
+
 const instance = axios.create({
-    baseURL: "http://localhost:3000/api", // URL của backend
+    baseURL: apiUrl, // URL của backend
     timeout: 10000,
     headers: {
         "Content-Type": "application/json",
-    },    
+    },
 });
 
 // Trước mỗi request, kiểm tra xem token có trong localStorage không

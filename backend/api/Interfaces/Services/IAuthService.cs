@@ -4,10 +4,8 @@ namespace api.Interfaces.Services
 {
     public interface IAuthService
     {
-        public Task<(bool success, string? errors)> Register(Register registerDto, string role);
-        public Task<(bool success, string? token)> Login(Login loginDto, string role);
-
-        public Task<(bool success, string? token, string message)> LoginWithGoogleAsync(GoogleLogin dto, string role);
-
+        public Task<(bool Success, string? ErrorMessage)> Register(Register registerDto, string role);
+        public Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Login(Login loginDto, string role);
+        public Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> LoginWithGoogleAsync(GoogleLogin dto, string role);
     }
 }

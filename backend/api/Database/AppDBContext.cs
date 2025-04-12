@@ -1,11 +1,11 @@
 using api.Models;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+// using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.Database
 {
-    public class AppDBContext : IdentityDbContext<IdentityUser>
+    public class AppDBContext : DbContext
     {
         public AppDBContext(DbContextOptions<AppDBContext> options) : base(options)
         {
@@ -15,14 +15,10 @@ namespace api.Database
         public DbSet<Category> Categories { get; set; } = null!;
         // public DbSet<Color> Colors { get; set; } = null!;
         public DbSet<Product> Products { get; set; } = null!;
+        public DbSet<User> Users { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
-            builder.Entity<IdentityRole>().HasData(
-                new IdentityRole { Name = "admin", NormalizedName = "ADMIN" },
-                new IdentityRole { Name = "user", NormalizedName = "USER" }
-            );
-
             // Cấu hình mối quan hệ Brand - Category
             builder.Entity<Brand>()
                 .HasMany(b => b.Categories)

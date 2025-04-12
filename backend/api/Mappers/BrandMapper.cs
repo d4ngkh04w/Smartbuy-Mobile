@@ -16,14 +16,6 @@ namespace api.Mappers
             };
         }
 
-        // public static Brand ToModel(this CreateBrandDTO brandDTO)
-        // {
-        //     return new Brand
-        //     {
-        //         Name = brandDTO.Name,
-        //     };
-        // }
-
         public static Brand ToModel(this BrandDTO brandDTO)
         {
             return new Brand
