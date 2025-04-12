@@ -6,6 +6,9 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    port: 4000, // Đổi port tại đây
+  },
   plugins: [
     vue(),
     vueDevTools(),
