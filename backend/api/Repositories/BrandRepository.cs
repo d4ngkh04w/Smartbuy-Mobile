@@ -1,6 +1,7 @@
 using api.Database;
 using api.Interfaces.Services;
 using api.Models;
+using api.Queries;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.Repositories
@@ -31,14 +32,60 @@ namespace api.Repositories
             await db.SaveChangesAsync();
         }
 
-        public async Task<IEnumerable<Brand>> GetAllBrandsAsync()
+        public async Task<IEnumerable<Brand>> GetBrandsAsync(BrandQuery query)
         {
-            return await db.Brands.Include(b => b.Categories).ToListAsync();
+            var brandsQuery = db.Brands.AsQueryable();
+
+            if (query.IsActive)
+            {
+                brandsQuery = brandsQuery.Where(b => b.IsActive == query.IsActive);
+            }
+
+            if (query.IncludeCategories)
+            {
+                brandsQuery = brandsQuery.Include(b => b.Categories);
+            }
+
+            if (query.IncludeProducts)
+            {
+                brandsQuery = brandsQuery.Include(b => b.Categories).ThenInclude(c => c.Products);
+            }
+
+            brandsQuery = query.SortBy.ToLower() switch
+            {
+                "id" => brandsQuery.OrderBy(b => b.Id),
+                "name" => brandsQuery.OrderBy(b => b.Name),
+                _ => brandsQuery.OrderBy(b => b.Name),
+            };
+
+            if (query.IsDescending)
+            {
+                brandsQuery = brandsQuery.Reverse();
+            }
+
+            return await brandsQuery.ToListAsync();
         }
 
-        public async Task<Brand?> GetBrandByIdAsync(int id)
+        public async Task<Brand?> GetBrandByIdAsync(int id, BrandQuery? query = null)
         {
-            return await db.Brands.Include(b => b.Categories).FirstOrDefaultAsync(b => b.Id == id);
+            if (query == null)
+            {
+                return await db.Brands.FindAsync(id);
+            }
+
+            var brandQuery = db.Brands.AsQueryable();
+
+            if (query.IncludeCategories)
+            {
+                brandQuery = brandQuery.Include(b => b.Categories);
+            }
+
+            if (query.IncludeProducts)
+            {
+                brandQuery = brandQuery.Include(b => b.Categories).ThenInclude(c => c.Products);
+            }
+
+            return await brandQuery.FirstOrDefaultAsync(b => b.Id == id);
         }
 
         public async Task<bool> UpdateBrandAsync(Brand brand)

@@ -1,5 +1,6 @@
 using api.DTOs.Brand;
 using api.Interfaces.Services;
+using api.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,7 @@ namespace api.Controllers.Brand
 {
     [Route("api/brand")]
     [ApiController]
+    [Authorize]
     public class BrandController : ControllerBase
     {
         private readonly IBrandService _brandService;
@@ -17,83 +19,104 @@ namespace api.Controllers.Brand
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllBrands()
+        [AllowAnonymous]
+        public async Task<IActionResult> GetBrands([FromQuery] BrandQuery query)
         {
-            var (success, errorMessage, brands) = await _brandService.GetAllBrandsAsync();
+            var result = await _brandService.GetBrandsAsync(query);
 
-            if (!success && errorMessage != null)
+            if (!result.Success && result.ErrorMessage != null)
             {
-                if (errorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))
-                    return NotFound(new { Status = 404, Message = "No brands found" });
-                if (errorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
-                    return StatusCode(500, new { Status = 500, Message = errorMessage });
-                return BadRequest(new { Status = 400, Message = errorMessage });
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Brands not found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
             }
-            return Ok(new { Status = 200, Message = "Brand retrieved successfully", Brands = brands });
+
+            return Ok(new
+            {
+                Message = "Brands retrieved successfully",
+                Brands = result.Brands
+            });
         }
 
         [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetBrandById([FromRoute] int id)
+        [AllowAnonymous]
+        public async Task<IActionResult> GetBrandById([FromRoute] int id, [FromQuery] BrandQuery query)
         {
-            var (success, errorMessage, brand) = await _brandService.GetBrandByIdAsync(id);
-
-            if (!success && errorMessage != null)
+            var result = await _brandService.GetBrandByIdAsync(id, query);
+            if (!result.Success && result.ErrorMessage != null)
             {
-                if (errorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))
-                    return NotFound(new { Status = 404, Message = errorMessage });
-                if (errorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
-                    return StatusCode(500, new { Status = 500, Message = errorMessage });
-                return BadRequest(new { Status = 400, Message = errorMessage });
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Brand not found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
             }
-            return Ok(new { Status = 200, Message = "Brand retrieved successfully", Brand = brand });
+            return Ok(new
+            {
+                Message = "Brand retrieved successfully",
+                Brand = result.Brand
+            });
         }
 
         [HttpDelete("{id:int}")]
-        // [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteBrand(int id)
         {
-            var (success, errorMessage) = await _brandService.DeleteBrandAsync(id);
-            if (!success && errorMessage != null)
+            var result = await _brandService.DeleteBrandAsync(id);
+            if (!result.Success && result.ErrorMessage != null)
             {
-                if (errorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))
-                    return NotFound(new { Status = 404, Message = errorMessage });
-                if (errorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
-                    return StatusCode(500, new { Status = 500, Message = errorMessage });
-                return BadRequest(new { Status = 400, Message = errorMessage });
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Brand not found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
             }
             return NoContent();
         }
 
         [HttpPost]
-        // [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateBrand([FromForm] CreateBrandDTO brandDTO)
         {
-            var (success, errorMessage, brand) = await _brandService.CreateBrandAsync(brandDTO);
-            if (!success && errorMessage != null)
+            var result = await _brandService.CreateBrandAsync(brandDTO);
+            if (!result.Success && result.ErrorMessage != null)
             {
-                if (errorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
-                    return StatusCode(500, new { Status = 500, Message = errorMessage });
-                if (errorMessage.Contains("Already exists", StringComparison.OrdinalIgnoreCase))
-                    return Conflict(new { Status = 409, Message = errorMessage });
-                return BadRequest(new { Status = 400, Message = errorMessage });
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    string msg when msg.Contains("Already exists", StringComparison.OrdinalIgnoreCase) => Conflict(new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
             }
-            return CreatedAtAction(nameof(GetBrandById), new { id = brand!.Id }, new { Status = 201, Message = "Brand created successfully", Brand = brand });
+            return CreatedAtAction(nameof(GetBrandById),
+                                new { id = result.Brand!.Id },
+                                new
+                                {
+                                    Message = "Brand created successfully",
+                                    Brand = result.Brand
+                                });
         }
 
         [HttpPut("{id:int}")]
-        // [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdateBrand([FromRoute] int id, [FromForm] UpdateBrandDTO brandDTO)
         {
-            var (success, errorMessage) = await _brandService.UpdateBrandAsync(id, brandDTO);
-            if (!success && errorMessage != null)
+            var result = await _brandService.UpdateBrandAsync(id, brandDTO);
+            if (!result.Success && result.ErrorMessage != null)
             {
-                if (errorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))
-                    return NotFound(new { Status = 404, Message = errorMessage });
-                if (errorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
-                    return StatusCode(500, new { Status = 500, Message = errorMessage });
-                return BadRequest(new { Status = 400, Message = errorMessage });
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Brand not found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
             }
-            return Ok(new { Status = 200, Message = "Brand updated successfully" });
+            return Ok(new { Message = "Brand updated successfully" });
         }
     }
 }

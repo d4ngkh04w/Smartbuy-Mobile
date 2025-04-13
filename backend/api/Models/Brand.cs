@@ -20,6 +20,10 @@ namespace api.Models
         [Column(TypeName = "varchar(255)")]
         public string Logo { get; set; } = string.Empty;
 
+        [Required]
+        [Column(TypeName = "bit")]
+        public bool IsActive { get; set; } = true;
+
         [InverseProperty("Brand")]
         public virtual ICollection<Category> Categories { get; set; } = new HashSet<Category>();
     }

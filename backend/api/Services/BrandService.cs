@@ -3,17 +3,16 @@ using api.Helpers;
 using api.Interfaces.Services;
 using api.Mappers;
 using api.Models;
+using api.Queries;
 
 namespace api.Services
 {
     public class BrandService : IBrandService
     {
         private readonly IBrandRepository repo;
-        private readonly ILogger<BrandService> logger;
-        public BrandService(IBrandRepository repo, ILogger<BrandService> logger)
+        public BrandService(IBrandRepository repo)
         {
             this.repo = repo;
-            this.logger = logger;
         }
 
         public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> CreateBrandAsync(CreateBrandDTO brandDTO)
@@ -41,9 +40,8 @@ namespace api.Services
 
                 return (true, null, createdBrand.ToDTO());
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                logger.LogError(ex, "Error creating brand");
                 return (false, "Error creating brand", null);
             }
         }
@@ -64,44 +62,44 @@ namespace api.Services
 
                 return (true, null);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                logger.LogError(ex, "Error deleting brand");
                 return (false, "Error deleting brand");
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage, IEnumerable<BrandDTO>? Brands)> GetAllBrandsAsync()
+        public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> GetBrandByIdAsync(int id, BrandQuery query)
         {
             try
             {
-                var brands = await repo.GetAllBrandsAsync();
-                if (brands == null || brands.Count() == 0)
-                    return (false, "Not found", null);
-                var brandDTOs = brands.Select(b => b.ToDTO()).ToList();
-                return (true, null, brandDTOs);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error retrieving all brands");
-                return (false, "Error retrieving all brands", null);
-            }
-        }
-
-        public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> GetBrandByIdAsync(int id)
-        {
-            try
-            {
-                var brand = await repo.GetBrandByIdAsync(id);
+                var brand = await repo.GetBrandByIdAsync(id, query);
                 if (brand == null)
                     return (false, "Brand not found", null);
 
                 return (true, null, brand.ToDTO());
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                logger.LogError(ex, "Error retrieving brand");
                 return (false, "Error retrieving brand", null);
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, IEnumerable<BrandDTO>? Brands)> GetBrandsAsync(BrandQuery query)
+        {
+            try
+            {
+                var brands = await repo.GetBrandsAsync(query);
+
+                if (brands == null || !brands.Any())
+                    return (false, "Not found brands", null);
+
+                var brandDTOs = brands.Select(b => b.ToDTO()).ToList();
+
+                return (true, null, brandDTOs);
+            }
+            catch (Exception)
+            {
+                return (false, "Error retrieving brands", null);
             }
         }
 
@@ -137,9 +135,8 @@ namespace api.Services
 
                 return (true, string.Empty);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                logger.LogError(ex, "Error updating brand");
                 return (false, "Error updating brand");
             }
         }

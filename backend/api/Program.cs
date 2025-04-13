@@ -5,7 +5,6 @@ using api.Interfaces.Services;
 using api.Repositories;
 using api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -16,12 +15,12 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Set up MySQL database connection
+// Thiêt lập DbContext với MySQL
 builder.Services.AddDbContext<AppDBContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
     new MySqlServerVersion(new Version(9, 2, 0))));
 
-// Set up CORS policy to allow requests from the frontend
+// Thiêt lập CORS cho phép frontend Vue.js truy cập API
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
@@ -31,7 +30,7 @@ builder.Services.AddCors(options =>
                         .AllowCredentials()); // Quan trọng: Cho phép Credentials (cookie hoặc token)
 });
 
-// Set up API behavior to return custom error messages
+// Thiêt lập response cho các lỗi 400 (Bad Request) với thông báo lỗi cụ thể
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
@@ -41,21 +40,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     };
 });
 
-// Set up Identity for user authentication and authorization
-builder.Services.AddIdentity<IdentityUser, IdentityRole>(
-    options =>
-    {
-        // TODO: Setting strong password
-        options.Password.RequiredLength = 6;
-        options.Password.RequireDigit = false;
-        options.Password.RequireLowercase = false;
-        options.Password.RequireUppercase = false;
-        options.Password.RequireNonAlphanumeric = false;
-    }
-)
-.AddEntityFrameworkStores<AppDBContext>()
-.AddDefaultTokenProviders();
-
+// Thiêt lập JWT Authentication
 builder.Services.AddAuthentication(
     options =>
     {
@@ -73,7 +58,7 @@ builder.Services.AddAuthentication(
         {
             ValidateIssuerSigningKey = true,
             ValidateIssuer = true,
-            ValidateAudience = false,
+            ValidateAudience = true,
             ValidateLifetime = true,
 
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]!)),
@@ -83,13 +68,12 @@ builder.Services.AddAuthentication(
     }
 );
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("AdminPolicy", policy => policy.RequireRole("admin"));
-    options.AddPolicy("UserPolicy", policy => policy.RequireRole("user"));
-});
+// Thiêt lập authorization với các policy cho admin và user
+builder.Services.AddAuthorizationBuilder()
+       .AddPolicy("AdminPolicy", policy => policy.RequireRole("admin"))
+       .AddPolicy("UserPolicy", policy => policy.RequireRole("user"));
 
-// Register services and repositories
+// Đăng ký các repository và service
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IBrandRepository, BrandRepository>();
@@ -107,7 +91,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 
 app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();

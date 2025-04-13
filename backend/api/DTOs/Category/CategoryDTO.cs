@@ -8,6 +8,6 @@ namespace api.DTOs.Category
         public string Name { get; set; } = string.Empty;
         public int BrandId { get; set; }
         public string BrandName { get; set; } = string.Empty;
-        public HashSet<ProductDTO>? Products { get; set; } = null;
+        public HashSet<ProductDTO> Products { get; set; } = new HashSet<ProductDTO>();
     }
 }
