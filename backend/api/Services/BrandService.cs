@@ -10,7 +10,7 @@ namespace api.Services
     public class BrandService : IBrandService
     {
         private readonly IBrandRepository repo;
-        public BrandService(IBrandRepository repo, ILogger<BrandService> logger)
+        public BrandService(IBrandRepository repo)
         {
             this.repo = repo;
         }
@@ -91,7 +91,7 @@ namespace api.Services
                 var brands = await repo.GetBrandsAsync(query);
 
                 if (brands == null || !brands.Any())
-                    return (false, "Not found", null);
+                    return (false, "Not found brands", null);
 
                 var brandDTOs = brands.Select(b => b.ToDTO()).ToList();
 

@@ -1,6 +1,7 @@
 using api.Database;
 using api.Interfaces.Repositories;
 using api.Models;
+using api.Queries;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.Repositories
@@ -25,15 +26,10 @@ namespace api.Repositories
                 .FirstOrDefaultAsync(c => c.Id == category.Id))!;
         }
 
-        public async Task<bool> DeleteCategoryAsync(int id)
+        public async Task DeleteCategoryAsync(Category category)
         {
-            var category = await GetCategoryByIdAsync(id);
-            if (category == null)
-                return false;
-
             db.Categories.Remove(category);
             await db.SaveChangesAsync();
-            return true;
         }
 
         public async Task<bool> CategoryExistAsync(string name)
@@ -41,19 +37,42 @@ namespace api.Repositories
             return await db.Categories.AnyAsync(c => c.Name.ToLower() == name.ToLower());
         }
 
-        public async Task<IEnumerable<Category>> GetAllCategoriesAsync()
+        public async Task<IEnumerable<Category>> GetCategoriesAsync(CategoryQuery query)
         {
-            return await db.Categories
-                .Include(c => c.Brand)
-                .Include(c => c.Products)
-                .ToListAsync();
+            var categoriesQuery = db.Categories.AsQueryable();
+
+            if (query.IncludeProducts)
+            {
+                categoriesQuery = categoriesQuery.Include(c => c.Products);
+            }
+
+            categoriesQuery = query.SortBy.ToLower() switch
+            {
+                "id" => categoriesQuery.OrderBy(c => c.Id),
+                "name" => categoriesQuery.OrderBy(c => c.Name),
+                _ => categoriesQuery.OrderBy(c => c.Name),
+            };
+
+            if (query.IsDescending)
+            {
+                categoriesQuery = categoriesQuery.Reverse();
+            }
+
+            return await categoriesQuery.Include(c => c.Brand).ToListAsync();
         }
 
-        public async Task<Category?> GetCategoryByIdAsync(int id)
+        public async Task<Category?> GetCategoryByIdAsync(int id, CategoryQuery? query = null)
         {
-            return await db.Categories
-                .Include(c => c.Brand)
-                .Include(c => c.Products)
+            if (query == null)
+            {
+                return await db.Categories.FindAsync(id);
+            }
+            var categoryQuery = db.Categories.AsQueryable();
+            if (query.IncludeProducts)
+            {
+                categoryQuery = categoryQuery.Include(c => c.Products);
+            }
+            return await categoryQuery.Include(c => c.Brand)
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 

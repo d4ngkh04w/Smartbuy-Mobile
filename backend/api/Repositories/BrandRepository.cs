@@ -60,7 +60,7 @@ namespace api.Repositories
 
             if (query.IsDescending)
             {
-                brandsQuery = brandsQuery.OrderByDescending(b => b.Id);
+                brandsQuery = brandsQuery.Reverse();
             }
 
             return await brandsQuery.ToListAsync();

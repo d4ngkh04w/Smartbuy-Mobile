@@ -3,17 +3,16 @@ using api.DTOs.Category;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
+using api.Queries;
 
 namespace api.Services
 {
     public class CategoryService : ICategoryService
     {
         private readonly ICategoryRepository repo;
-        private readonly ILogger<BrandService> logger;
-        public CategoryService(ICategoryRepository repo, ILogger<BrandService> logger)
+        public CategoryService(ICategoryRepository repo)
         {
             this.repo = repo;
-            this.logger = logger;
         }
 
         public async Task<(bool Success, string? ErrorMessage, CategoryDTO? Category)> CreateCategoryAsync(CreateCategoryDTO categoryDTO)
@@ -25,12 +24,10 @@ namespace api.Services
 
                 var createdCategory = await repo.CreateCategoryAsync(categoryDTO.ToModel());
                 return (true, null, createdCategory.ToDTO());
-
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                logger.LogError(ex, "Error creating category");
-                return (false, ex.Message, null);
+                return (false, "Error creating category", null);
             }
         }
 
@@ -38,52 +35,50 @@ namespace api.Services
         {
             try
             {
-                var success = await repo.DeleteCategoryAsync(id);
-                if (!success)
+                var category = await repo.GetCategoryByIdAsync(id);
+                if (category == null)
                     return (false, "Category not found");
+
+                await repo.DeleteCategoryAsync(category);
 
                 return (true, null);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                logger.LogError(ex, "Error deleting category");
-                return (false, ex.Message);
+                return (false, "Error deleting category");
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage, IEnumerable<CategoryDTO>? Categories)> GetAllCategoriesAsync()
+        public async Task<(bool Success, string? ErrorMessage, IEnumerable<CategoryDTO>? Categories)> GetCategoriesAsync(CategoryQuery query)
         {
             try
             {
-                var categories = await repo.GetAllCategoriesAsync();
+                var categories = await repo.GetCategoriesAsync(query);
                 if (categories == null || !categories.Any())
-                    return (false, "Not Found", null);
+                    return (false, "Not found categories", null);
 
                 var categoryDTOs = categories.Select(c => c.ToDTO()).ToList();
                 return (true, null, categoryDTOs);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                logger.LogError(ex, "Error retrieving categories");
-                return (false, ex.Message, null);
+                return (false, "Error retrieving categories", null);
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage, CategoryDTO? Category)> GetCategoryByIdAsync(int id)
+        public async Task<(bool Success, string? ErrorMessage, CategoryDTO? Category)> GetCategoryByIdAsync(int id, CategoryQuery query)
         {
             try
             {
-                var category = await repo.GetCategoryByIdAsync(id);
+                var category = await repo.GetCategoryByIdAsync(id, query);
                 if (category == null)
-                    return (false, "Not Found", null);
+                    return (false, "Category not found", null);
 
-                var categoryDTO = category.ToDTO();
-                return (true, null, categoryDTO);
+                return (true, null, category.ToDTO());
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                logger.LogError(ex, "Error retrieving category");
-                return (false, ex.Message, null);
+                return (false, "Error retrieving category", null);
             }
         }
 
@@ -109,10 +104,9 @@ namespace api.Services
 
                 return (true, null);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                logger.LogError(ex, "Error updating category");
-                return (false, ex.Message);
+                return (false, "Error updating category");
             }
         }
     }
