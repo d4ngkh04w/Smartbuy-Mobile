@@ -25,6 +25,6 @@ namespace api.Models
         public Brand? Brand { get; set; } = null!;
 
         [InverseProperty("Category")]
-        public virtual ICollection<Product>? Products { get; set; } = null!;
+        public virtual ICollection<Product> Products { get; set; } = new HashSet<Product>();
     }
 }

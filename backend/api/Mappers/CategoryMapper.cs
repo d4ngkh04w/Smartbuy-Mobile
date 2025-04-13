@@ -11,7 +11,7 @@ namespace api.Mappers
             {
                 Name = createCategoryDTO.Name,
                 BrandId = createCategoryDTO.BrandId,
-                Products = null
+                Products = new HashSet<Product>()
             };
         }
 
@@ -23,7 +23,7 @@ namespace api.Mappers
                 Name = category.Name,
                 BrandId = category.BrandId,
                 BrandName = category.Brand?.Name ?? string.Empty,
-                Products = category.Products?.Select(p => p.ToDTO()).ToHashSet()
+                Products = category.Products.Select(p => p.ToDTO()).ToHashSet()
             };
         }
     }
