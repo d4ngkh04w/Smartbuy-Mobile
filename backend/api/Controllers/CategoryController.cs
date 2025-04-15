@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers
 {
-    [Route("api/category")]
+    [Route("api/v1/category")]
     [ApiController]
     [Authorize]
     public class CategoryController : ControllerBase

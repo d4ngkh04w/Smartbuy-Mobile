@@ -34,7 +34,7 @@ namespace api.Services
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
-            var creds = new SigningCredentials(_key, SecurityAlgorithms.HmacSha256);
+            var creds = new SigningCredentials(_key, _config["JWT:Algorithm"]!);
 
             var tokenDescriptor = new JwtSecurityToken(
                 audience: _config["JWT:Audience"],

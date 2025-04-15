@@ -5,9 +5,9 @@ namespace api.Extensions
     public class AllowFileExtension : ValidationAttribute
     {
         private readonly string[] _extensions;
-        public AllowFileExtension(string[] Extensions)
+        public AllowFileExtension(string[] extensions)
         {
-            _extensions = Extensions;
+            _extensions = extensions;
         }
 
         protected override ValidationResult IsValid(object? value, ValidationContext validationContext)

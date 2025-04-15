@@ -21,9 +21,8 @@ namespace api.Mappers
             {
                 Id = category.Id,
                 Name = category.Name,
-                BrandId = category.BrandId,
                 BrandName = category.Brand?.Name ?? string.Empty,
-                Products = category.Products.Select(p => p.ToDTO()).ToHashSet()
+                Products = category.Products.Select(p => p.ToProductDTO()).ToHashSet()
             };
         }
     }

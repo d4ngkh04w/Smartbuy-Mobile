@@ -15,15 +15,5 @@ namespace api.Mappers
                 Categories = brand.Categories?.Select(c => c.ToDTO()).ToList()
             };
         }
-
-        public static Brand ToModel(this BrandDTO brandDTO)
-        {
-            return new Brand
-            {
-                Id = brandDTO.Id,
-                Name = brandDTO.Name,
-                Logo = brandDTO.Logo
-            };
-        }
     }
 }

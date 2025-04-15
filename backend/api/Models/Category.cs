@@ -13,18 +13,16 @@ namespace api.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        [Required]
         [Column(TypeName = "varchar(100)")]
         public string Name { get; set; } = string.Empty;
 
-        [Required]
         public int BrandId { get; set; }
 
         [ForeignKey(nameof(BrandId))]
         [InverseProperty("Categories")]
-        public Brand? Brand { get; set; } = null!;
+        public Brand? Brand { get; set; } = null;
 
         [InverseProperty("Category")]
-        public virtual ICollection<Product> Products { get; set; } = new HashSet<Product>();
+        public ICollection<Product> Products { get; set; } = new HashSet<Product>();
     }
 }

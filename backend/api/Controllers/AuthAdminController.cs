@@ -1,12 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
 using api.DTOs.Auth;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.IdentityModel.Tokens.Jwt;
 
-namespace api.Controllers.Auth.Admin
+namespace api.Controllers
 {
-    [Route("api/admin/auth")]
+    [Route("api/v1/admin/auth")]
     [ApiController]
     [Authorize(Roles = "admin")]
     public class AuthAdminController : ControllerBase
@@ -35,8 +35,26 @@ namespace api.Controllers.Auth.Admin
         public async Task<IActionResult> Login([FromBody] Login login)
         {
             var result = await _authService.Login(login, "admin");
+
             if (result.Success)
-                return Ok(new { Message = "Login successful", result.token!.Token, result.token!.RefreshToken });
+            {
+                // Xem xét việc sử dụng cookie để lưu trữ refresh token
+                // Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
+                // {
+                //     HttpOnly = true,
+                //     Secure = false,
+                //     SameSite = SameSiteMode.Lax,
+                //     Path = "/api/v1/admin/auth/refresh-token",
+                //     Expires = DateTimeOffset.Now.AddDays(7),
+                //     Domain = "localhost",
+                // });
+                return Ok(new
+                {
+                    Message = "Login successful",
+                    Token = result.token!.Token,
+                    RefreshToken = result.token!.RefreshToken
+                });
+            }
 
             return Unauthorized(new { Message = result.ErrorMessage });
         }
@@ -46,7 +64,12 @@ namespace api.Controllers.Auth.Admin
         public async Task<IActionResult> GoogleLogin([FromBody] GoogleLogin dto)
         {
             var (success, message, token) = await _authService.LoginWithGoogleAsync(dto, "admin");
-            if (success) return Ok(new { Message = "Login successful", Token = token });
+            if (success) return Ok(new
+            {
+                Message = "Login successful",
+                Token = token!.Token,
+                RefreshToken = token.RefreshToken
+            });
 
             return Unauthorized(new { Message = message });
         }
