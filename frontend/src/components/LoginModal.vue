@@ -1,146 +1,207 @@
 <script setup>
 import { ref } from "vue";
-import { login, register, loginWithGoogle } from "../services/authService.js";
+import {
+    login,
+    register,
+    loginWithGoogle,
+    getUserInfoById,
+} from "../services/authService.js";
+import emitter from "../utils/evenBus.js";
 
-const phoneNumber = ref("");
-const password = ref("");
-const password_confirm = ref("");
-const email = ref("");
+// State
+const loginPhoneNumber = ref("");
+const loginPassword = ref("");
+
+const registerPhoneNumber = ref("");
+const registerPassword = ref("");
+const registerPasswordConfirm = ref("");
+const registerEmail = ref("");
+const argeed = ref(false);
 
 const errorMessage = ref("");
 const successMessage = ref("");
+const isRightPanelActive = ref(false);
 
-// Đăng nhập bằng Google
+const emit = defineEmits(["close", "login-success"]);
+
+// ===== REFRESH FORM ===== //
+const resetFormRegister = () => {   
+    registerPhoneNumber.value = "";
+    registerPassword.value = "";
+    registerPasswordConfirm.value = "";
+    registerEmail.value = "";
+    argeed.value = false;
+};
+
+const resetFormLogin = () => {
+    loginPhoneNumber.value = "";
+    loginPassword.value = "";
+};
+
+// ===== XỬ LÝ LOGIN ===== //
+const handleLogin = async () => {
+    errorMessage.value = "";
+
+    try {
+        // Gửi yêu cầu đăng nhập
+        const response = await login({
+            phoneNumber: loginPhoneNumber.value,
+            password: loginPassword.value,
+        });
+
+        const token = response.data.token;
+        const refreshToken = response.data.refreshToken;
+
+        // Lưu token vào localStorage  
+        localStorage.setItem("jwt", token);
+        localStorage.setItem("refreshToken", refreshToken);
+
+        successMessage.value = "Đăng nhập thành công!";
+        console.log("Đăng nhập thành công:", response.data);
+
+        // Giải mã token để lấy userId
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        const userId = payload.id;
+
+        // Gọi API để lấy thông tin người dùng
+        const userResponse = await getUserInfoById(userId, token);
+        const userData = userResponse.data;
+
+        console.log("Thông tin người dùng:", userData);
+
+        emitter.emit("show-notification", {
+            status: "success",
+            message: "Đăng nhập thành công!",
+        });
+
+        emit("login-success", userData);
+        emit("close");
+    } catch (err) {
+        errorMessage.value = "Sai tài khoản hoặc mật khẩu.";
+        console.error(err);
+
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Đăng nhập thất bại.",
+        });
+    }
+};
+
+// ===== XỬ LÝ ĐĂNG KÝ ===== //
+const handleRegister = async () => {
+    errorMessage.value = "";
+    successMessage.value = "";
+
+    if (registerPassword.value !== registerPasswordConfirm.value) {
+        errorMessage.value = "Mật khẩu không khớp.";
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Mật khẩu không khớp.",
+        });
+        return;
+    }
+
+    if(!argeed.value) {
+        errorMessage.value = "Bạn cần đồng ý với điều khoản sử dụng.";
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Bạn cần đồng ý với điều khoản sử dụng.",
+        });
+        return;
+    }
+
+    try {
+        const response = await register({
+            phoneNumber: registerPhoneNumber.value,
+            password: registerPassword.value,
+            email: registerEmail.value,
+            confirmPassword: registerPasswordConfirm.value,
+           
+        });
+
+        emitter.emit("show-notification", {
+            status: "success",
+            message: "Đăng ký thành công!",
+        });
+
+        successMessage.value = "Đăng ký thành công!";
+        console.log("Đăng ký thành công:", response.data);
+
+        await resetFormRegister();
+
+        await showLogin();
+    } catch (err) {
+        errorMessage.value = "Đã có lỗi xảy ra khi đăng ký.";
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Đăng ký thất bại.",
+        });
+        console.error(err);
+    }
+};
+
+// ===== LOGIN GOOGLE ===== //
 const handleGoogleLogin = async (response) => {
     const credential = response.credential;
+
     try {
         const res = await loginWithGoogle(credential);
         const token = res.data.token;
+        const refreshToken = res.data.refreshToken;
+
         localStorage.setItem("jwt", token);
+        console.log("Token:", token);
+        console.log("Refresh Token:", refreshToken);
+        localStorage.setItem("refreshToken", refreshToken);
+
         console.log("Đăng nhập bằng Google thành công!");
     } catch (err) {
         console.error("Lỗi đăng nhập bằng Google:", err);
     }
 };
 
-const handleFacebookLogin = () => {    
+// ===== FACEBOOK LOGIN (Tạm thời chưa dùng) ===== //
+const handleFacebookLogin = () => {
+    // TODO: Thêm xử lý đăng nhập Facebook nếu cần
 };
 
-const handleLogin = async () => {
-    errorMessage.value = "";
-    try {
-        // Gửi thông tin đăng nhập tới backend
-        const response = await login({
-            phoneNumber: phoneNumber.value,
-            password: password.value,
-        });
-
-        // Lưu token JWT vào localStorage
-        const token = response.data.token;
-        localStorage.setItem("jwt", token);
-
-        successMessage.value = "Đăng nhập thành công!";
-
-        console.log("Đăng nhập thành công:", response.data);
-
-        // Có thể redirect hoặc thực hiện hành động sau khi đăng nhập thành công
-        // ví dụ: router.push('/dashboard') hoặc emit sự kiện đóng modal
-    } catch (err) {
-        errorMessage.value = "Sai tài khoản hoặc mật khẩu.";
-        console.error(err);
-    }
-};
-const handleRegister = async () => {
-    // Reset lỗi cũ
-    errorMessage.value = "";
-    successMessage.value = "";
-
-    // Kiểm tra nếu mật khẩu và xác nhận mật khẩu khớp
-    if (password.value !== password_confirm.value) {
-        errorMessage.value = "Mật khẩu không khớp.";
-        return;
-    }
-
-    try {
-        // Gửi dữ liệu đăng ký tới backend
-        const response = await register({
-            phoneNumber: phoneNumber.value,
-            email: email.value,
-            password: password.value,
-            confirmPassword: password_confirm.value,
-        });
-
-        // Nếu đăng ký thành công, bạn có thể đăng nhập người dùng ngay (nếu cần)
-        const token = response.data.token;
-        localStorage.setItem("jwt", token);
-
-        successMessage.value = "Đăng ký thành công!";
-
-        console.log("Đăng ký thành công:", response.data);
-
-        // Có thể chuyển hướng người dùng đến trang khác sau khi đăng ký thành công
-        // router.push('/dashboard') hoặc emit('close') để đóng modal
-    } catch (err) {
-        errorMessage.value = "Đã có lỗi xảy ra khi đăng ký.";
-        console.error(err);
-    }
-};
-
-const isRightPanelActive = ref(false);
-
+// ===== HIỂN THỊ FORM ===== //
 const showRegister = () => {
     isRightPanelActive.value = true;
+    resetFormRegister();
 };
 
 const showLogin = () => {
     isRightPanelActive.value = false;
+    resetFormLogin();
 };
 </script>
 
 <template>
     <div class="modal-overlay" @click.self="$emit('close')">
-        <div
-            :class="['container', { 'right-panel-active': isRightPanelActive }]"
-        >
+        <div :class="['container', { 'right-panel-active': isRightPanelActive }]">
             <!-- Đăng kí -->
             <div class="form-container register-container">
                 <form action="#">
                     <h1>Đăng ký</h1>
-                    <input
-                        type="text"
-                        placeholder="Số điện thoại"
-                        v-model="phoneNumber"
-                    />
-                    <input type="email" placeholder="Email" v-model="email" />
-                    <input
-                        type="password"
-                        placeholder="Mật khẩu"
-                        v-model="password"
-                    />
-                    <input
-                        type="password"
-                        placeholder="Xác nhận mật khẩu"
-                        v-model="password_confirm"
-                    />
+                    <input type="text" placeholder="Số điện thoại" v-model="registerPhoneNumber" />     
+                    <input type="email" placeholder="Email" v-model="registerEmail" />                               
+                    <input type="password" placeholder="Mật khẩu" v-model="registerPassword" />
+                    <input type="password" placeholder="Xác nhận mật khẩu" v-model="registerPasswordConfirm" />
 
                     <div class="content">
                         <div class="checkbox">
-                            <input
-                                type="checkbox"
-                                id="checkbox"
-                                name="checkbox"
-                            />
+                            <input type="checkbox" id="checkbox" name="checkbox" v-model="argeed"/>
                             <label for="checkbox" class="terms-label">
                                 Đồng ý với <a href="#">Điều khoản Sử dụng</a> và
                                 <a href="#">Chính Sách Bảo mật</a>
                             </label>
                         </div>
                     </div>
+
                     <button @click.prevent="handleRegister">Đăng ký</button>
 
-                    <div class="separator">
-                        <span>Hoặc</span>
-                    </div>
+                    <div class="separator"><span>Hoặc</span></div>
 
                     <div class="social-container">
                         <GoogleLogin
@@ -154,16 +215,9 @@ const showLogin = () => {
                                 logo_alignment: 'center',
                             }"
                         />
-                        <button
-                            type="button"
-                            class="facebook-login-btn"
-                            @click="handleFacebookLogin"
-                        >
-                            ><img
-                                src="../assets/image/facebook.png"
-                                alt="Facebook"
-                            />
-                        </button>                        
+                        <button type="button" class="facebook-login-btn" @click="handleFacebookLogin">
+                            <img src="../assets/image/facebook.png" alt="Facebook" />
+                        </button>
                     </div>
                 </form>
             </div>
@@ -172,34 +226,18 @@ const showLogin = () => {
             <div class="form-container login-container">
                 <form acction="#">
                     <h1>Đăng nhập</h1>
-                    <input
-                        type="text"
-                        placeholder="Số điện thoại"
-                        v-model="phoneNumber"
-                    />
-                    <input
-                        type="password"
-                        placeholder="Mật khẩu"
-                        v-model="password"
-                    />
-                    <div class="content">
-                        <div class="checkbox">
-                            <input
-                                type="checkbox"
-                                id="checkbox"
-                                name="checkbox"
-                            />
-                            <label>Ghi nhớ đăng nhập</label>
-                        </div>
+                    <input type="text" placeholder="Số điện thoại" v-model="loginPhoneNumber" />
+                    <input type="password" placeholder="Mật khẩu" v-model="loginPassword" />
 
+                    <div class="content">
                         <div class="pass-link">
                             <a href="#">Quên mật khẩu?</a>
                         </div>
                     </div>
+
                     <button @click.prevent="handleLogin">Đăng nhập</button>
-                    <div class="separator">
-                        <span>Hoặc</span>
-                    </div>
+
+                    <div class="separator"><span>Hoặc</span></div>
 
                     <div class="social-container">
                         <GoogleLogin
@@ -213,17 +251,9 @@ const showLogin = () => {
                                 logo_alignment: 'center',
                             }"
                         />
-                        <button
-                            type="button"
-                            class="facebook-login-btn"
-                            @click="handleFacebookLogin"
-                        >
-                            ><img
-                                src="../assets/image/facebook.png"
-                                alt="Facebook"
-                            />
-                        </button>     
-
+                        <button type="button" class="facebook-login-btn" @click="handleFacebookLogin">
+                            <img src="../assets/image/facebook.png" alt="Facebook" />
+                        </button>
                     </div>
                 </form>
             </div>
@@ -233,16 +263,12 @@ const showLogin = () => {
                     <div class="overlay-panel overlay-left">
                         <h1 class="title">Xin chào</h1>
                         <p>Bạn đã có tài khoản? Đăng nhập ngay.</p>
-                        <button class="ghost" @click="showLogin">
-                            Đăng nhập
-                        </button>
+                        <button class="ghost" @click="showLogin">Đăng nhập</button>
                     </div>
                     <div class="overlay-panel overlay-right">
                         <h1 class="title">Đến với chúng tôi</h1>
-                        <p>Bạn đã sẵn sàn khám phá? Hãy tạo tài khoản ngay!</p>
-                        <button class="ghost" @click="showRegister">
-                            Đăng ký
-                        </button>
+                        <p>Bạn đã sẵn sàng khám phá? Hãy tạo tài khoản ngay!</p>
+                        <button class="ghost" @click="showRegister">Đăng ký</button>
                     </div>
                 </div>
             </div>
@@ -250,11 +276,24 @@ const showLogin = () => {
     </div>
 </template>
 
+
 <style scoped>
+/* Reset and global styles */
 * {
     box-sizing: border-box;
 }
+body,
+h1,
+p,
+span,
+a,
+button,
+input,
+label {
+    font-family: "Poppins", sans-serif;
+}
 
+/* Overlay */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -266,24 +305,23 @@ const showLogin = () => {
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    font-family: "Poppíns", sans-serif;
     overflow: hidden;
 }
 
+/* Typography */
 h1 {
     color: #333;
     font-weight: 600;
     letter-spacing: -1.5px;
-    margin: 0;
-    margin-bottom: 15px;
+    margin: 0 0 15px;
 }
 h1.title {
     color: #fff;
     font-size: 47px;
     line-height: 47px;
-    margin: 0;
     text-shadow: 0 0 10px rgba(16, 64, 74, 0.5);
 }
+
 p {
     font-size: 14px;
     font-weight: 100;
@@ -298,14 +336,14 @@ span {
     margin-top: 25px;
 }
 
+/* Links */
 a {
     color: #333;
     font-size: 14px;
     text-decoration: none;
     margin: 15px 0;
-    transition: 0.3 ease-in-out;
+    transition: 0.3s ease-in-out;
 }
-
 a:hover {
     color: #f86ed3;
 }
@@ -314,25 +352,26 @@ a:hover {
     font-size: 11px !important;
     color: #333;
 }
-
 .terms-label a {
     font-size: 11px !important;
     color: blue;
-    text-decoration: none;
+}
+.terms-label a:hover,
+
+.pass-link{
+    text-align: right;
+    width: 100%;   
 }
 
-.terms-label a:hover {
+.pass-link a:hover {
     text-decoration: underline;
 }
-
 .pass-link a {
     color: blue;
     text-decoration: none;
 }
-.pass-link a:hover {
-    text-decoration: underline;
-}
 
+/* Content section */
 .content {
     display: flex;
     width: 100%;
@@ -340,26 +379,24 @@ a:hover {
     align-items: center;
     justify-content: space-between;
 }
-
 .content .checkbox {
     display: flex;
     align-items: center;
     justify-content: center;
     white-space: nowrap;
 }
-
 .content input {
     accent-color: #333;
     width: 12px;
     height: 12px;
 }
-
 .content label {
     font-size: 14px;
     user-select: none;
     padding-left: 5px;
 }
 
+/* Buttons */
 button {
     position: relative;
     border-radius: 20px;
@@ -370,18 +407,15 @@ button {
     font-weight: bold;
     margin: 5px;
     padding: 12px 80px;
-    letter-spacing: 0px;
     text-transform: capitalize;
-    transition: 0.3 ease-in-out;
+    transition: 0.3s ease-in-out;
 }
 button:hover {
     letter-spacing: 0.5px;
 }
-
 button:active {
     transform: scale(0.95);
 }
-
 button:focus {
     outline: none;
 }
@@ -391,7 +425,6 @@ button.ghost {
     border: 2px solid #fff;
     color: #fff;
 }
-
 button.ghost i {
     position: absolute;
     opacity: 1;
@@ -400,39 +433,30 @@ button.ghost i {
 button.ghost i.register {
     right: 70px;
 }
-
 button.ghost i.login {
     left: 70px;
 }
-
 button.ghost:hover i.register {
     right: 40px;
-    opacity: 1;
 }
-
 button.ghost:hover i.login {
     left: 40px;
-    opacity: 1;
 }
 
+/* Separator */
 .separator {
-    padding: 0 0 0 0;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
-    position: relative;
 }
 .separator span {
     background: white;
     padding: 0 5px;
     font-size: 16px;
     color: #dad7d7;
-
-    text-align: center;
     margin: 10px 0;
 }
-
 .separator::before,
 .separator::after {
     content: "";
@@ -441,6 +465,7 @@ button.ghost:hover i.login {
     background: #dad7d7;
 }
 
+/* Social login */
 .social-container {
     display: flex;
     justify-content: center;
@@ -449,6 +474,30 @@ button.ghost:hover i.login {
     transition: 0.3s ease-in-out;
 }
 
+.facebook-login-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgb(218, 220, 224);
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    padding: 0;
+    text-indent: -9999px;
+}
+.facebook-login-btn:hover {
+    border-color: #d2e3fc;
+    background-color: #f8faff;
+}
+.facebook-login-btn img {
+    width: 22px;
+    height: 22px;
+}
+
+/* Form and container */
 form {
     background-color: #fff;
     display: flex;
@@ -469,6 +518,14 @@ input {
     width: 100%;
 }
 
+/* Autofill fix */
+input:-webkit-autofill {
+    box-shadow: rgba(255, 148, 226, 0.5) !important;
+    -webkit-text-fill-color: #000 !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Panel containers */
 .container {
     margin-top: -100px;
     background-color: #fff;
@@ -487,17 +544,11 @@ input {
     height: 100%;
     transition: all 0.6s ease-in-out;
 }
-
 .login-container {
     left: 0;
     width: 50%;
     z-index: 2;
 }
-
-.container.right-panel-active .login-container {
-    transform: translateX(100%);
-}
-
 .register-container {
     left: 0;
     width: 50%;
@@ -505,6 +556,9 @@ input {
     z-index: 1;
 }
 
+.container.right-panel-active .login-container {
+    transform: translateX(100%);
+}
 .container.right-panel-active .register-container {
     transform: translateX(100%);
     opacity: 1;
@@ -525,6 +579,7 @@ input {
     }
 }
 
+/* Overlay effect */
 .overlay-container {
     position: absolute;
     top: 0;
@@ -535,7 +590,6 @@ input {
     transition: transform 0.6s ease-in-out;
     z-index: 100;
 }
-
 .container.right-panel-active .overlay-container {
     transform: translateX(-100%);
 }
@@ -553,12 +607,11 @@ input {
     transform: translateX(0);
     transition: transform 0.6s ease-in-out;
 }
-
 .overlay::before {
     content: "";
     position: absolute;
-    left: 0;
     top: 0;
+    left: 0;
     right: 0;
     bottom: 0;
     background: linear-gradient(
@@ -567,67 +620,35 @@ input {
         rgba(46, 94, 109, 0)
     );
 }
-
 .container.container.right-panel-active .overlay {
     transform: translateX(50%);
 }
 
 .overlay-panel {
     position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    text-align: center;
-    padding: 0 40px;
     top: 0;
-    height: 100%;
     width: 50%;
+    height: 100%;
+    padding: 0 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
     transform: translateX(0);
     transition: transform 0.6s ease-in-out;
 }
-
 .overlay-left {
     transform: translateX(-20%);
 }
-
 .container.right-panel-active .overlay-left {
     transform: translateX(0);
 }
-
 .overlay-right {
     right: 0;
     transform: translateX(0);
 }
-
 .container.right-panel-active .overlay-right {
     transform: translateX(20%);
-}
-
-.facebook-login-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 1px solid rgb(218, 220, 224); /* giống theme outline của Google */
-    background-color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
-    padding: 0;
-    outline: none;
-    text-indent: -9999px;
-}
-
-.facebook-login-btn:hover {
-    border-color: #D2E3FC; /* màu xanh giống hover của Google */
-    background-color: #F8FAFF;
-    
-}
-
-.facebook-login-btn img {
-    width: 22px;
-    height: 22px;
 }
 </style>

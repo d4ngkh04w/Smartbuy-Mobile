@@ -17,6 +17,12 @@ export const loginWithGoogle = (token) => {
     });
 };
 
+export const getUserInfoById = (userId, token) => {
+    return axios.get(`/user/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+};
+
 // export const loginWithFacebook = (token) => {
 //     return axios.post("/api/auth/facebook-login", { token: token });
 // };
