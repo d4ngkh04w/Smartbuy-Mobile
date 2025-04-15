@@ -1,4 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
 using api.DTOs.Auth;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -12,12 +11,10 @@ namespace api.Controllers
     public class AuthAdminController : ControllerBase
     {
         private readonly IAuthService _authService;
-        private readonly ITokenService _tokenService;
 
-        public AuthAdminController(IAuthService authService, ITokenService tokenService)
+        public AuthAdminController(IAuthService authService)
         {
             _authService = authService;
-            _tokenService = tokenService;
         }
 
         [HttpPost("register")]
@@ -38,21 +35,19 @@ namespace api.Controllers
 
             if (result.Success)
             {
-                // Xem xét việc sử dụng cookie để lưu trữ refresh token
-                // Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
-                // {
-                //     HttpOnly = true,
-                //     Secure = false,
-                //     SameSite = SameSiteMode.Lax,
-                //     Path = "/api/v1/admin/auth/refresh-token",
-                //     Expires = DateTimeOffset.Now.AddDays(7),
-                //     Domain = "localhost",
-                // });
+                Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddDays(7),
+                });
                 return Ok(new
                 {
                     Message = "Login successful",
                     Token = result.token!.Token,
-                    RefreshToken = result.token!.RefreshToken
+                    ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
                 });
             }
 
@@ -64,45 +59,25 @@ namespace api.Controllers
         public async Task<IActionResult> GoogleLogin([FromBody] GoogleLogin dto)
         {
             var (success, message, token) = await _authService.LoginWithGoogleAsync(dto, "admin");
-            if (success) return Ok(new
+            if (success)
             {
-                Message = "Login successful",
-                Token = token!.Token,
-                RefreshToken = token.RefreshToken
-            });
+                Response.Cookies.Append("refreshToken", token!.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddDays(7),
+                });
+                return Ok(new
+                {
+                    Message = "Login successful",
+                    token!.Token,
+                    ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
+                });
+            }
 
             return Unauthorized(new { Message = message });
-        }
-
-        [HttpPost("refresh-token")]
-        [AllowAnonymous]
-        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDTO refreshRequest)
-        {
-            var result = await _tokenService.ValidateRefreshToken(refreshRequest.RefreshToken);
-
-            if (!result.Success || result.Token == null)
-                return Unauthorized(new { Message = result.ErrorMessage });
-
-            var claims = new JwtSecurityTokenHandler()
-                .ReadJwtToken(result.Token.Token)
-                .Claims;
-
-            var roleClaim = claims.FirstOrDefault(c => c.Type == "role")?.Value;
-            if (roleClaim != "admin")
-                return Unauthorized(new { Message = "Invalid refresh token for admin" });
-
-            return Ok(new
-            {
-                Message = "Token refreshed successfully",
-                Token = result.Token.Token,
-                RefreshToken = result.Token.RefreshToken
-            });
-        }
-
-        [HttpGet("verify")]
-        public IActionResult VerifyToken()
-        {
-            return Ok(new { Message = "Admin token is valid", IsAuthenticated = true });
         }
     }
 }

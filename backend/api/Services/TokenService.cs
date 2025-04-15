@@ -93,5 +93,27 @@ namespace api.Services
                 return (false, ex.Message, null);
             }
         }
+
+        public async Task<(bool Success, string? ErrorMessage)> RevokeRefreshToken(string refreshToken)
+        {
+            try
+            {
+                var users = await _userRepository.GetAllUsersAsync();
+                var user = users.FirstOrDefault(u => u.RefreshToken == refreshToken);
+
+                if (user == null)
+                    return (false, "Invalid refresh token");
+
+                user.RefreshToken = null;
+                user.RefreshTokenExpiry = null;
+                await _userRepository.UpdateUserAsync(user);
+
+                return (true, null);
+            }
+            catch (Exception)
+            {
+                return (false, "An error occurred while revoking the refresh token");
+            }
+        }
     }
 }
