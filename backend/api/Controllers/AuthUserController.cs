@@ -54,7 +54,8 @@ namespace api.Controllers.Auth.User
             if (success) return Ok(new
             {
                 Message = message,
-                Token = token
+                Token = token!.Token,
+                RefreshToken = token.RefreshToken
             });
 
             return Unauthorized(new { Message = message });

@@ -46,7 +46,12 @@ namespace api.Controllers.Auth.Admin
         public async Task<IActionResult> GoogleLogin([FromBody] GoogleLogin dto)
         {
             var (success, message, token) = await _authService.LoginWithGoogleAsync(dto, "admin");
-            if (success) return Ok(new { Message = "Login successful", Token = token });
+            if (success) return Ok(new 
+            { 
+                Message = "Login successful", 
+                Token = token!.Token,
+                RefreshToken = token.RefreshToken
+            });
 
             return Unauthorized(new { Message = message });
         }
