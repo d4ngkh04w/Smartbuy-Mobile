@@ -1,12 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
 using api.DTOs.Auth;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.IdentityModel.Tokens.Jwt;
 
-namespace api.Controllers.Auth.User
+namespace api.Controllers
 {
-    [Route("api/user/auth")]
+    [Route("api/v1/user/auth")]
     [ApiController]
     [Authorize]
     public class AccountController : ControllerBase
@@ -47,7 +47,7 @@ namespace api.Controllers.Auth.User
         }
 
         [HttpPost("google-login")]
-        [AllowAnonymous]  // Allow anonymous access for Google login
+        [AllowAnonymous]
         public async Task<IActionResult> GoogleLogin([FromBody] GoogleLogin dto)
         {
             var (success, message, token) = await _authService.LoginWithGoogleAsync(dto, "user");

@@ -17,7 +17,7 @@ namespace api.Repositories
         {
             bool existsBrand = await db.Brands.AnyAsync(b => b.Id == category.BrandId);
             if (!existsBrand)
-                throw new Exception("Brand does not exist");
+                throw new Exception("Brand not found");
             db.Categories.Add(category);
             await db.SaveChangesAsync();
             return (await db.Categories

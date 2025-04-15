@@ -11,7 +11,7 @@ namespace api.DTOs.Brand
 
         [Required(ErrorMessage = "Brand logo is required")]
         [DataType(DataType.Upload)]
-        [AllowFileExtension(Extensions: [".jpg", ".jpeg", ".png"], ErrorMessage = "Logo must be a valid image (jpg, jpeg, png)")]
+        [AllowFileExtension(extensions: [".jpg", ".jpeg", ".png"], ErrorMessage = "Logo must be a valid image (jpg, jpeg, png)")]
         public IFormFile Logo { get; set; } = null!;
     }
 }

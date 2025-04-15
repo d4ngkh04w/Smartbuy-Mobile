@@ -22,19 +22,26 @@ namespace api.Helpers
             string fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
             string uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "images", folder);
 
-            if (!Directory.Exists(uploadFolder))
+            try
             {
-                Directory.CreateDirectory(uploadFolder);
+                if (!Directory.Exists(uploadFolder))
+                {
+                    Directory.CreateDirectory(uploadFolder);
+                }
+
+                string filePath = Path.Combine(uploadFolder, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                return (true, null, $"/uploads/images/{folder}/{fileName}");
             }
-
-            string filePath = Path.Combine(uploadFolder, fileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            catch (Exception)
             {
-                await file.CopyToAsync(stream);
+                return (false, "Error saving file", null);
             }
-
-            return (true, null, $"/uploads/images/{folder}/{fileName}");
         }
 
         public static bool DeleteImage(string filePath)

@@ -14,7 +14,8 @@
         "Issuer": "YOUR_ISSUER",
         "Audience": "YOUR_AUDIENCE",
         "Expire": "YOUR_EXPIRE_TIME_IN_MINUTES",
-        "RefreshTokenExpiry": "YOUR_REFRESH_TOKEN_EXPIRY_TIME_IN_DAYS"
+        "RefreshTokenExpiry": "YOUR_REFRESH_TOKEN_EXPIRY_TIME_IN_DAYS",
+        "Algorithm": "YOUR_ALGORITHM"
     },
     "Google": {
         "ClientId": "YOUR_GOOGLE_CLIENT_ID"
