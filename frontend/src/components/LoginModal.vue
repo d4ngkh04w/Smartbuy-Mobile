@@ -4,9 +4,11 @@ import {
     login,
     register,
     loginWithGoogle,
-    getUserInfoById,
+    getUserInfo,
 } from "../services/authService.js";
 import emitter from "../utils/evenBus.js";
+
+const authStore = useAuthStore();
 
 // State
 const loginPhoneNumber = ref("");
@@ -18,14 +20,13 @@ const registerPasswordConfirm = ref("");
 const registerEmail = ref("");
 const argeed = ref(false);
 
-const errorMessage = ref("");
-const successMessage = ref("");
 const isRightPanelActive = ref(false);
 
+// Emit
 const emit = defineEmits(["close", "login-success"]);
 
 // ===== REFRESH FORM ===== //
-const resetFormRegister = () => {   
+const resetFormRegister = () => {
     registerPhoneNumber.value = "";
     registerPassword.value = "";
     registerPasswordConfirm.value = "";
@@ -40,34 +41,19 @@ const resetFormLogin = () => {
 
 // ===== XỬ LÝ LOGIN ===== //
 const handleLogin = async () => {
-    errorMessage.value = "";
-
     try {
         // Gửi yêu cầu đăng nhập
-        const response = await login({
+        const { token } = await login({
             phoneNumber: loginPhoneNumber.value,
             password: loginPassword.value,
         });
 
-        const token = response.data.token;
-        const refreshToken = response.data.refreshToken;
+        authStore.setToken(token);
 
-        // Lưu token vào localStorage  
-        localStorage.setItem("jwt", token);
-        localStorage.setItem("refreshToken", refreshToken);
+        const userRes = await getUserInfo();
+        const userData = userRes.data;
 
-        successMessage.value = "Đăng nhập thành công!";
-        console.log("Đăng nhập thành công:", response.data);
-
-        // Giải mã token để lấy userId
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        const userId = payload.id;
-
-        // Gọi API để lấy thông tin người dùng
-        const userResponse = await getUserInfoById(userId, token);
-        const userData = userResponse.data;
-
-        console.log("Thông tin người dùng:", userData);
+        authStore.setUser(userData)
 
         emitter.emit("show-notification", {
             status: "success",
@@ -77,7 +63,6 @@ const handleLogin = async () => {
         emit("login-success", userData);
         emit("close");
     } catch (err) {
-        errorMessage.value = "Sai tài khoản hoặc mật khẩu.";
         console.error(err);
 
         emitter.emit("show-notification", {
@@ -89,11 +74,7 @@ const handleLogin = async () => {
 
 // ===== XỬ LÝ ĐĂNG KÝ ===== //
 const handleRegister = async () => {
-    errorMessage.value = "";
-    successMessage.value = "";
-
     if (registerPassword.value !== registerPasswordConfirm.value) {
-        errorMessage.value = "Mật khẩu không khớp.";
         emitter.emit("show-notification", {
             status: "error",
             message: "Mật khẩu không khớp.",
@@ -101,8 +82,7 @@ const handleRegister = async () => {
         return;
     }
 
-    if(!argeed.value) {
-        errorMessage.value = "Bạn cần đồng ý với điều khoản sử dụng.";
+    if (!argeed.value) {
         emitter.emit("show-notification", {
             status: "error",
             message: "Bạn cần đồng ý với điều khoản sử dụng.",
@@ -116,7 +96,6 @@ const handleRegister = async () => {
             password: registerPassword.value,
             email: registerEmail.value,
             confirmPassword: registerPasswordConfirm.value,
-           
         });
 
         emitter.emit("show-notification", {
@@ -124,14 +103,12 @@ const handleRegister = async () => {
             message: "Đăng ký thành công!",
         });
 
-        successMessage.value = "Đăng ký thành công!";
         console.log("Đăng ký thành công:", response.data);
 
         await resetFormRegister();
 
         await showLogin();
     } catch (err) {
-        errorMessage.value = "Đã có lỗi xảy ra khi đăng ký.";
         emitter.emit("show-notification", {
             status: "error",
             message: "Đăng ký thất bại.",
@@ -179,19 +156,42 @@ const showLogin = () => {
 
 <template>
     <div class="modal-overlay" @click.self="$emit('close')">
-        <div :class="['container', { 'right-panel-active': isRightPanelActive }]">
+        <div
+            :class="['container', { 'right-panel-active': isRightPanelActive }]"
+        >
             <!-- Đăng kí -->
             <div class="form-container register-container">
                 <form action="#">
                     <h1>Đăng ký</h1>
-                    <input type="text" placeholder="Số điện thoại" v-model="registerPhoneNumber" />     
-                    <input type="email" placeholder="Email" v-model="registerEmail" />                               
-                    <input type="password" placeholder="Mật khẩu" v-model="registerPassword" />
-                    <input type="password" placeholder="Xác nhận mật khẩu" v-model="registerPasswordConfirm" />
+                    <input
+                        type="text"
+                        placeholder="Số điện thoại"
+                        v-model="registerPhoneNumber"
+                    />
+                    <input
+                        type="email"
+                        placeholder="Email"
+                        v-model="registerEmail"
+                    />
+                    <input
+                        type="password"
+                        placeholder="Mật khẩu"
+                        v-model="registerPassword"
+                    />
+                    <input
+                        type="password"
+                        placeholder="Xác nhận mật khẩu"
+                        v-model="registerPasswordConfirm"
+                    />
 
                     <div class="content">
                         <div class="checkbox">
-                            <input type="checkbox" id="checkbox" name="checkbox" v-model="argeed"/>
+                            <input
+                                type="checkbox"
+                                id="checkbox"
+                                name="checkbox"
+                                v-model="argeed"
+                            />
                             <label for="checkbox" class="terms-label">
                                 Đồng ý với <a href="#">Điều khoản Sử dụng</a> và
                                 <a href="#">Chính Sách Bảo mật</a>
@@ -215,8 +215,15 @@ const showLogin = () => {
                                 logo_alignment: 'center',
                             }"
                         />
-                        <button type="button" class="facebook-login-btn" @click="handleFacebookLogin">
-                            <img src="../assets/image/facebook.png" alt="Facebook" />
+                        <button
+                            type="button"
+                            class="facebook-login-btn"
+                            @click="handleFacebookLogin"
+                        >
+                            <img
+                                src="../assets/image/facebook.png"
+                                alt="Facebook"
+                            />
                         </button>
                     </div>
                 </form>
@@ -226,8 +233,16 @@ const showLogin = () => {
             <div class="form-container login-container">
                 <form acction="#">
                     <h1>Đăng nhập</h1>
-                    <input type="text" placeholder="Số điện thoại" v-model="loginPhoneNumber" />
-                    <input type="password" placeholder="Mật khẩu" v-model="loginPassword" />
+                    <input
+                        type="text"
+                        placeholder="Số điện thoại"
+                        v-model="loginPhoneNumber"
+                    />
+                    <input
+                        type="password"
+                        placeholder="Mật khẩu"
+                        v-model="loginPassword"
+                    />
 
                     <div class="content">
                         <div class="pass-link">
@@ -251,8 +266,15 @@ const showLogin = () => {
                                 logo_alignment: 'center',
                             }"
                         />
-                        <button type="button" class="facebook-login-btn" @click="handleFacebookLogin">
-                            <img src="../assets/image/facebook.png" alt="Facebook" />
+                        <button
+                            type="button"
+                            class="facebook-login-btn"
+                            @click="handleFacebookLogin"
+                        >
+                            <img
+                                src="../assets/image/facebook.png"
+                                alt="Facebook"
+                            />
                         </button>
                     </div>
                 </form>
@@ -263,19 +285,22 @@ const showLogin = () => {
                     <div class="overlay-panel overlay-left">
                         <h1 class="title">Xin chào</h1>
                         <p>Bạn đã có tài khoản? Đăng nhập ngay.</p>
-                        <button class="ghost" @click="showLogin">Đăng nhập</button>
+                        <button class="ghost" @click="showLogin">
+                            Đăng nhập
+                        </button>
                     </div>
                     <div class="overlay-panel overlay-right">
                         <h1 class="title">Đến với chúng tôi</h1>
                         <p>Bạn đã sẵn sàng khám phá? Hãy tạo tài khoản ngay!</p>
-                        <button class="ghost" @click="showRegister">Đăng ký</button>
+                        <button class="ghost" @click="showRegister">
+                            Đăng ký
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </template>
-
 
 <style scoped>
 /* Reset and global styles */
@@ -357,10 +382,9 @@ a:hover {
     color: blue;
 }
 .terms-label a:hover,
-
-.pass-link{
+.pass-link {
     text-align: right;
-    width: 100%;   
+    width: 100%;
 }
 
 .pass-link a:hover {

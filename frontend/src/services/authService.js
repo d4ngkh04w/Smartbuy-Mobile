@@ -1,26 +1,36 @@
-import axios from "./axiosService";
+import axios from "./axiosConfig";
 
 // Gửi username + password để đăng nhập
 export const login = (credentials) => {
-    return axios.post("/user/auth/login", credentials);
+    return axios
+        .post("/user/auth/login", credentials)
+        .then((response) => {
+            const { token } = response.data;
+            return { token };
+        })
+        .catch((error) => {
+            throw error;
+        });
 };
 
-// Gửi thông tin người dùng để đăng ký
+// Đăng ký tài khoản
 export const register = (userInfo) => {
     return axios.post("/user/auth/register", userInfo);
 };
 
-// Gửi token Google để xác minh, backend trả về JWT
+// Login bằng Google
 export const loginWithGoogle = (token) => {
-    return axios.post("/user/auth/google-login", {
-        token: token,
-    });
+    return axios.post("/user/auth/google-login", { token });
 };
 
-export const getUserInfoById = (userId, token) => {
-    return axios.get(`/user/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-    });
+// Lấy info user
+export const getUserInfo = () => {
+    return axios.get("/user/info");
+};
+
+// Làm mới access token
+export const refreshToken = async () => {
+    return await axios.post("/user/auth/refresh-token");
 };
 
 // export const loginWithFacebook = (token) => {
