@@ -10,12 +10,14 @@ namespace api.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly ITokenService _tokenService;
+        private readonly IEmailService _emailService;
         private readonly string _googleClientId;
 
-        public AuthService(IUserRepository userRepository, ITokenService tokenService, IConfiguration config)
+        public AuthService(IUserRepository userRepository, ITokenService tokenService, IEmailService emailService, IConfiguration config)
         {
             _userRepository = userRepository;
             _tokenService = tokenService;
+            _emailService = emailService;
             _googleClientId = config["Google:ClientId"]!;
         }
 
@@ -144,6 +146,77 @@ namespace api.Services
             catch (Exception ex)
             {
                 return (false, $"Error during Google login: {ex.Message}", null);
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> ForgotPasswordAsync(ForgotPasswordDTO forgotPasswordDto)
+        {
+            try
+            {
+                var user = await _userRepository.GetUserByEmailAsync(forgotPasswordDto.Email);
+                if (user == null)
+                {
+                    return (true, null);
+                }
+
+                // Generate a password reset token and set expiry
+                var resetToken = _tokenService.GeneratePasswordResetToken();
+                Console.WriteLine($"[INF] Password reset token: {resetToken}"); // For debugging purposes
+                user.PasswordResetToken = resetToken;
+                user.PasswordResetTokenExpiry = DateTime.Now.AddMinutes(5);
+                await _userRepository.UpdateUserAsync(user);
+
+                // Send password reset email with the token
+                var emailSent = await _emailService.SendPasswordResetEmailAsync(user.Email, resetToken);
+
+                if (!emailSent)
+                {
+                    return (false, "Failed to send password reset email");
+                }
+
+                return (true, null);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error processing password reset request: {ex.Message}");
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> ResetPasswordAsync(ResetPasswordDTO resetPasswordDto)
+        {
+            try
+            {
+                // Find user by email
+                var user = await _userRepository.GetUserByEmailAsync(resetPasswordDto.Email);
+                if (user == null)
+                {
+                    return (false, "Invalid reset request");
+                }
+
+                // Validate reset token
+                if (user.PasswordResetToken != resetPasswordDto.Token)
+                {
+                    return (false, "Invalid reset token");
+                }
+
+                // Check if token is expired
+                if (user.PasswordResetTokenExpiry == null ||
+                    !_tokenService.ValidatePasswordResetToken(resetPasswordDto.Token, user.PasswordResetTokenExpiry.Value))
+                {
+                    return (false, "Password reset token has expired");
+                }
+
+                // Update user's password and clear reset token
+                user.Password = BCrypt.Net.BCrypt.HashPassword(resetPasswordDto.Password);
+                user.PasswordResetToken = null;
+                user.PasswordResetTokenExpiry = null;
+                await _userRepository.UpdateUserAsync(user);
+
+                return (true, null);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error resetting password: {ex.Message}");
             }
         }
     }

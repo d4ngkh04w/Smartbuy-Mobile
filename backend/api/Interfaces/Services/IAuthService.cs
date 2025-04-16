@@ -7,5 +7,7 @@ namespace api.Interfaces.Services
         public Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Register(Register registerDto, string role);
         public Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Login(Login loginDto, string role);
         public Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> LoginWithGoogleAsync(GoogleLogin dto, string role);
+        public Task<(bool Success, string? ErrorMessage)> ForgotPasswordAsync(ForgotPasswordDTO forgotPasswordDto);
+        public Task<(bool Success, string? ErrorMessage)> ResetPasswordAsync(ResetPasswordDTO resetPasswordDto);
     }
 }
