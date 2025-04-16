@@ -1,0 +1,23 @@
+{
+    "Logging": {
+        "LogLevel": {
+            "Default": "Information",
+            "Microsoft.AspNetCore": "Warning"
+        }
+    },
+    "AllowedHosts": "*",
+    "ConnectionStrings": {
+        "DefaultConnection": "server=YOUR_SERVER;database=YOUR_DATABASE;user=YOUR_USER;password=YOUR_PASSWORD;"
+    },
+    "JWT": {
+        "Key": "YOUR_SECRET_KEY",
+        "Issuer": "YOUR_ISSUER",
+        "Audience": "YOUR_AUDIENCE",
+        "Expire": "YOUR_EXPIRE_TIME_IN_MINUTES",
+        "RefreshTokenExpiry": "YOUR_REFRESH_TOKEN_EXPIRY_TIME_IN_DAYS",
+        "Algorithm": "YOUR_ALGORITHM"
+    },
+    "Google": {
+        "ClientId": "YOUR_GOOGLE_CLIENT_ID"
+    }
+}

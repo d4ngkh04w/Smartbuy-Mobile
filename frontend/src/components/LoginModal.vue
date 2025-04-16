@@ -1,110 +1,325 @@
 <script setup>
-    import { ref } from "vue";
-    const username = ref('');
-    const password = ref('');
+import { ref } from "vue";
+import {
+    login,
+    register,
+    loginWithGoogle,
+    getUserInfo,
+} from "../services/authService.js";
+import emitter from "../utils/evenBus.js";
 
-    const isRightPanelActive = ref(false);
+const authStore = useAuthStore();
 
-    const showRegister = () => {
+// State
+const loginPhoneNumber = ref("");
+const loginPassword = ref("");
+
+const registerPhoneNumber = ref("");
+const registerPassword = ref("");
+const registerPasswordConfirm = ref("");
+const registerEmail = ref("");
+const argeed = ref(false);
+
+const isRightPanelActive = ref(false);
+
+// Emit
+const emit = defineEmits(["close", "login-success"]);
+
+// ===== REFRESH FORM ===== //
+const resetFormRegister = () => {
+    registerPhoneNumber.value = "";
+    registerPassword.value = "";
+    registerPasswordConfirm.value = "";
+    registerEmail.value = "";
+    argeed.value = false;
+};
+
+const resetFormLogin = () => {
+    loginPhoneNumber.value = "";
+    loginPassword.value = "";
+};
+
+// ===== XỬ LÝ LOGIN ===== //
+const handleLogin = async () => {
+    try {
+        // Gửi yêu cầu đăng nhập
+        const { token } = await login({
+            phoneNumber: loginPhoneNumber.value,
+            password: loginPassword.value,
+        });
+
+        authStore.setToken(token);
+
+        const userRes = await getUserInfo();
+        const userData = userRes.data;
+
+        authStore.setUser(userData)
+
+        emitter.emit("show-notification", {
+            status: "success",
+            message: "Đăng nhập thành công!",
+        });
+
+        emit("login-success", userData);
+        emit("close");
+    } catch (err) {
+        console.error(err);
+
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Đăng nhập thất bại.",
+        });
+    }
+};
+
+// ===== XỬ LÝ ĐĂNG KÝ ===== //
+const handleRegister = async () => {
+    if (registerPassword.value !== registerPasswordConfirm.value) {
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Mật khẩu không khớp.",
+        });
+        return;
+    }
+
+    if (!argeed.value) {
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Bạn cần đồng ý với điều khoản sử dụng.",
+        });
+        return;
+    }
+
+    try {
+        const response = await register({
+            phoneNumber: registerPhoneNumber.value,
+            password: registerPassword.value,
+            email: registerEmail.value,
+            confirmPassword: registerPasswordConfirm.value,
+        });
+
+        emitter.emit("show-notification", {
+            status: "success",
+            message: "Đăng ký thành công!",
+        });
+
+        console.log("Đăng ký thành công:", response.data);
+
+        await resetFormRegister();
+
+        await showLogin();
+    } catch (err) {
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Đăng ký thất bại.",
+        });
+        console.error(err);
+    }
+};
+
+// ===== LOGIN GOOGLE ===== //
+const handleGoogleLogin = async (response) => {
+    const credential = response.credential;
+
+    try {
+        const res = await loginWithGoogle(credential);
+        const token = res.data.token;
+        const refreshToken = res.data.refreshToken;
+
+        localStorage.setItem("jwt", token);
+        console.log("Token:", token);
+        console.log("Refresh Token:", refreshToken);
+        localStorage.setItem("refreshToken", refreshToken);
+
+        console.log("Đăng nhập bằng Google thành công!");
+    } catch (err) {
+        console.error("Lỗi đăng nhập bằng Google:", err);
+    }
+};
+
+// ===== FACEBOOK LOGIN (Tạm thời chưa dùng) ===== //
+const handleFacebookLogin = () => {
+    // TODO: Thêm xử lý đăng nhập Facebook nếu cần
+};
+
+// ===== HIỂN THỊ FORM ===== //
+const showRegister = () => {
     isRightPanelActive.value = true;
-    };
+    resetFormRegister();
+};
 
-    const showLogin = () => {
+const showLogin = () => {
     isRightPanelActive.value = false;
+    resetFormLogin();
 };
 </script>
 
 <template>
     <div class="modal-overlay" @click.self="$emit('close')">
-      <div :class="['container', { 'right-panel-active': isRightPanelActive }]">
-          <!-- Đăng kí -->
-          <div class="form-container register-container">
-            <form action="#">
-              <h1>Đăng ký</h1>
-              <input type="text" placeholder="Tên đăng nhập" v-model="username" />
-              <input type="email" placeholder="Email" v-model="email" />
-              <input type="password" placeholder="Mật khẩu" v-model="password" />
-              <input type="email" placeholder="Email" v-model="password" />
-              <div class="content">
-                <div class="checkbox">
-                  <input type="checkbox" id="checkbox" name="checkbox"/>
-                  <label for="checkbox" class="terms-label">
-                    Đồng ý với <a href="#">Điều khoản Sử dụng</a> và <a href="#">Chính Sách Bảo mật</a>
-                  </label>
-                </div>
-              </div>
-              <button>Đăng ký</button>
-             
-              <div class="separator">
-                <span>Hoặc</span>
-              </div>
-  
-              <div class="social-container">
-                <a href="#" class="social"><img src="../assets/icon/google.png" alt="Google"></a>
-                <a href="#" class="social"><img src="../assets/icon/facebook.png" alt="Facebook"></a>
-              </div>
-            </form>
-          </div>  
-   
-          <!-- Đăng nhập -->        
-          <div class="form-container login-container">
-            <form acction="#">
-              <h1>Đăng nhập</h1>
-              <input type="text" placeholder="Tên đăng nhập" v-model="username" />
-              <input type="password" placeholder="Mật khẩu" v-model="password" />
-              <div class="content">
-                <div class="checkbox">
-                  <input type="checkbox" id="checkbox" name="checkbox"/>
-                  <label>Ghi nhớ đăng nhập</label>
-                </div>
-                
-              
-                <div class="pass-link">
-                  <a href="#">Quên mật khẩu?</a>
-                </div>
-              </div>
-              <button>Tiếp tục</button>
-              <div class="separator">
-                <span>Hoặc</span>
-              </div>
-  
-              <div class="social-container">
-                <a href="#" class="social"><img src="../assets/icon/google.png" alt="Google"></a>
-                <a href="#" class="social"><img src="../assets/icon/facebook.png" alt="Facebook"></a>
-              </div>
-  
-            </form>
-          </div>
-  
-          <div class="overlay-container">
-            <div class="overlay">
-              <div class="overlay-panel overlay-left">
-                <h1 class="title">Xin chào</h1>
-                <p>Bạn đã có tài khoản? Đăng nhập ngay.</p>
-                <button class="ghost" @click="showLogin">Đăng nhập</button>
-              </div>
-              <div class="overlay-panel overlay-right">
-                <h1 class="title">Đến với chúng tôi</h1>
-                <p>Bạn đã sẵn sàn khám phá? Hãy tạo tài khoản ngay!</p>
-                <button class="ghost" @click="showRegister">Đăng ký</button>
+        <div
+            :class="['container', { 'right-panel-active': isRightPanelActive }]"
+        >
+            <!-- Đăng kí -->
+            <div class="form-container register-container">
+                <form action="#">
+                    <h1>Đăng ký</h1>
+                    <input
+                        type="text"
+                        placeholder="Số điện thoại"
+                        v-model="registerPhoneNumber"
+                    />
+                    <input
+                        type="email"
+                        placeholder="Email"
+                        v-model="registerEmail"
+                    />
+                    <input
+                        type="password"
+                        placeholder="Mật khẩu"
+                        v-model="registerPassword"
+                    />
+                    <input
+                        type="password"
+                        placeholder="Xác nhận mật khẩu"
+                        v-model="registerPasswordConfirm"
+                    />
+
+                    <div class="content">
+                        <div class="checkbox">
+                            <input
+                                type="checkbox"
+                                id="checkbox"
+                                name="checkbox"
+                                v-model="argeed"
+                            />
+                            <label for="checkbox" class="terms-label">
+                                Đồng ý với <a href="#">Điều khoản Sử dụng</a> và
+                                <a href="#">Chính Sách Bảo mật</a>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button @click.prevent="handleRegister">Đăng ký</button>
+
+                    <div class="separator"><span>Hoặc</span></div>
+
+                    <div class="social-container">
+                        <GoogleLogin
+                            :callback="handleGoogleLogin"
+                            :buttonConfig="{
+                                type: 'icon',
+                                size: 'large',
+                                theme: 'outline',
+                                text: 'continue_with',
+                                shape: 'pill',
+                                logo_alignment: 'center',
+                            }"
+                        />
+                        <button
+                            type="button"
+                            class="facebook-login-btn"
+                            @click="handleFacebookLogin"
+                        >
+                            <img
+                                src="../assets/image/facebook.png"
+                                alt="Facebook"
+                            />
+                        </button>
+                    </div>
+                </form>
             </div>
-            
-          </div>
-          
-  
-         
+
+            <!-- Đăng nhập -->
+            <div class="form-container login-container">
+                <form acction="#">
+                    <h1>Đăng nhập</h1>
+                    <input
+                        type="text"
+                        placeholder="Số điện thoại"
+                        v-model="loginPhoneNumber"
+                    />
+                    <input
+                        type="password"
+                        placeholder="Mật khẩu"
+                        v-model="loginPassword"
+                    />
+
+                    <div class="content">
+                        <div class="pass-link">
+                            <a href="#">Quên mật khẩu?</a>
+                        </div>
+                    </div>
+
+                    <button @click.prevent="handleLogin">Đăng nhập</button>
+
+                    <div class="separator"><span>Hoặc</span></div>
+
+                    <div class="social-container">
+                        <GoogleLogin
+                            :callback="handleGoogleLogin"
+                            :buttonConfig="{
+                                type: 'icon',
+                                size: 'large',
+                                theme: 'outline',
+                                text: 'continue_with',
+                                shape: 'pill',
+                                logo_alignment: 'center',
+                            }"
+                        />
+                        <button
+                            type="button"
+                            class="facebook-login-btn"
+                            @click="handleFacebookLogin"
+                        >
+                            <img
+                                src="../assets/image/facebook.png"
+                                alt="Facebook"
+                            />
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="overlay-container">
+                <div class="overlay">
+                    <div class="overlay-panel overlay-left">
+                        <h1 class="title">Xin chào</h1>
+                        <p>Bạn đã có tài khoản? Đăng nhập ngay.</p>
+                        <button class="ghost" @click="showLogin">
+                            Đăng nhập
+                        </button>
+                    </div>
+                    <div class="overlay-panel overlay-right">
+                        <h1 class="title">Đến với chúng tôi</h1>
+                        <p>Bạn đã sẵn sàng khám phá? Hãy tạo tài khoản ngay!</p>
+                        <button class="ghost" @click="showRegister">
+                            Đăng ký
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>  
     </div>
-  </template>
-  
-  
-  
-  <style scoped>
-  *{
+</template>
+
+<style scoped>
+/* Reset and global styles */
+* {
     box-sizing: border-box;
-  }
-  .modal-overlay {
+}
+body,
+h1,
+p,
+span,
+a,
+button,
+input,
+label {
+    font-family: "Poppins", sans-serif;
+}
+
+/* Overlay */
+.modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -115,204 +330,199 @@
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    font-family: "Poppíns", sans-serif;
     overflow: hidden;
-  }
-   
-   h1{
+}
+
+/* Typography */
+h1 {
     color: #333;
     font-weight: 600;
     letter-spacing: -1.5px;
-    margin: 0;
-    margin-bottom: 15px;
-  }
-  h1.title{
+    margin: 0 0 15px;
+}
+h1.title {
     color: #fff;
     font-size: 47px;
     line-height: 47px;
-    margin: 0;
     text-shadow: 0 0 10px rgba(16, 64, 74, 0.5);
-  }
-  p{
+}
+
+p {
     font-size: 14px;
     font-weight: 100;
     line-height: 20px;
     letter-spacing: 0.5px;
     margin: 20px 0 30px;
     text-shadow: 0 0 10px rgba(16, 64, 74, 0.5);
-  }
-  
-  span{
+}
+
+span {
     font-size: 14px;
     margin-top: 25px;
-  }
-  
-  a{
+}
+
+/* Links */
+a {
     color: #333;
     font-size: 14px;
     text-decoration: none;
     margin: 15px 0;
-    transition: 0.3 ease-in-out;
-  }
-  
-  a:hover{
+    transition: 0.3s ease-in-out;
+}
+a:hover {
     color: #f86ed3;
-  }
-  
-  .terms-label {
+}
+
+.terms-label {
     font-size: 11px !important;
     color: #333;
-  }
-  
-  .terms-label a {
+}
+.terms-label a {
     font-size: 11px !important;
     color: blue;
-    text-decoration: none;
-  }
-  
-  .terms-label a:hover {
+}
+.terms-label a:hover,
+.pass-link {
+    text-align: right;
+    width: 100%;
+}
+
+.pass-link a:hover {
     text-decoration: underline;
-  }
-  
-  .pass-link a{  
+}
+.pass-link a {
     color: blue;
     text-decoration: none;
-  }
-  .pass-link a:hover{ 
-    text-decoration: underline;
-  }
-  
-  .content{
+}
+
+/* Content section */
+.content {
     display: flex;
     width: 100%;
     height: 50px;
     align-items: center;
     justify-content: space-between;
-  }
-  
-  .content .checkbox{
+}
+.content .checkbox {
     display: flex;
     align-items: center;
     justify-content: center;
     white-space: nowrap;
-  }
-  
-  .content input{
+}
+.content input {
     accent-color: #333;
     width: 12px;
     height: 12px;
-  }
-  
-  .content label{
+}
+.content label {
     font-size: 14px;
     user-select: none;
     padding-left: 5px;
-  }
-  
-  button{
+}
+
+/* Buttons */
+button {
     position: relative;
     border-radius: 20px;
-    border: 2px solid rgba(255, 148, 226, 1);;
+    border: 2px solid rgba(255, 148, 226, 1);
     background: rgba(255, 148, 226, 0.8);
-    color: #333;
+    color: #fff;
     font-size: 15px;
     font-weight: bold;
     margin: 5px;
-    padding: 12px 50px;
-    letter-spacing: 0px;
+    padding: 12px 80px;
     text-transform: capitalize;
-    transition: 0.3 ease-in-out;
-  }
-  button:hover {
+    transition: 0.3s ease-in-out;
+}
+button:hover {
     letter-spacing: 0.5px;
-  }
-  
-  button:active {
+}
+button:active {
     transform: scale(0.95);
-  }
-  
-  button:focus {
+}
+button:focus {
     outline: none;
-  }
-  
-  button.ghost {
+}
+
+button.ghost {
     background-color: rgba(225, 225, 225, 0.2);
     border: 2px solid #fff;
     color: #fff;
-  }
-  
-  button.ghost i {
+}
+button.ghost i {
     position: absolute;
     opacity: 1;
     transition: 0.3s ease-in-out;
-  }
-  button.ghost i.register {
-    right: 70px;    
-  }
-  
-  button.ghost i.login {
-    left: 70px;    
-  }
-  
-  button.ghost:hover i.register {
-    right: 40px;    
-    opacity: 1;
-  }
-  
-  button.ghost:hover i.login {
-    left: 40px;    
-    opacity: 1;
-  }
-  
-  .separator {
-    padding: 10px 0 0 0;
+}
+button.ghost i.register {
+    right: 70px;
+}
+button.ghost i.login {
+    left: 70px;
+}
+button.ghost:hover i.register {
+    right: 40px;
+}
+button.ghost:hover i.login {
+    left: 40px;
+}
+
+/* Separator */
+.separator {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
-    position: relative;
-  }
-  .separator span {
+}
+.separator span {
     background: white;
-    padding: 0 10px;
+    padding: 0 5px;
     font-size: 16px;
-    color: #555;
-    
-    text-align: center;
+    color: #dad7d7;
     margin: 10px 0;
-  }
-  
-  .separator::before,
-  .separator::after {
+}
+.separator::before,
+.separator::after {
     content: "";
     flex: 1;
     height: 1px;
-    background: #ccc;
-  }
-  
-  
-  .social-container {
+    background: #dad7d7;
+}
+
+/* Social login */
+.social-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
     transition: 0.3s ease-in-out;
-  }
-  
-  .social-container a {
-    margin: 0;
-  }
-  
-  .social img {
-    width: 32px; 
-    height: 32px;
-    border: 1px solid #dddddd;
-    border-radius: 50%; /* Làm viền hình tròn */
-    padding: 3px; /* Giúp viền không dính sát vào logo */
-    background-color: white; /* Đảm bảo nền ảnh không bị thay đổi */
-  }
-  
-  form{
+}
+
+.facebook-login-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgb(218, 220, 224);
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    padding: 0;
+    text-indent: -9999px;
+}
+.facebook-login-btn:hover {
+    border-color: #d2e3fc;
+    background-color: #f8faff;
+}
+.facebook-login-btn img {
+    width: 22px;
+    height: 22px;
+}
+
+/* Form and container */
+form {
     background-color: #fff;
     display: flex;
     align-items: center;
@@ -321,75 +531,80 @@
     padding: 0 50px;
     height: 100%;
     text-align: center;
-  }
-  
-  input{
+}
+
+input {
     background-color: rgba(255, 148, 226, 0.5);
     border-radius: 10px;
     border: none;
     padding: 12px 15px;
     margin: 8px 0;
     width: 100%;
-  }
-  
-  .container{
+}
+
+/* Autofill fix */
+input:-webkit-autofill {
+    box-shadow: rgba(255, 148, 226, 0.5) !important;
+    -webkit-text-fill-color: #000 !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Panel containers */
+.container {
     margin-top: -100px;
     background-color: #fff;
     border-radius: 25px;
-    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25),
-                0 10px 10px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
     position: relative;
     overflow: hidden;
     width: 768px;
     max-width: 100%;
     min-height: 500px;
-  }
-  
-  .form-container{
+}
+
+.form-container {
     position: absolute;
     top: 0;
     height: 100%;
-    transition: all 0.6s ease-in-out; 
-  }
-  
-  .login-container{
+    transition: all 0.6s ease-in-out;
+}
+.login-container {
     left: 0;
     width: 50%;
-    z-index: 2; 
-  }
-  
-  .container.right-panel-active .login-container{
-    transform: translateX(100%);
-  }
-  
-  .register-container{
+    z-index: 2;
+}
+.register-container {
     left: 0;
     width: 50%;
     opacity: 0;
     z-index: 1;
-  }
-  
-  .container.right-panel-active .register-container{
+}
+
+.container.right-panel-active .login-container {
+    transform: translateX(100%);
+}
+.container.right-panel-active .register-container {
     transform: translateX(100%);
     opacity: 1;
     z-index: 5;
     animation: show 0.6s;
-  }
-  
-  @keyframes show {
-    0%
-    ,49.99%{
-      opacity: 0;
-      z-index: 1;
+}
+
+@keyframes show {
+    0%,
+    49.99% {
+        opacity: 0;
+        z-index: 1;
     }
     50%,
-    100%{
-      opacity: 1;
-      z-index: 5;
+    100% {
+        opacity: 1;
+        z-index: 5;
     }
-  }
-  
-  .overlay-container{
+}
+
+/* Overlay effect */
+.overlay-container {
     position: absolute;
     top: 0;
     left: 50%;
@@ -398,13 +613,12 @@
     overflow: hidden;
     transition: transform 0.6s ease-in-out;
     z-index: 100;
-  }
-  
-  .container.right-panel-active .overlay-container{
+}
+.container.right-panel-active .overlay-container {
     transform: translateX(-100%);
-  }
-  
-  .overlay{
+}
+
+.overlay {
     background-image: url("../assets/gif/login1.gif");
     background-repeat: no-repeat;
     background-size: cover;
@@ -416,62 +630,49 @@
     height: 100%;
     transform: translateX(0);
     transition: transform 0.6s ease-in-out;
-  }
-  
-  .overlay::before{
+}
+.overlay::before {
     content: "";
     position: absolute;
-    left: 0;
     top: 0;
+    left: 0;
     right: 0;
     bottom: 0;
     background: linear-gradient(
-      to top, 
-      rgba(46, 94, 109, 0.4) 40%,
-      rgba(46, 94, 109, 0)
+        to top,
+        rgba(46, 94, 109, 0.4) 40%,
+        rgba(46, 94, 109, 0)
     );
-  }
-  
-  .container.container.right-panel-active .overlay{
+}
+.container.container.right-panel-active .overlay {
     transform: translateX(50%);
-  }
-  
-  .overlay-panel{
+}
+
+.overlay-panel {
     position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    text-align: center;
-    padding: 0 40px;
     top: 0;
-    height: 100%;
     width: 50%;
+    height: 100%;
+    padding: 0 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
     transform: translateX(0);
     transition: transform 0.6s ease-in-out;
-  }
-  
-  .overlay-left{
+}
+.overlay-left {
     transform: translateX(-20%);
-  }
-  
-  .container.right-panel-active .overlay-left{
+}
+.container.right-panel-active .overlay-left {
     transform: translateX(0);
-  }
-  
-  .overlay-right{
+}
+.overlay-right {
     right: 0;
     transform: translateX(0);
-  }
-  
-  .container.right-panel-active .overlay-right{
+}
+.container.right-panel-active .overlay-right {
     transform: translateX(20%);
-  }
-  
-  
-  
-  
-  
-  </style>
-
-  
+}
+</style>

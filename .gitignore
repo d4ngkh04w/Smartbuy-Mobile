@@ -28,3 +28,13 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# Backend configuration files
+appsettings.json
+appsettings.Development.json
+bin/
+obj/
+uploads/
+Migrations/
+
+.env
