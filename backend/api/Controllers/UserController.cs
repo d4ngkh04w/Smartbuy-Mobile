@@ -30,13 +30,15 @@ namespace api.Controllers
         public async Task<IActionResult> GetAllUsers()
         {
             var result = await _userService.GetAllUsersAsync();
+
             if (!result.Success && result.ErrorMessage != null)
             {
-                if (result.ErrorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))
-                    return NotFound(new { Message = "No users found" });
-                if (result.ErrorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
-                    return StatusCode(500, new { Message = result.ErrorMessage });
-                return BadRequest(new { Message = result.ErrorMessage });
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "No users found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
             }
             return Ok(result.Users);
         }
@@ -50,13 +52,51 @@ namespace api.Controllers
             var result = await _userService.GetUserByIdAsync(id);
             if (!result.Success && result.ErrorMessage != null)
             {
-                if (result.ErrorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))
-                    return NotFound(new { Message = result.ErrorMessage });
-                if (result.ErrorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
-                    return StatusCode(500, new { Message = result.ErrorMessage });
-                return BadRequest(new { Message = result.ErrorMessage });
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "User not found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
             }
             return Ok(result.User);
+        }
+
+        [HttpGet("me")]
+        [Authorize(Roles = "admin,user")]
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            var id = GetCurrentUserId();
+            var result = await _userService.GetUserByIdAsync(id);
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "User not found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+            return Ok(result.User);
+        }
+
+        [HttpPut("me")]
+        [Authorize(Roles = "admin,user")]
+        [RequestSizeLimit(15 * 1024 * 1024)]
+        public async Task<IActionResult> UpdateCurrentUser([FromForm] UpdateUserDTO userDTO)
+        {
+            var id = GetCurrentUserId();
+            var result = await _userService.UpdateUserAsync(id, userDTO);
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+            return Ok(new { Message = "User updated successfully" });
         }
 
         [HttpPut("{id:guid}")]
@@ -69,11 +109,12 @@ namespace api.Controllers
             var result = await _userService.UpdateUserAsync(id, userDTO);
             if (!result.Success && result.ErrorMessage != null)
             {
-                if (result.ErrorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))
-                    return NotFound(new { Message = result.ErrorMessage });
-                if (result.ErrorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
-                    return StatusCode(500, new { Message = result.ErrorMessage });
-                return BadRequest(new { Message = result.ErrorMessage });
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
             }
             return Ok(new { Message = "User updated successfully" });
         }
@@ -87,11 +128,12 @@ namespace api.Controllers
             var result = await _userService.DeleteUserAsync(id);
             if (!result.Success && result.ErrorMessage != null)
             {
-                if (result.ErrorMessage.Contains("Not found", StringComparison.OrdinalIgnoreCase))
-                    return NotFound(new { Message = result.ErrorMessage });
-                if (result.ErrorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
-                    return StatusCode(500, new { Message = result.ErrorMessage });
-                return BadRequest(new { Message = result.ErrorMessage });
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
             }
             return NoContent();
         }

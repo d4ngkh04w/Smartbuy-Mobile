@@ -1,7 +1,7 @@
 using api.Models;
 using api.Queries;
 
-namespace api.Interfaces.Services
+namespace api.Interfaces.Repositories
 {
     public interface IBrandRepository
     {

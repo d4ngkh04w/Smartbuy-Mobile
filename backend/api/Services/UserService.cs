@@ -25,6 +25,16 @@ namespace api.Services
                     return (false, "User not found");
                 }
 
+                // Delete user avatar image if it exists
+                if (!string.IsNullOrEmpty(user.Avatar))
+                {
+                    var path = Directory.GetCurrentDirectory() + user.Avatar;
+                    if (File.Exists(path))
+                    {
+                        ImageHelper.DeleteImage(path);
+                    }
+                }
+
                 await _userRepository.DeleteUserAsync(user);
 
                 return (true, null);
@@ -82,6 +92,7 @@ namespace api.Services
                     return (false, "User not found");
                 }
 
+                // Validate email uniqueness
                 if (!string.IsNullOrEmpty(userDTO.Email) && userDTO.Email != user.Email)
                 {
                     var emailExists = await _userRepository.UserExistsByEmailAsync(userDTO.Email);
@@ -90,6 +101,8 @@ namespace api.Services
                         return (false, "Email already exists");
                     }
                 }
+
+                // Validate phone uniqueness
                 if (!string.IsNullOrEmpty(userDTO.PhoneNumber) && userDTO.PhoneNumber != user.PhoneNumber)
                 {
                     var phoneExists = await _userRepository.UserExistsByPhoneNumberAsync(userDTO.PhoneNumber);
@@ -99,22 +112,31 @@ namespace api.Services
                     }
                 }
 
+                // Update user properties
                 user.Name = userDTO.Name ?? user.Name;
                 user.Email = userDTO.Email ?? user.Email;
                 user.PhoneNumber = userDTO.PhoneNumber ?? user.PhoneNumber;
                 user.Address = userDTO.Address ?? user.Address;
                 user.Gender = userDTO.Gender ?? user.Gender;
+
+                // Handle avatar update
                 if (userDTO.Avatar != null)
                 {
-                    var path = Directory.GetCurrentDirectory() + user.Avatar;
-                    if (File.Exists(path))
+                    // Delete old avatar if exists
+                    if (!string.IsNullOrEmpty(user.Avatar))
                     {
-                        var deletedImg = ImageHelper.DeleteImage(path);
-                        if (!deletedImg)
+                        var path = Directory.GetCurrentDirectory() + user.Avatar;
+                        if (File.Exists(path))
                         {
-                            return (false, "Error deleting old image");
+                            var deletedImg = ImageHelper.DeleteImage(path);
+                            if (!deletedImg)
+                            {
+                                return (false, "Error deleting old avatar image");
+                            }
                         }
                     }
+
+                    // Save new avatar
                     var saveImg = await ImageHelper.SaveImageAsync(userDTO.Avatar, "users", 15 * 1024 * 1024);
                     if (!saveImg.Success)
                     {

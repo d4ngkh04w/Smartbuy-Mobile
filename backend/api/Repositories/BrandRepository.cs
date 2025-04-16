@@ -1,5 +1,5 @@
 using api.Database;
-using api.Interfaces.Services;
+using api.Interfaces.Repositories;
 using api.Models;
 using api.Queries;
 using Microsoft.EntityFrameworkCore;
@@ -8,33 +8,34 @@ namespace api.Repositories
 {
     public class BrandRepository : IBrandRepository
     {
-        private readonly AppDBContext db;
+        private readonly AppDBContext _db;
+
         public BrandRepository(AppDBContext db)
         {
-            this.db = db;
+            _db = db;
         }
 
         public async Task<bool> BrandExistsAsync(string name)
         {
-            return await db.Brands.AnyAsync(b => b.Name == name);
+            return await _db.Brands.AnyAsync(b => b.Name == name);
         }
 
         public async Task<Brand> CreateBrandAsync(Brand brand)
         {
-            db.Brands.Add(brand);
-            await db.SaveChangesAsync();
+            _db.Brands.Add(brand);
+            await _db.SaveChangesAsync();
             return brand;
         }
 
         public async Task DeleteBrandAsync(Brand brand)
         {
-            db.Brands.Remove(brand);
-            await db.SaveChangesAsync();
+            _db.Brands.Remove(brand);
+            await _db.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<Brand>> GetBrandsAsync(BrandQuery query)
         {
-            var brandsQuery = db.Brands.AsQueryable();
+            var brandsQuery = _db.Brands.AsQueryable();
 
             if (query.IsActive)
             {
@@ -70,10 +71,10 @@ namespace api.Repositories
         {
             if (query == null)
             {
-                return await db.Brands.FindAsync(id);
+                return await _db.Brands.FindAsync(id);
             }
 
-            var brandQuery = db.Brands.AsQueryable();
+            var brandQuery = _db.Brands.AsQueryable();
 
             if (query.IncludeCategories)
             {
@@ -90,15 +91,15 @@ namespace api.Repositories
 
         public async Task<bool> UpdateBrandAsync(Brand brand)
         {
-            db.Entry(brand).State = EntityState.Modified;
+            _db.Entry(brand).State = EntityState.Modified;
             try
             {
-                await db.SaveChangesAsync();
+                await _db.SaveChangesAsync();
                 return true;
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!await db.Brands.AnyAsync(b => b.Id == brand.Id))
+                if (!await _db.Brands.AnyAsync(b => b.Id == brand.Id))
                     return false;
                 else
                     throw;

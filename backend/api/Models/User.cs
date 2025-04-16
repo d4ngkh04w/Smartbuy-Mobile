@@ -28,7 +28,7 @@ namespace api.Models
         [Column(TypeName = "varchar(255)")]
         public string Address { get; set; } = string.Empty;
 
-        [Column(TypeName = "enum('male', 'female', 'other')")]
+        [Column(TypeName = "enum('Nam', 'Nữ', 'Khác')")]
         public string? Gender { get; set; }
 
         [Column(TypeName = "varchar(70)")]
@@ -42,7 +42,6 @@ namespace api.Models
 
         [Column(TypeName = "timestamp")]
         public DateTime? LastLogin { get; set; }
-
         public string? RefreshToken { get; set; } = null;
 
         [Column(TypeName = "timestamp")]
