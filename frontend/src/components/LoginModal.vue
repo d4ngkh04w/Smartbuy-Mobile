@@ -7,6 +7,7 @@ import {
     getUserInfo,
 } from "../services/authService.js";
 import emitter from "../utils/evenBus.js";
+import { useAuthStore } from "../stores/authStore.js";
 
 const authStore = useAuthStore();
 
@@ -25,7 +26,7 @@ const isRightPanelActive = ref(false);
 // Emit
 const emit = defineEmits(["close", "login-success"]);
 
-// ===== REFRESH FORM ===== //
+// ===== REFRESH FORM ===== //  
 const resetFormRegister = () => {
     registerPhoneNumber.value = "";
     registerPassword.value = "";
@@ -44,7 +45,7 @@ const handleLogin = async () => {
     try {
         // Gửi yêu cầu đăng nhập
         const { token } = await login({
-            phoneNumber: loginPhoneNumber.value,
+            phonenumber: loginPhoneNumber.value,
             password: loginPassword.value,
         });
 
