@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\Database",
+    "\\DTOs",
+    "\\Properties",
+    "\\Repositories",
+    "\\Services"
+  ],
+  "SelectedNode": "\\appsettings.Development.json",
+  "PreviewInSolutionExplorer": false
+}
