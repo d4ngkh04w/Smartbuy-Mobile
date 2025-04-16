@@ -21,10 +21,15 @@ namespace api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] Register register)
         {
-            var (success, errors) = await _authService.Register(register, "admin");
-            if (success) return Ok(new { Message = "Admin registered successfully" });
+            var result = await _authService.Register(register, "admin");
+            if (result.Success) return Ok(new
+            {
+                Message = "Admin registered successfully",
+                result.token!.Token,
+                ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
+            });
 
-            return BadRequest(new { Message = "Admin registration failed", Errors = errors });
+            return BadRequest(new { Message = "Admin registration failed", Errors = result.ErrorMessage });
         }
 
         [HttpPost("login")]

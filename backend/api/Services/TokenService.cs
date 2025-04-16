@@ -28,8 +28,8 @@ namespace api.Services
             var claims = new List<Claim>
             {
                 new Claim("id", user.Id.ToString()),
-                new Claim("email", user.Email!),
-                new Claim("phone", user.PhoneNumber!),
+                new Claim("email", user.Email),
+                new Claim("phone", user.PhoneNumber),
                 new Claim("role", role),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
@@ -70,8 +70,7 @@ namespace api.Services
         {
             try
             {
-                var users = await _userRepository.GetAllUsersAsync();
-                var user = users.FirstOrDefault(u => u.RefreshToken == refreshToken);
+                var user = await FindUserByRefreshToken(refreshToken);
 
                 if (user == null)
                     return (false, "Invalid refresh token", null);
@@ -90,7 +89,7 @@ namespace api.Services
             }
             catch (Exception ex)
             {
-                return (false, ex.Message, null);
+                return (false, $"Error validating refresh token: {ex.Message}", null);
             }
         }
 
@@ -98,8 +97,7 @@ namespace api.Services
         {
             try
             {
-                var users = await _userRepository.GetAllUsersAsync();
-                var user = users.FirstOrDefault(u => u.RefreshToken == refreshToken);
+                var user = await FindUserByRefreshToken(refreshToken);
 
                 if (user == null)
                     return (false, "Invalid refresh token");
@@ -110,10 +108,16 @@ namespace api.Services
 
                 return (true, null);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return (false, "An error occurred while revoking the refresh token");
+                return (false, $"Error revoking refresh token: {ex.Message}");
             }
+        }
+
+        private async Task<User?> FindUserByRefreshToken(string refreshToken)
+        {
+            var users = await _userRepository.GetAllUsersAsync();
+            return users.FirstOrDefault(u => u.RefreshToken == refreshToken);
         }
     }
 }

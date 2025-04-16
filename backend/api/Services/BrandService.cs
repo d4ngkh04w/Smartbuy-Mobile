@@ -1,5 +1,6 @@
 using api.DTOs.Brand;
 using api.Helpers;
+using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
 using api.Models;
@@ -9,17 +10,18 @@ namespace api.Services
 {
     public class BrandService : IBrandService
     {
-        private readonly IBrandRepository repo;
+        private readonly IBrandRepository _repo;
+
         public BrandService(IBrandRepository repo)
         {
-            this.repo = repo;
+            _repo = repo;
         }
 
         public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> CreateBrandAsync(CreateBrandDTO brandDTO)
         {
             try
             {
-                var existsBrand = await repo.BrandExistsAsync(brandDTO.Name);
+                var existsBrand = await _repo.BrandExistsAsync(brandDTO.Name);
                 if (existsBrand)
                     return (false, "Brand already exists", null);
 
@@ -34,7 +36,7 @@ namespace api.Services
 
                 brand.Logo = path!;
 
-                var createdBrand = await repo.CreateBrandAsync(brand);
+                var createdBrand = await _repo.CreateBrandAsync(brand);
                 if (createdBrand == null)
                     return (false, "Error creating brand", null);
 
@@ -42,7 +44,7 @@ namespace api.Services
             }
             catch (Exception)
             {
-                return (false, "Error creating brand", null);
+                return (false, $"Error creating brand", null);
             }
         }
 
@@ -50,7 +52,7 @@ namespace api.Services
         {
             try
             {
-                var brand = await repo.GetBrandByIdAsync(id);
+                var brand = await _repo.GetBrandByIdAsync(id);
                 if (brand == null)
                     return (false, "Brand not found");
 
@@ -58,13 +60,13 @@ namespace api.Services
                 if (!deleted)
                     return (false, "Error deleting brand logo");
 
-                await repo.DeleteBrandAsync(brand);
+                await _repo.DeleteBrandAsync(brand);
 
                 return (true, null);
             }
             catch (Exception)
             {
-                return (false, "Error deleting brand");
+                return (false, $"Error deleting brand");
             }
         }
 
@@ -72,7 +74,7 @@ namespace api.Services
         {
             try
             {
-                var brand = await repo.GetBrandByIdAsync(id, query);
+                var brand = await _repo.GetBrandByIdAsync(id, query);
                 if (brand == null)
                     return (false, "Brand not found", null);
 
@@ -80,7 +82,7 @@ namespace api.Services
             }
             catch (Exception)
             {
-                return (false, "Error retrieving brand", null);
+                return (false, $"Error retrieving brand", null);
             }
         }
 
@@ -88,7 +90,7 @@ namespace api.Services
         {
             try
             {
-                var brands = await repo.GetBrandsAsync(query);
+                var brands = await _repo.GetBrandsAsync(query);
 
                 if (brands == null || !brands.Any())
                     return (false, "Not found brands", null);
@@ -99,7 +101,7 @@ namespace api.Services
             }
             catch (Exception)
             {
-                return (false, "Error retrieving brands", null);
+                return (false, $"Error retrieving brands", null);
             }
         }
 
@@ -110,7 +112,7 @@ namespace api.Services
                 if (id <= 0)
                     return (false, "Invalid brand ID");
 
-                var brand = await repo.GetBrandByIdAsync(id);
+                var brand = await _repo.GetBrandByIdAsync(id);
                 if (brand == null)
                     return (false, "Brand not found");
 
@@ -122,6 +124,7 @@ namespace api.Services
                     var deleted = ImageHelper.DeleteImage(Directory.GetCurrentDirectory() + brand.Logo);
                     if (!deleted)
                         return (false, "Error deleting old logo");
+
                     var (success, errorMessage, path) = await ImageHelper.SaveImageAsync(brandDTO.Logo, "brands", 2 * 1024 * 1024);
                     if (!success)
                         return (false, errorMessage);
@@ -129,15 +132,15 @@ namespace api.Services
                     brand.Logo = path!;
                 }
 
-                var successUpdate = await repo.UpdateBrandAsync(brand);
+                var successUpdate = await _repo.UpdateBrandAsync(brand);
                 if (!successUpdate)
                     return (false, "Error updating brand");
 
-                return (true, string.Empty);
+                return (true, null);
             }
             catch (Exception)
             {
-                return (false, "Error updating brand");
+                return (false, $"Error updating brand");
             }
         }
     }

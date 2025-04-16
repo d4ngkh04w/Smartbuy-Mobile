@@ -19,7 +19,7 @@ namespace api.DTOs.User
         [AllowFileExtension(extensions: [".jpg", ".jpeg", ".png"], ErrorMessage = "Logo must be a valid image (jpg, jpeg, png)")]
         public IFormFile? Avatar { get; set; }
 
-        [RegularExpression(@"^(male|female|other)$", ErrorMessage = "Gender must be male, female, or other")]
+        [RegularExpression(@"^(Nam|Nữ|Khác)$", ErrorMessage = "Gender must be male, female, or other")]
         public string? Gender { get; set; }
     }
 }

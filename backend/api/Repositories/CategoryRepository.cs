@@ -8,19 +8,23 @@ namespace api.Repositories
 {
     public class CategoryRepository : ICategoryRepository
     {
-        private readonly AppDBContext db;
+        private readonly AppDBContext _db;
+
         public CategoryRepository(AppDBContext db)
         {
-            this.db = db;
+            _db = db;
         }
+
         public async Task<Category> CreateCategoryAsync(Category category)
         {
-            bool existsBrand = await db.Brands.AnyAsync(b => b.Id == category.BrandId);
+            bool existsBrand = await _db.Brands.AnyAsync(b => b.Id == category.BrandId);
             if (!existsBrand)
                 throw new Exception("Brand not found");
-            db.Categories.Add(category);
-            await db.SaveChangesAsync();
-            return (await db.Categories
+
+            _db.Categories.Add(category);
+            await _db.SaveChangesAsync();
+
+            return (await _db.Categories
                 .Include(c => c.Brand)
                 .Include(c => c.Products)
                 .FirstOrDefaultAsync(c => c.Id == category.Id))!;
@@ -28,18 +32,18 @@ namespace api.Repositories
 
         public async Task DeleteCategoryAsync(Category category)
         {
-            db.Categories.Remove(category);
-            await db.SaveChangesAsync();
+            _db.Categories.Remove(category);
+            await _db.SaveChangesAsync();
         }
 
         public async Task<bool> CategoryExistAsync(string name)
         {
-            return await db.Categories.AnyAsync(c => c.Name.ToLower() == name.ToLower());
+            return await _db.Categories.AnyAsync(c => c.Name.ToLower() == name.ToLower());
         }
 
         public async Task<IEnumerable<Category>> GetCategoriesAsync(CategoryQuery query)
         {
-            var categoriesQuery = db.Categories.AsQueryable();
+            var categoriesQuery = _db.Categories.AsQueryable();
 
             if (query.IncludeProducts)
             {
@@ -65,28 +69,32 @@ namespace api.Repositories
         {
             if (query == null)
             {
-                return await db.Categories.FindAsync(id);
+                return await _db.Categories.FindAsync(id);
             }
-            var categoryQuery = db.Categories.AsQueryable();
+
+            var categoryQuery = _db.Categories.AsQueryable();
+
             if (query.IncludeProducts)
             {
                 categoryQuery = categoryQuery.Include(c => c.Products);
             }
-            return await categoryQuery.Include(c => c.Brand)
+
+            return await categoryQuery
+                .Include(c => c.Brand)
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
         public async Task<bool> UpdateCategoryAsync(Category category)
         {
-            db.Entry(category).State = EntityState.Modified;
+            _db.Entry(category).State = EntityState.Modified;
             try
             {
-                await db.SaveChangesAsync();
+                await _db.SaveChangesAsync();
                 return true;
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!await db.Categories.AnyAsync(c => c.Id == category.Id))
+                if (!await _db.Categories.AnyAsync(c => c.Id == category.Id))
                     return false;
                 else
                     throw;
