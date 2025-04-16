@@ -33,3 +33,5 @@ backend/api/appsettings.json
 backend/api/appsettings.Development.json
 backend/api/bin
 backend/api/obj
+.env
+Migrations
