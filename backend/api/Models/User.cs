@@ -46,5 +46,10 @@ namespace api.Models
 
         [Column(TypeName = "timestamp")]
         public DateTime? RefreshTokenExpiry { get; set; } = null;
+
+        public string? PasswordResetToken { get; set; } = null;
+
+        [Column(TypeName = "timestamp")]
+        public DateTime? PasswordResetTokenExpiry { get; set; } = null;
     }
 }

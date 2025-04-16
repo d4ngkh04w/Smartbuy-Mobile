@@ -7,14 +7,15 @@ namespace api.Controllers
 {
     [Route("api/v1/admin/auth")]
     [ApiController]
-    [Authorize(Roles = "admin")]
+    [Authorize]
     public class AuthAdminController : ControllerBase
     {
         private readonly IAuthService _authService;
-
-        public AuthAdminController(IAuthService authService)
+        private readonly IConfiguration _config;
+        public AuthAdminController(IAuthService authService, IConfiguration config)
         {
             _authService = authService;
+            _config = config;
         }
 
         [HttpPost("register")]
@@ -22,12 +23,29 @@ namespace api.Controllers
         public async Task<IActionResult> Register([FromBody] Register register)
         {
             var result = await _authService.Register(register, "admin");
-            if (result.Success) return Ok(new
+            if (result.Success)
             {
-                Message = "Admin registered successfully",
-                result.token!.Token,
-                ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
-            });
+                Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
+                });
+                Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
+                });
+                return Ok(new
+                {
+                    Message = "Admin registered successfully",
+                });
+            }
 
             return BadRequest(new { Message = "Admin registration failed", Errors = result.ErrorMessage });
         }
@@ -37,22 +55,27 @@ namespace api.Controllers
         public async Task<IActionResult> Login([FromBody] Login login)
         {
             var result = await _authService.Login(login, "admin");
-
             if (result.Success)
             {
+                Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
+                });
                 Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = false,
                     SameSite = SameSiteMode.Lax,
                     Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(7),
+                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
                 });
                 return Ok(new
                 {
                     Message = "Login successful",
-                    Token = result.token!.Token,
-                    ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
                 });
             }
 
@@ -66,19 +89,26 @@ namespace api.Controllers
             var (success, message, token) = await _authService.LoginWithGoogleAsync(dto, "admin");
             if (success)
             {
+                Response.Cookies.Append("token", token!.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
+                });
                 Response.Cookies.Append("refreshToken", token!.RefreshToken, new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = false,
                     SameSite = SameSiteMode.Lax,
                     Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(7),
+                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
                 });
+
                 return Ok(new
                 {
-                    Message = "Login successful",
-                    token!.Token,
-                    ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
+                    Message = message,
                 });
             }
 
