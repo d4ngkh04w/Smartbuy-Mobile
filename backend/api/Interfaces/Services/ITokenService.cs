@@ -9,5 +9,7 @@ namespace api.Interfaces.Services
         string CreateToken(User user, string role);
         Task<(bool Success, string? ErrorMessage, TokenResponseDTO? Token)> ValidateRefreshToken(string refreshToken);
         Task<(bool Success, string? ErrorMessage)> RevokeRefreshToken(string refreshToken);
+        string GeneratePasswordResetToken();
+        bool ValidatePasswordResetToken(string token, DateTime tokenCreationTime);
     }
 }

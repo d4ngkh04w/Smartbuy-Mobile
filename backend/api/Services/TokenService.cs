@@ -119,5 +119,28 @@ namespace api.Services
             var users = await _userRepository.GetAllUsersAsync();
             return users.FirstOrDefault(u => u.RefreshToken == refreshToken);
         }
+
+        public string GeneratePasswordResetToken()
+        {
+            var randomBytes = new byte[64];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomBytes);
+                return Convert.ToBase64String(randomBytes)
+                    .Replace("/", "_")
+                    .Replace("+", "-")
+                    .Replace("=", "");
+            }
+        }
+
+        public bool ValidatePasswordResetToken(string token, DateTime tokenCreationTime)
+        {
+            if (DateTime.Now > tokenCreationTime)
+            {
+                return false;
+            }
+
+            return true;
+        }
     }
 }

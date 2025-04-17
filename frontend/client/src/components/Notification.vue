@@ -23,14 +23,14 @@ const handler = (payload) => {
     // Tự động ẩn thông báo sau 2 giây
     setTimeout(() => {
         notification.show = false;
-    }, 2000);
+    }, 3000);
 
     // Xóa thông báo khỏi danh sách khi nó đã ẩn
     setTimeout(() => {
         notifications.value = notifications.value.filter(
             (n) => n.id !== notification.id
         );
-    }, 2500); // Thời gian để hoàn tất việc ẩn
+    }, 3500); // Thời gian để hoàn tất việc ẩn
 };
 
 onMounted(() => {

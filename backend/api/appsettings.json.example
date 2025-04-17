@@ -19,5 +19,15 @@
     },
     "Google": {
         "ClientId": "YOUR_GOOGLE_CLIENT_ID"
+    },
+    "EmailSettings": {
+        "DisplayName": "YOUR_DISPLAY_NAME",
+        "From": "YOUR_EMAIL_FROM",
+        "Host": "smtp.your-email-provider.com",
+        "Port": 587,
+        "Email": "YOUR_EMAIL",
+        "Password": "YOUR_PASSWORD",
+        "EnableSsl": true,
+        "UseDefaultCredentials": false
     }
 }

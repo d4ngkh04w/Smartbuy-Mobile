@@ -1,13 +1,9 @@
 <script setup>
 import { ref } from "vue";
-import {
-    login,
-    register,
-    loginWithGoogle,
-    getUserInfo,
-} from "../services/authService.js";
+import { login, register, loginWithGoogle, getUserInfo } from "../services/authService.js";
 import emitter from "../utils/evenBus.js";
 import { useAuthStore } from "../stores/authStore.js";
+import RegisterInfoForm from "./RegisterInfoForm.vue";
 
 const authStore = useAuthStore();
 
@@ -22,11 +18,13 @@ const registerEmail = ref("");
 const argeed = ref(false);
 
 const isRightPanelActive = ref(false);
+const showRegisterInfoForm = ref(false);
+const registeredUser = ref(null);
 
 // Emit
 const emit = defineEmits(["close", "login-success"]);
 
-// ===== REFRESH FORM ===== //  
+// ===== REFRESH FORM ===== //
 const resetFormRegister = () => {
     registerPhoneNumber.value = "";
     registerPassword.value = "";
@@ -44,24 +42,18 @@ const resetFormLogin = () => {
 const handleLogin = async () => {
     try {
         // Gửi yêu cầu đăng nhập
-        const { token } = await login({
-            phonenumber: loginPhoneNumber.value,
+        const message = await login({
+            phoneNumber: loginPhoneNumber.value,
             password: loginPassword.value,
         });
-
-        authStore.setToken(token);
-
-        const userRes = await getUserInfo();
-        const userData = userRes.data;
-
-        authStore.setUser(userData)
+        
 
         emitter.emit("show-notification", {
             status: "success",
             message: "Đăng nhập thành công!",
         });
 
-        emit("login-success", userData);
+        emit("login-success");
         emit("close");
     } catch (err) {
         console.error(err);
@@ -92,30 +84,40 @@ const handleRegister = async () => {
     }
 
     try {
-        const response = await register({
+        const userInfo = {
             phoneNumber: registerPhoneNumber.value,
             password: registerPassword.value,
             email: registerEmail.value,
             confirmPassword: registerPasswordConfirm.value,
-        });
+        };
+
+        const message = await register(userInfo);
 
         emitter.emit("show-notification", {
             status: "success",
             message: "Đăng ký thành công!",
         });
+        
+        const user = await getUserInfo();
+        authStore.setUser(user.data); // Lưu thông tin người dùng vào store
+        console.log("User info:", user.data);
 
-        console.log("Đăng ký thành công:", response.data);
-
-        await resetFormRegister();
-
-        await showLogin();
+        // Hiển thị form cập nhật thông tin
+        showRegisterInfoForm.value = true;
     } catch (err) {
         emitter.emit("show-notification", {
             status: "error",
-            message: "Đăng ký thất bại.",
+            message: err.response?.data?.message || "Đăng ký thất bại.",
         });
         console.error(err);
     }
+};
+
+// ===== XỬ LÝ SAU KHI CẬP NHẬT THÔNG TIN HOẶC BỎ QUA ===== //
+const handleInfoFormClose = () => {
+    showRegisterInfoForm.value = false;
+    emit("login-success"); // Đánh dấu là người dùng đã đăng nhập
+    emit("close"); // Đóng modal
 };
 
 // ===== LOGIN GOOGLE ===== //
@@ -124,17 +126,21 @@ const handleGoogleLogin = async (response) => {
 
     try {
         const res = await loginWithGoogle(credential);
-        const token = res.data.token;
-        const refreshToken = res.data.refreshToken;
 
-        localStorage.setItem("jwt", token);
-        console.log("Token:", token);
-        console.log("Refresh Token:", refreshToken);
-        localStorage.setItem("refreshToken", refreshToken);
+        emitter.emit("show-notification", {
+            status: "success",
+            message: "Đăng nhập bằng Google thành công!",
+        });
 
-        console.log("Đăng nhập bằng Google thành công!");
+        emit("login-success");
+        emit("close");
     } catch (err) {
         console.error("Lỗi đăng nhập bằng Google:", err);
+
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Đăng nhập bằng Google thất bại.",
+        });
     }
 };
 
@@ -158,6 +164,7 @@ const showLogin = () => {
 <template>
     <div class="modal-overlay" @click.self="$emit('close')">
         <div
+            v-if="!showRegisterInfoForm"
             :class="['container', { 'right-panel-active': isRightPanelActive }]"
         >
             <!-- Đăng kí -->
@@ -300,6 +307,14 @@ const showLogin = () => {
                 </div>
             </div>
         </div>
+
+        <!-- Form cập nhật thông tin sau khi đăng ký -->
+        <RegisterInfoForm
+            v-if="showRegisterInfoForm"
+            :userInfo="authStore.user"
+            @close="handleInfoFormClose"
+            @update-success="handleInfoFormClose"
+        />
     </div>
 </template>
 

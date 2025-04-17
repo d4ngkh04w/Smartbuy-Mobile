@@ -1,37 +1,59 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import LoginModal from "@/components/LoginModal.vue";
+import { getUserInfo, logout, refreshToken } from "../services/authService.js";
+import { useAuthStore } from "../stores/authStore.js";
+import emitter from "../utils/evenBus.js";
 
-// Biến trạng thái xác thực
-const auth = ref({
-    isAuthenticated: false,
-    user: {
-        phoneNumber: ""
-    }
-});
+// Lấy store xác thực
+const authStore = useAuthStore();
 
 const searchQuery = ref("");
 const showLoginModal = ref(false);
 const showDropdown = ref(false);
 
 // Xử lý khi đăng nhập thành công
-const handleLoginSuccess = (userData) => {
-    auth.value.isAuthenticated = true;
-    auth.value.user = userData;
-    showLoginModal.value = false;
+const handleLoginSuccess = async () => {
+    try {
+        const res = await getUserInfo();
+
+        authStore.setUser(res.data);
+
+        console.log("Lấy thông tin người dùng thành công", res.data);
+
+        showLoginModal.value = false;
+    } catch (err) {
+        console.error("Lấy thông tin người dùng thất bại", err);
+    }
 };
 
 const toggleDropdown = () => {
     showDropdown.value = !showDropdown.value;
 };
 
-const logout = () => {
-    auth.value.isAuthenticated = false;
-    auth.value.user = {
-        phoneNumber: ""
-    };
+const handleLogout = async () => {
+    await logout();
+    authStore.logout();
     showDropdown.value = false;
+
+    emitter.emit("show-notification", {
+        status: "success",
+        message: "Đăng xuất thành công",
+    });
 };
+
+onMounted(async () => {
+    // try {
+    //     // Try to refresh the token first
+    //     await refreshToken();
+    //     // Then get user data
+    //     const res = await getUserInfo();
+    //     authStore.setUser(res.data);
+    // } catch (error) {
+    //     console.error("Failed to initialize user session:", error);
+    //     // User is not logged in or session expired - nothing to do here
+    // }
+});
 </script>
 
 <template>
@@ -65,15 +87,23 @@ const logout = () => {
                     <span>Thông báo</span>
                 </div>
                 <!-- Nếu đã đăng nhập, hiển thị menu tài khoản -->
-                <div class="action-item user-menu" v-if="auth.isAuthenticated">
+                <div class="action-item user-menu" v-if="authStore.user">
                     <div class="user-trigger" @click="toggleDropdown">
                         <img
-                            src="https://scontent.fdad7-2.fna.fbcdn.net/v/t39.30808-6/481020844_662021206282518_5230218385143721393_n.jpg?_nc_cat=100&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=C6FpJeE63ycQ7kNvwERM-vE&_nc_oc=AdnWNQqBxaLvO8d3NPHKoenC_ZT0tGwKOjDHliGetAkzQyv0ZnTxzUjvi-B4yxgZ6DAmQxtfnt7O4rCOcnUUkQNX&_nc_zt=23&_nc_ht=scontent.fdad7-2.fna&_nc_gid=Q5MDJChrlxIC047bjNLKdQ&oh=00_AfFBLsvbPWPOsJV-WLSmR2hHEyjBVWfyYTcyEGVhmdI71Q&oe=68024B48"
+                            :src="
+                                authStore.user.avatar
+                                    ? `http://localhost:3000${authStore.user.avatar}`
+                                    : 'https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg'
+                            "
                             alt="Avatar"
                             class="avatar-img"
                         />
-                       
-                        <span>{{ auth.user.phoneNumber }}</span>
+
+                        <span>{{
+                            authStore.user.name
+                                ? authStore.user.name
+                                : authStore.user.phoneNumber
+                        }}</span>
                     </div>
 
                     <div class="dropdown-menu" v-if="showDropdown">
@@ -82,7 +112,7 @@ const logout = () => {
                             >Thông tin cá nhân</router-link
                         >
                         <router-link to="/orders">Đơn hàng</router-link>
-                        <a @click="logout">Đăng xuất</a>
+                        <a @click="handleLogout">Đăng xuất</a>
                     </div>
                 </div>
 
@@ -165,8 +195,13 @@ const logout = () => {
     align-items: center;
     gap: 5px;
     cursor: pointer;
+    color: black; /* Màu ban đầu */
+    transition: color 0.3s ease; /* Thêm transition cho mượt */
 }
 
+.action-item:hover {
+    color: #ffd9f2; /* Màu khi hover */
+}
 
 /* Responsive */
 @media (max-width: 1200px) {
@@ -249,4 +284,3 @@ const logout = () => {
     vertical-align: middle;
 }
 </style>
-
