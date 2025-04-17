@@ -1,4 +1,3 @@
-using api.Database;
 using api.DTOs.Category;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;

@@ -25,6 +25,6 @@ import Notification from './components/Notification.vue'
 
 .main-content {
     flex: 1; /* Đảm bảo phần nội dung có thể mở rộng */
-    padding: 20px;
+    padding: 0px;
 }
 </style>

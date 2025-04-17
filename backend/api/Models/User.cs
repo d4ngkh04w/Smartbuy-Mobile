@@ -9,7 +9,8 @@ namespace api.Models
     public class User
     {
         [Key]
-        public Guid Id { get; set; } = Guid.NewGuid();
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public Guid Id { get; set; }
 
         [Column(TypeName = "varchar(100)")]
         public string Name { get; set; } = string.Empty;
