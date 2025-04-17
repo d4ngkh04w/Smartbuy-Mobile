@@ -30,9 +30,14 @@ coverage
 
 *.tsbuildinfo
 
-backend/api/appsettings.json
-backend/api/appsettings.Development.json
-backend/api/bin
-backend/api/obj
+# Backend configuration files
+appsettings.json
+appsettings.Development.json
+bin/
+obj/
+uploads/
+Migrations/
+
 .env
-backend/api/Migrations/
+run-be.ps1
+run-fe.ps1

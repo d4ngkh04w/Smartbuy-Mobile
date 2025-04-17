@@ -13,6 +13,21 @@
         "Key": "YOUR_SECRET_KEY",
         "Issuer": "YOUR_ISSUER",
         "Audience": "YOUR_AUDIENCE",
-        "ExpireMonths": "YOUR_EXPIRE_MONTHS"
+        "Expire": "YOUR_EXPIRE_TIME_IN_MINUTES",
+        "RefreshTokenExpiry": "YOUR_REFRESH_TOKEN_EXPIRY_TIME_IN_DAYS",
+        "Algorithm": "YOUR_ALGORITHM"
+    },
+    "Google": {
+        "ClientId": "YOUR_GOOGLE_CLIENT_ID"
+    },
+    "EmailSettings": {
+        "DisplayName": "YOUR_DISPLAY_NAME",
+        "From": "YOUR_EMAIL_FROM",
+        "Host": "smtp.your-email-provider.com",
+        "Port": 587,
+        "Email": "YOUR_EMAIL",
+        "Password": "YOUR_PASSWORD",
+        "EnableSsl": true,
+        "UseDefaultCredentials": false
     }
 }
