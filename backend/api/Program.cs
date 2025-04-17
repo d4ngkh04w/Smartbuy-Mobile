@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using api.Database;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
@@ -15,22 +16,22 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Thiêt lập DbContext với MySQL
+// Thiết lập DbContext với MySQL
 builder.Services.AddDbContext<AppDBContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
     new MySqlServerVersion(new Version(9, 2, 0))));
 
-// Thiêt lập CORS cho phép frontend Vue.js truy cập API
+// Thiết lập CORS cho phép frontend Vue.js truy cập API
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
-        policy => policy.WithOrigins("http://localhost:4000") // Địa chỉ của frontend Vue
+        policy => policy.WithOrigins("http://localhost:4000", "http://localhost:5000")
                         .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .AllowAnyHeader()
-                        .AllowCredentials()); // Quan trọng: Cho phép Credentials (cookie hoặc token)
+                        .AllowCredentials());
 });
 
-// Thiêt lập response cho các lỗi 400 (Bad Request) với thông báo lỗi cụ thể
+// Thiết lập response cho các lỗi 400 (Bad Request) với thông báo lỗi cụ thể
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
@@ -40,7 +41,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     };
 });
 
-// Thiêt lập JWT Authentication
+// Thiết lập JWT Authentication
 builder.Services.AddAuthentication(
     options =>
     {
@@ -65,6 +66,27 @@ builder.Services.AddAuthentication(
                 }
                 return Task.CompletedTask;
             },
+            // Khi xác thực thành công nhưng không có quyền truy cập
+            OnForbidden = async context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new { Message = "Forbidden" });
+            },
+            // Khi token không hợp lệ hoặc đã hết hạn
+            OnAuthenticationFailed = async context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new { Message = "Authentication failed" });
+            },
+            // Khi cố gắng truy cập vào một endpoint yêu cầu xác thực nhưng không có token hoặc token không hợp lệ
+            OnChallenge = async context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new { Message = "Unauthorized" });
+            },
         };
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -80,10 +102,60 @@ builder.Services.AddAuthentication(
     }
 );
 
-// Thiêt lập authorization với các policy cho admin và user
-builder.Services.AddAuthorizationBuilder()
-       .AddPolicy("AdminPolicy", policy => policy.RequireRole("admin"))
-       .AddPolicy("UserPolicy", policy => policy.RequireRole("user"));
+builder.Services.AddRateLimiter(options =>
+{
+    // Global limiter theo IP để bảo vệ toàn bộ hệ thống
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+        var remoteIpAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var path = httpContext.Request.Path.ToString().ToLower();
+
+        // Áp dụng policy khác nhau dựa trên đường dẫn
+        if (path.Contains("/auth/"))
+        {
+            return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromSeconds(20),
+                PermitLimit = 5,
+                SegmentsPerWindow = 5,
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            });
+        }
+        else if (path.Contains("/admin/"))
+        {
+            return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromSeconds(10),
+                PermitLimit = 10,
+                SegmentsPerWindow = 5,
+                QueueLimit = 2,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            });
+        }
+        else
+        {
+            return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromSeconds(10),
+                PermitLimit = 20,
+                SegmentsPerWindow = 5,
+                QueueLimit = 1,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            });
+        }
+    });
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            Message = "Too many requests. Please try again later"
+        }, cancellationToken: token);
+    };
+});
 
 // Đăng ký các repository và service
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -98,17 +170,21 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 
 var app = builder.Build();
 
-app.UseStaticFiles();
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseHttpsRedirection();
+    app.UseHsts();
+}
 
+app.UseStaticFiles();
+app.UseRateLimiter();
 app.UseCors("AllowFrontend");
-app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
