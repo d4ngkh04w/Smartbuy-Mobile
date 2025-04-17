@@ -20,7 +20,7 @@ namespace api.Helpers
             }
 
             string fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
-            string uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "images", folder);
+            string uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot","uploads", "images", folder);
 
             try
             {
