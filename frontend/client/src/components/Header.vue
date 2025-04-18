@@ -4,9 +4,11 @@ import LoginModal from "@/components/LoginModal.vue";
 import { getUserInfo, logout, refreshToken } from "../services/authService.js";
 import { useAuthStore } from "../stores/authStore.js";
 import emitter from "../utils/evenBus.js";
+import { useRouter } from "vue-router";
 
 // Lấy store xác thực
 const authStore = useAuthStore();
+const router = useRouter();
 
 const searchQuery = ref("");
 const showLoginModal = ref(false);
@@ -35,6 +37,8 @@ const handleLogout = async () => {
     await logout();
     authStore.logout();
     showDropdown.value = false;
+
+    router.push("/");
 
     emitter.emit("show-notification", {
         status: "success",
@@ -135,7 +139,7 @@ onMounted(async () => {
 /* Bố cục chính */
 .header {
     background-color: var(--primary-color);
-    padding: 5px 10px;
+    padding: 5px 200px;
 }
 
 .header-container {

@@ -1,11 +1,19 @@
 <script setup>
 import { ref } from "vue";
-import { login, register, loginWithGoogle, getUserInfo } from "../services/authService.js";
+import {
+    login,
+    register,
+    loginWithGoogle,
+    getUserInfo,
+} from "../services/authService.js";
 import emitter from "../utils/evenBus.js";
 import { useAuthStore } from "../stores/authStore.js";
 import RegisterInfoForm from "./RegisterInfoForm.vue";
+import ForgotPasswordModal from "./ForgotPasswordModal.vue";
+import { useRouter  } from "vue-router";
 
 const authStore = useAuthStore();
+const router = useRouter();
 
 // State
 const loginPhoneNumber = ref("");
@@ -19,6 +27,7 @@ const argeed = ref(false);
 
 const isRightPanelActive = ref(false);
 const showRegisterInfoForm = ref(false);
+const showForgotPasswordForm = ref(false);
 const registeredUser = ref(null);
 
 // Emit
@@ -46,7 +55,6 @@ const handleLogin = async () => {
             phoneNumber: loginPhoneNumber.value,
             password: loginPassword.value,
         });
-        
 
         emitter.emit("show-notification", {
             status: "success",
@@ -55,6 +63,7 @@ const handleLogin = async () => {
 
         emit("login-success");
         emit("close");
+        router.push("/");
     } catch (err) {
         console.error(err);
 
@@ -97,7 +106,7 @@ const handleRegister = async () => {
             status: "success",
             message: "Đăng ký thành công!",
         });
-        
+
         const user = await getUserInfo();
         authStore.setUser(user.data); // Lưu thông tin người dùng vào store
         console.log("User info:", user.data);
@@ -159,12 +168,21 @@ const showLogin = () => {
     isRightPanelActive.value = false;
     resetFormLogin();
 };
+
+// ===== XỬ LÝ QUÊN MẬT KHẨU ===== //
+const showForgotPassword = () => {
+    showForgotPasswordForm.value = true;
+};
+
+const handleBackToLogin = () => {
+    showForgotPasswordForm.value = false;
+};
 </script>
 
 <template>
     <div class="modal-overlay" @click.self="$emit('close')">
         <div
-            v-if="!showRegisterInfoForm"
+            v-if="!showRegisterInfoForm && !showForgotPasswordForm"
             :class="['container', { 'right-panel-active': isRightPanelActive }]"
         >
             <!-- Đăng kí -->
@@ -254,7 +272,9 @@ const showLogin = () => {
 
                     <div class="content">
                         <div class="pass-link">
-                            <a href="#">Quên mật khẩu?</a>
+                            <a href="#" @click.prevent="showForgotPassword"
+                                >Quên mật khẩu?</a
+                            >
                         </div>
                     </div>
 
@@ -315,6 +335,13 @@ const showLogin = () => {
             @close="handleInfoFormClose"
             @update-success="handleInfoFormClose"
         />
+
+        <!-- Form quên mật khẩu -->
+        <ForgotPasswordModal
+            v-if="showForgotPasswordForm"
+            @close="$emit('close')"
+            @back-to-login="handleBackToLogin"
+        />
     </div>
 </template>
 
@@ -347,6 +374,7 @@ label {
     align-items: center;
     flex-direction: column;
     overflow: hidden;
+    z-index: 99999; /* Tăng z-index để đảm bảo hiển thị trên cùng */
 }
 
 /* Typography */
@@ -539,7 +567,7 @@ button.ghost:hover i.login {
 
 /* Form and container */
 form {
-    background-color: #fff;
+    background-color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -576,6 +604,7 @@ input:-webkit-autofill {
     width: 768px;
     max-width: 100%;
     min-height: 500px;
+    z-index: 9999;
 }
 
 .form-container {
@@ -639,7 +668,7 @@ input:-webkit-autofill {
     background-repeat: no-repeat;
     background-size: cover;
     background-position: 0 0;
-    color: #fff;
+    color: #ffffff;
     position: relative;
     left: -100%;
     width: 200%;
@@ -690,5 +719,34 @@ input:-webkit-autofill {
 }
 .container.right-panel-active .overlay-right {
     transform: translateX(20%);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .container {
+        min-height: auto;
+    }
+    .form-container,
+    .overlay-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        left: 0;
+    }
+    .login-container,
+    .register-container {
+        width: 100%;
+    }
+    .overlay-container {
+        display: none;
+    }
+    .container.right-panel-active .login-container {
+        transform: none;
+        opacity: 0;
+        z-index: 1;
+    }
+    .container.right-panel-active .register-container {
+        transform: none;
+    }
 }
 </style>

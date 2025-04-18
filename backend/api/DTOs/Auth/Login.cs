@@ -5,7 +5,6 @@ namespace api.DTOs.Auth
     public class Login
     {
         [Required(ErrorMessage = "Phone number is required")]
-        [Phone(ErrorMessage = "Invalid phone number")]
         [RegularExpression(@"^[0-9]{10}$", ErrorMessage = "Invalid phone number")]
         public string PhoneNumber { get; set; } = string.Empty;
 

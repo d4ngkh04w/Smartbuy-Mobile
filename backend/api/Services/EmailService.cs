@@ -23,18 +23,18 @@ namespace api.Services
             {
                 var email = new MimeMessage();
 
-                // Set sender info from configuration
+                // Thiết lập thông tin người gửi
                 email.From.Add(new MailboxAddress(
                     _config["EmailSettings:DisplayName"],
                     _config["EmailSettings:From"]));
 
-                // Set recipient
+                // Thiết lập người nhận
                 email.To.Add(MailboxAddress.Parse(to));
 
-                // Set email subject
+                // Thiết lập tiêu đề email
                 email.Subject = subject;
 
-                // Create email body
+                // Thiết lập nội dung email
                 var bodyBuilder = new BodyBuilder();
                 if (isHtml)
                 {
@@ -47,7 +47,7 @@ namespace api.Services
 
                 email.Body = bodyBuilder.ToMessageBody();
 
-                // Configure SMTP client
+                // Cấu hình SMTP client
                 using var smtp = new SmtpClient();
                 await smtp.ConnectAsync(
                     _config["EmailSettings:Host"],
@@ -58,7 +58,7 @@ namespace api.Services
                     _config["EmailSettings:Email"],
                     _config["EmailSettings:Password"]);
 
-                // Send email
+                // Gửi email
                 await smtp.SendAsync(email);
                 await smtp.DisconnectAsync(true);
 
@@ -81,7 +81,7 @@ namespace api.Services
                 var subject = "SmartBuy Mobile - Đặt Lại Mật Khẩu";
                 var builder = new StringBuilder();
 
-                // Create HTML email body with reset link
+                // Tạo nội dung email HTML
                 string htmlBody = $@"
                 <html>
                 <head>

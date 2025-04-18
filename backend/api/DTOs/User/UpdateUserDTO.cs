@@ -5,7 +5,7 @@ namespace api.DTOs.User
 {
     public class UpdateUserDTO
     {
-        [RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "Name can only contain letters and spaces")]
+        [RegularExpression(@"^[\p{L}\s]+$", ErrorMessage = "Name can only contain letters and spaces")]
         public string? Name { get; set; }
 
         [RegularExpression(@"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$", ErrorMessage = "Email is not valid")]
@@ -15,7 +15,6 @@ namespace api.DTOs.User
         public string? PhoneNumber { get; set; }
         public string? Address { get; set; }
 
-        [DataType(DataType.Upload)]
         [AllowFileExtension(extensions: [".jpg", ".jpeg", ".png"], ErrorMessage = "Logo must be a valid image (jpg, jpeg, png)")]
         public IFormFile? Avatar { get; set; }
 
