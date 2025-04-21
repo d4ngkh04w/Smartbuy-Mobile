@@ -19,8 +19,8 @@ namespace api.DTOs.Product
         public string? Description { get; set; }
         public bool? IsActive { get; set; }
 
-        [Range(1, int.MaxValue, ErrorMessage = "Category ID must be greater than 0")]
-        public int? CategoryId { get; set; }
+        [Range(1, int.MaxValue, ErrorMessage = "ProductLine ID must be greater than 0")]
+        public int? ProductLineId { get; set; }
         public string? Warranty { get; set; }
         public string? RAM { get; set; }
         public string? Storage { get; set; }

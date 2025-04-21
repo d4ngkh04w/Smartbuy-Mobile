@@ -42,14 +42,14 @@ namespace api.Repositories
                 brandsQuery = brandsQuery.Where(b => b.IsActive == query.IsActive);
             }
 
-            if (query.IncludeCategories)
+            if (query.IncludeProductLines)
             {
-                brandsQuery = brandsQuery.Include(b => b.Categories);
+                brandsQuery = brandsQuery.Include(b => b.ProductLines);
             }
 
             if (query.IncludeProducts)
             {
-                brandsQuery = brandsQuery.Include(b => b.Categories).ThenInclude(c => c.Products);
+                brandsQuery = brandsQuery.Include(b => b.ProductLines).ThenInclude(pl => pl.Products);
             }
 
             brandsQuery = query.SortBy.ToLower() switch
@@ -76,14 +76,14 @@ namespace api.Repositories
 
             var brandQuery = _db.Brands.AsQueryable();
 
-            if (query.IncludeCategories)
+            if (query.IncludeProductLines)
             {
-                brandQuery = brandQuery.Include(b => b.Categories);
+                brandQuery = brandQuery.Include(b => b.ProductLines);
             }
 
             if (query.IncludeProducts)
             {
-                brandQuery = brandQuery.Include(b => b.Categories).ThenInclude(c => c.Products);
+                brandQuery = brandQuery.Include(b => b.ProductLines).ThenInclude(pl => pl.Products);
             }
 
             return await brandQuery.FirstOrDefaultAsync(b => b.Id == id);

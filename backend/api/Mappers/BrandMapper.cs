@@ -1,4 +1,5 @@
 using api.DTOs.Brand;
+using api.DTOs.ProductLine;
 using api.Models;
 
 namespace api.Mappers
@@ -12,7 +13,7 @@ namespace api.Mappers
                 Id = brand.Id,
                 Name = brand.Name,
                 Logo = brand.Logo,
-                Categories = brand.Categories?.Select(c => c.ToDTO()).ToList()
+                ProductLines = brand.ProductLines?.Select(pl => pl.ToDTO()).ToList()
             };
         }
     }

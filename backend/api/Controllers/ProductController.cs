@@ -1,34 +1,33 @@
-using api.DTOs.Category;
+using api.DTOs.Product;
 using api.Interfaces.Services;
-using api.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers
 {
-    [Route("api/v1/category")]
+    [Route("api/v1/product")]
     [ApiController]
     [Authorize]
-    public class CategoryController : ControllerBase
+    public class ProductController : ControllerBase
     {
-        private readonly ICategoryService _categoryService;
+        private readonly IProductService _productService;
 
-        public CategoryController(ICategoryService categoryService)
+        public ProductController(IProductService productService)
         {
-            _categoryService = categoryService;
+            _productService = productService;
         }
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> GetCategories([FromQuery] CategoryQuery query)
+        public async Task<IActionResult> GetProducts()
         {
-            var result = await _categoryService.GetCategoriesAsync(query);
+            var result = await _productService.GetProductsAsync();
 
             if (!result.Success && result.ErrorMessage != null)
             {
                 return result.ErrorMessage switch
                 {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Categories not found" }),
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Products not found" }),
                     string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };
@@ -36,82 +35,82 @@ namespace api.Controllers
 
             return Ok(new
             {
-                Message = "Categories retrieved successfully",
-                Categories = result.Categories
+                Message = "Products retrieved successfully",
+                Products = result.Products
             });
         }
 
         [HttpGet("{id:int}")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetCategoryById([FromRoute] int id, [FromQuery] CategoryQuery query)
+        public async Task<IActionResult> GetProductById([FromRoute] int id)
         {
-            var result = await _categoryService.GetCategoryByIdAsync(id, query);
+            var result = await _productService.GetProductByIdAsync(id);
             if (!result.Success && result.ErrorMessage != null)
             {
                 return result.ErrorMessage switch
                 {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Category not found" }),
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Product not found" }),
                     string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };
             }
             return Ok(new
             {
-                Message = "Category retrieved successfully",
-                Category = result.Category
+                Message = "Product retrieved successfully",
+                Product = result.Product
             });
         }
 
         [HttpPost]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryDTO categoryDTO)
+        public async Task<IActionResult> CreateProduct([FromForm] CreateProductDTO productDTO)
         {
-            var result = await _categoryService.CreateCategoryAsync(categoryDTO);
+            var result = await _productService.CreateProductAsync(productDTO);
             if (!result.Success && result.ErrorMessage != null)
             {
                 return result.ErrorMessage switch
                 {
-                    string msg when msg.Contains("Already exists", StringComparison.OrdinalIgnoreCase) => Conflict(new { Message = result.ErrorMessage }),
                     string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    string msg when msg.Contains("Already exists", StringComparison.OrdinalIgnoreCase) => Conflict(new { Message = result.ErrorMessage }),
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };
             }
-            return CreatedAtAction(nameof(GetCategoryById),
-                            new { id = result.Category!.Id },
-                            new
-                            {
-                                Message = "Category created successfully",
-                                Category = result.Category
-                            });
+            return CreatedAtAction(nameof(GetProductById),
+                                new { id = result.Product!.Id },
+                                new
+                                {
+                                    Message = "Product created successfully",
+                                    Product = result.Product
+                                });
         }
 
         [HttpPut("{id:int}")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> UpdateCategory([FromRoute] int id, [FromBody] UpdateCategoryDTO categoryDTO)
+        public async Task<IActionResult> UpdateProduct([FromRoute] int id, [FromForm] UpdateProductDTO productDTO)
         {
-            var result = await _categoryService.UpdateCategoryAsync(id, categoryDTO);
+            var result = await _productService.UpdateProductAsync(id, productDTO);
             if (!result.Success && result.ErrorMessage != null)
             {
                 return result.ErrorMessage switch
                 {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Category not found" }),
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Product not found" }),
                     string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };
             }
-            return Ok(new { Message = "Category updated successfully" });
+            return Ok(new { Message = "Product updated successfully" });
         }
 
         [HttpDelete("{id:int}")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> DeleteCategory([FromRoute] int id)
+        public async Task<IActionResult> DeleteProduct(int id)
         {
-            var result = await _categoryService.DeleteCategoryAsync(id);
+            var result = await _productService.DeleteProductAsync(id);
             if (!result.Success && result.ErrorMessage != null)
             {
                 return result.ErrorMessage switch
                 {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Category not found" }),
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Product not found" }),
                     string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };
