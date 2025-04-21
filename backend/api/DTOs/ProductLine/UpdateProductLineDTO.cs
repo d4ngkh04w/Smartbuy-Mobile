@@ -1,0 +1,22 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace api.DTOs.ProductLine
+{
+    public class UpdateProductLineDTO
+    {
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Product line name must be between 2 and 100 characters")]
+        [RegularExpression(@"^[a-zA-Z0-9\s]+$", ErrorMessage = "Product line name can only contain letters, numbers, and spaces")]
+        public string? Name { get; set; } = string.Empty;
+
+        [StringLength(2000, ErrorMessage = "Description must be less than 2000 characters")]
+        public string? Description { get; set; } = string.Empty;
+
+        public string? Image { get; set; } = string.Empty;
+
+        public bool? IsActive { get; set; }
+
+        [Range(1, int.MaxValue, ErrorMessage = "Brand ID must be a positive integer")]
+        [RegularExpression(@"^\d+$", ErrorMessage = "Brand ID must be a positive integer")]
+        public int? BrandId { get; set; }
+    }
+}

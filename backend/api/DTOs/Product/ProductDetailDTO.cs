@@ -7,9 +7,11 @@ namespace api.DTOs.Product
         public string RAM { get; set; } = string.Empty;
         public string Storage { get; set; } = string.Empty;
         public string Processor { get; set; } = string.Empty;
+        public string OperatingSystem { get; set; } = string.Empty;
         public string ScreenSize { get; set; } = string.Empty;
         public string ScreenResolution { get; set; } = string.Empty;
         public string Battery { get; set; } = string.Empty;
         public int SimSlots { get; set; } = 0;
+       
     }
 }

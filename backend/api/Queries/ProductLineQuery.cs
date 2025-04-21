@@ -1,6 +1,6 @@
 namespace api.Queries
 {
-    public class CategoryQuery
+    public class ProductLineQuery
     {
         public bool IncludeProducts { get; set; } = false;
         public string SortBy { get; set; } = "Name";

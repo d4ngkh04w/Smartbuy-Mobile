@@ -35,11 +35,12 @@ namespace api.Models
 
         [Column(TypeName = "timestamp")]
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
-        public int? CategoryId { get; set; }
+        
+        public int ProductLineId { get; set; }
 
         [InverseProperty("Products")]
-        [ForeignKey(nameof(CategoryId))]
-        public Category? Category { get; set; } = null;
+        [ForeignKey(nameof(ProductLineId))]
+        public ProductLine? ProductLine { get; set; } = null;
 
         [InverseProperty("Product")]
         public ICollection<ProductColor> Colors { get; set; } = new HashSet<ProductColor>();
@@ -52,5 +53,8 @@ namespace api.Models
 
         [InverseProperty("Product")]
         public ProductDetail? Detail { get; set; } = null;
+        
+        [InverseProperty("Product")]
+        public ICollection<ProductTag> ProductTags { get; set; } = new HashSet<ProductTag>();
     }
 }
