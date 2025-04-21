@@ -5,9 +5,17 @@
     box-sizing: border-box;
 }
 
+:root {
+    --primary-color: #f86ed3;
+    --primary-hover: #e05cb6;
+    --secondary-color: #f86ed38d;
+    --background-color: #ffffff;
+    --text-color: #333;
+}
+
 body {
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    color: #333;
+    color: var(--text-color);
     line-height: 1.6;
 }
 
@@ -36,17 +44,17 @@ input:focus,
 select:focus,
 textarea:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: var(--primary-color);
 }
 
 a {
     text-decoration: none;
-    color: #3498db;
+    color: var(--primary-color);
     transition: color 0.3s;
 }
 
 a:hover {
-    color: #2980b9;
+    color: var(--primary-hover);
 }
 
 /* Buttons */
@@ -63,12 +71,12 @@ a:hover {
 }
 
 .btn-primary {
-    background-color: #3498db;
+    background-color: var(--primary-color);
     color: white;
 }
 
 .btn-primary:hover {
-    background-color: #2980b9;
+    background-color: var(--primary-hover);
 }
 
 .btn-danger {

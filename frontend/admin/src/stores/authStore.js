@@ -13,5 +13,9 @@ export const useAuthStore = defineStore("auth", {
         logout() {
             this.admin = null;
         },
+
+        isLoggedIn() {
+            return !!this.admin;
+        },
     },
 });
