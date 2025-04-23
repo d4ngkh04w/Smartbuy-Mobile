@@ -7,7 +7,6 @@ namespace api.Mappers
     {
         public static ProductColorDTO ToProductColorDTO(this ProductColor productColor)
         {
-
             return new ProductColorDTO
             {
                 Id = productColor.Id,
@@ -30,12 +29,13 @@ namespace api.Mappers
             return new ProductDetailDTO
             {
                 Id = productDetail.Id,
-                Warranty = productDetail.Warranty,
-                RAM = productDetail.RAM,
-                Storage = productDetail.Storage,
+                Warranty = productDetail.WarrantyMonths.ToString(),
+                RAM = productDetail.RAMInGB.ToString(),
+                Storage = productDetail.StorageInGB.ToString(),
                 Processor = productDetail.Processor,
-                ScreenSize = productDetail.ScreenSize,
-                Battery = productDetail.Battery,
+                OperatingSystem = productDetail.OperatingSystem,
+                ScreenSize = productDetail.ScreenSizeInch.ToString(),
+                Battery = productDetail.BatteryCapacityMAh.ToString(),
                 SimSlots = productDetail.SimSlots,
                 ScreenResolution = productDetail.ScreenResolution,
             };
@@ -49,19 +49,21 @@ namespace api.Mappers
                 Name = product.Name,
                 Quantity = product.Quantity,
                 SalePrice = product.SalePrice,
-                Description = product.Description,
+                Description = product.Description ?? string.Empty,
                 Rating = product.Rating,
                 RatingCount = product.RatingCount,
                 Sold = product.Sold,
                 IsActive = product.IsActive,
                 CreatedAt = product.CreatedAt,
-                UpdatedAt = product.UpdatedAt,
-                CategoryId = product.CategoryId,
-                CategoryName = product.Category?.Name ?? string.Empty,
+                UpdatedAt = product.UpdatedAt ?? DateTime.Now,
+                ProductLineId = product.ProductLineId,
+                ProductLineName = product.ProductLine?.Name ?? string.Empty,
 
                 Colors = product.Colors.Select(c => c.ToProductColorDTO()).ToHashSet(),
                 Images = product.Images.Select(i => i.ToProductImageDTO()).ToHashSet(),
                 Detail = product.Detail?.ToProductDetailDTO(),
+                // Add tags when implementing tag functionality
+                // Tags = product.ProductTags.Select(pt => pt.Tag).ToHashSet()
             };
         }
 
@@ -74,30 +76,30 @@ namespace api.Mappers
                 ImportPrice = productDTO.ImportPrice,
                 SalePrice = productDTO.SalePrice,
                 Description = productDTO.Description,
-                CategoryId = productDTO.CategoryId,
+                ProductLineId = productDTO.ProductLineId,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now,
                 IsActive = true,
                 Rating = 0,
                 RatingCount = 0,
                 Sold = 0,
-
             };
         }
+
         public static ProductDetail ToProductDetailModel(this CreateProductDTO productDTO)
         {
             return new ProductDetail
             {
-                Warranty = productDTO.Warranty,
-                RAM = productDTO.RAM,
-                Storage = productDTO.Storage,
+                WarrantyMonths = productDTO.Warranty,
+                RAMInGB = productDTO.RAM,
+                StorageInGB = productDTO.Storage,
                 Processor = productDTO.Processor,
-                ScreenSize = productDTO.ScreenSize,
-                Battery = productDTO.Battery,
+                OperatingSystem = productDTO.OS,
+                ScreenSizeInch = productDTO.ScreenSize,
+                BatteryCapacityMAh = productDTO.Battery,
                 SimSlots = productDTO.SimSlots,
                 ScreenResolution = productDTO.ScreenResolution,
             };
         }
     }
-
 }

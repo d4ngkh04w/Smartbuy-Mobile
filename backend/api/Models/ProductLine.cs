@@ -4,10 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace api.Models
 {
-    // Many - 1 relationship with Brand
-    [Table("categories")]
+    [Table("product_lines")]
     [Index(nameof(Name), nameof(BrandId), IsUnique = true)]
-    public class Category
+    public class ProductLine
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -16,13 +15,28 @@ namespace api.Models
         [Column(TypeName = "varchar(100)")]
         public string Name { get; set; } = string.Empty;
 
+        [Column(TypeName = "text")]
+        public string? Description { get; set; } = string.Empty;
+
+        [Column(TypeName = "varchar(255)")]
+        public string Image { get; set; } = string.Empty;
+
+        [Column(TypeName = "bit")]
+        public bool IsActive { get; set; } = true;
+
+        [Column(TypeName = "timestamp")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column(TypeName = "timestamp")]
+        public DateTime? UpdatedAt { get; set; }
+
         public int BrandId { get; set; }
 
         [ForeignKey(nameof(BrandId))]
-        [InverseProperty("Categories")]
+        [InverseProperty("ProductLines")]
         public Brand? Brand { get; set; } = null;
 
-        [InverseProperty("Category")]
+        [InverseProperty("ProductLine")]
         public ICollection<Product> Products { get; set; } = new HashSet<Product>();
     }
 }

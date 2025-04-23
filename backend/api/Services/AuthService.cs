@@ -94,7 +94,7 @@ namespace api.Services
         {
             try
             {
-                // Validate Google token
+                // Xác thực token Google
                 var payload = await GoogleJsonWebSignature.ValidateAsync(dto.Token, new GoogleJsonWebSignature.ValidationSettings
                 {
                     Audience = new List<string> { _googleClientId },
@@ -105,17 +105,11 @@ namespace api.Services
                     return (false, "Invalid Google token", null);
                 }
 
-                // Validate that email from token matches provided email
-                if (payload.Email != dto.Email)
-                {
-                    return (false, "Email from token doesn't match provided email", null);
-                }
-
-                // Find or create user
+                // Kiểm tra xem người dùng đã tồn tại trong hệ thống chưa
                 var user = await _userRepository.GetUserByEmailAsync(payload.Email);
                 if (user == null)
                 {
-                    // Create new user with Google account
+                    // Tao người dùng mới nếu chưa tồn tại
                     user = new User
                     {
                         PhoneNumber = string.Empty,
@@ -133,11 +127,10 @@ namespace api.Services
                     return (false, $"Your account does not have access as a '{role}'", null);
                 }
 
-                // Generate authentication tokens
+                // Tạo token xác thực
                 var token = _tokenService.CreateToken(user, role);
                 var refreshToken = await _tokenService.GenerateRefreshToken(user);
 
-                // Update last login time
                 user.LastLogin = DateTime.Now;
                 await _userRepository.UpdateUserAsync(user);
 
@@ -159,14 +152,14 @@ namespace api.Services
                     return (true, null);
                 }
 
-                // Generate a password reset token and set expiry
+                // Xác thực token reset mật khẩu và thiết lập thời gian hết hạn
                 var resetToken = _tokenService.GeneratePasswordResetToken();
                 Console.WriteLine($"[INF] Password reset token: {resetToken}"); // For debugging purposes
                 user.PasswordResetToken = resetToken;
                 user.PasswordResetTokenExpiry = DateTime.Now.AddMinutes(5);
                 await _userRepository.UpdateUserAsync(user);
 
-                // Send password reset email with the token
+                // Gửi email reset mật khẩu với token
                 var emailSent = await _emailService.SendPasswordResetEmailAsync(user.Email, resetToken);
 
                 if (!emailSent)
@@ -186,27 +179,28 @@ namespace api.Services
         {
             try
             {
-                // Find user by email
                 var user = await _userRepository.GetUserByEmailAsync(resetPasswordDto.Email);
                 if (user == null)
                 {
+                    // Không trả về thông báo lỗi nếu người dùng không tồn tại
+                    // để tránh lộ thông tin người dùng
                     return (false, "Invalid reset request");
                 }
 
-                // Validate reset token
+                // Xác thực token reset mật khẩu và thiết lập thời gian hết hạn
                 if (user.PasswordResetToken != resetPasswordDto.Token)
                 {
                     return (false, "Invalid reset token");
                 }
 
-                // Check if token is expired
+                // Kiểm tra thời gian hết hạn của token
                 if (user.PasswordResetTokenExpiry == null ||
                     !_tokenService.ValidatePasswordResetToken(resetPasswordDto.Token, user.PasswordResetTokenExpiry.Value))
                 {
                     return (false, "Password reset token has expired");
                 }
 
-                // Update user's password and clear reset token
+                // Cập nhật mật khẩu của người dùng và xóa token reset
                 user.Password = BCrypt.Net.BCrypt.HashPassword(resetPasswordDto.Password);
                 user.PasswordResetToken = null;
                 user.PasswordResetTokenExpiry = null;

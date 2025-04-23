@@ -25,7 +25,7 @@ namespace api.Services
                     return (false, "User not found");
                 }
 
-                // Delete user avatar image if it exists
+                // Xóa ảnh đại diện của người dùng nếu tồn tại
                 if (!string.IsNullOrEmpty(user.Avatar))
                 {
                     var path = Directory.GetCurrentDirectory() + user.Avatar;
@@ -92,7 +92,7 @@ namespace api.Services
                     return (false, "User not found");
                 }
 
-                // Validate email uniqueness
+                // Xác thực tính duy nhất của email
                 if (!string.IsNullOrEmpty(userDTO.Email) && userDTO.Email != user.Email)
                 {
                     var emailExists = await _userRepository.UserExistsByEmailAsync(userDTO.Email);
@@ -102,7 +102,7 @@ namespace api.Services
                     }
                 }
 
-                // Validate phone uniqueness
+                // Xác thực tính duy nhất của số điện thoại
                 if (!string.IsNullOrEmpty(userDTO.PhoneNumber) && userDTO.PhoneNumber != user.PhoneNumber)
                 {
                     var phoneExists = await _userRepository.UserExistsByPhoneNumberAsync(userDTO.PhoneNumber);
@@ -112,17 +112,17 @@ namespace api.Services
                     }
                 }
 
-                // Update user properties
+                // Cập nhật thông tin người dùng
                 user.Name = userDTO.Name ?? user.Name;
                 user.Email = userDTO.Email ?? user.Email;
                 user.PhoneNumber = userDTO.PhoneNumber ?? user.PhoneNumber;
                 user.Address = userDTO.Address ?? user.Address;
                 user.Gender = userDTO.Gender ?? user.Gender;
 
-                // Handle avatar update
+                // Xử lý cập nhật ảnh đại diện
                 if (userDTO.Avatar != null)
                 {
-                    // Delete old avatar if exists
+                    // Xóa ảnh đại diện cũ nếu tồn tại
                     if (!string.IsNullOrEmpty(user.Avatar))
                     {
                         var path = Directory.GetCurrentDirectory() + user.Avatar;
@@ -136,7 +136,7 @@ namespace api.Services
                         }
                     }
 
-                    // Save new avatar
+                    // Lưu ảnh đại diện mới
                     var saveImg = await ImageHelper.SaveImageAsync(userDTO.Avatar, "users", 15 * 1024 * 1024);
                     if (!saveImg.Success)
                     {

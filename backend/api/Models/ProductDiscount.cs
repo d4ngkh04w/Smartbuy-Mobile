@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace api.Models
@@ -5,7 +6,10 @@ namespace api.Models
     [Table("product_discounts")]
     public class ProductDiscount
     {
+        [Key]
         public int ProductId { get; set; }
+
+        [Key]
         public int DiscountId { get; set; }
 
         [InverseProperty("Discounts")]

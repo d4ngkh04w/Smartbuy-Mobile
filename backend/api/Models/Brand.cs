@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace api.Models
 {
-    // 1 - Many relationship with Category
+    // 1 - Many relationship with ProductLine
     [Table("brands")]
     [Index(nameof(Name), IsUnique = true)]
     public class Brand
@@ -23,6 +23,6 @@ namespace api.Models
         public bool IsActive { get; set; } = true;
 
         [InverseProperty("Brand")]
-        public ICollection<Category> Categories { get; set; } = new HashSet<Category>();
+        public ICollection<ProductLine> ProductLines { get; set; } = new HashSet<ProductLine>();
     }
 }

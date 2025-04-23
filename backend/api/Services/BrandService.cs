@@ -56,10 +56,6 @@ namespace api.Services
                 if (brand == null)
                     return (false, "Brand not found");
 
-                var deleted = ImageHelper.DeleteImage(Directory.GetCurrentDirectory() + brand.Logo);
-                if (!deleted)
-                    return (false, "Error deleting brand logo");
-
                 await _repo.DeleteBrandAsync(brand);
 
                 return (true, null);

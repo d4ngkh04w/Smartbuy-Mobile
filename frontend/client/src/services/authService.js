@@ -35,6 +35,18 @@ export const logout = async () => {
     return await axios.post("/auth/logout");
 };
 
+// Gửi yêu cầu quên mật khẩu
+export const forgotPassword = async (email) => {
+    const response = await axios.post("/auth/forgot-password", { email });
+    return response.data.message;
+};
+
+// Đặt lại mật khẩu với token từ email
+export const resetPassword = async (resetData) => {
+    const response = await axios.post("/auth/reset-password", resetData);
+    return response.data.message;
+};
+
 // Cập nhật thông tin profile người dùng
 export const updateUserProfile = async (userInfo) => {
     // Sử dụng FormData để hỗ trợ upload file (avatar)
