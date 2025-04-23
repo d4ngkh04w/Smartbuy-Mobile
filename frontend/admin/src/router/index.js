@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { useAuthStore } from "../stores/authStore.js"; // Import at the top level but don't use it yet
-
+import { authService } from "../services/authService.js";
 const routes = [
     {
         path: "/login",
@@ -18,7 +17,7 @@ const routes = [
         name: "reports",
         component: () => import("../views/ReportsPage.vue"),
         meta: { requiresAuth: true },
-    },   
+    },
     {
         path: "/accounts",
         name: "accounts",
@@ -47,25 +46,51 @@ const router = createRouter({
         }
     },
 });
-
-// Navigation guard
-router.beforeEach((to, from, next) => {
-    // Get the auth store instance when the guard runs
-    const authStore = useAuthStore();
-
-    const admin = authStore.admin;
+router.beforeEach(async (to, from, next) => {
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
 
-    // Nếu route yêu cầu xác thực và chưa đăng nhập, chuyển hướng đến trang đăng nhập
-    if (requiresAuth && !admin) {
-        next("/login");
-    }
-    // Nếu đã đăng nhập và đang cố truy cập trang login, chuyển hướng đến dashboard
-    else if (to.path === "/login" && admin) {
-        next("/dashboard");
-    }
-    // Các trường hợp khác, cho phép truy cập
-    else {
+    if (requiresAuth) {
+        try {
+            // Kiểm tra xác thực người dùng
+            await authService.getMe();
+
+            // Nếu đã xác thực và đang cố truy cập trang login, chuyển hướng về dashboard
+            if (to.path === "/login") {
+                next("/dashboard");
+            } else {
+                next();
+            }
+        } catch (error) {
+            // Nếu là lỗi 401, thiết lập biến cờ để biết rằng đang xử lý refresh token
+            if (error.response?.status === 401) {
+                // Không làm gì cả và cho phép tiếp tục điều hướng
+                // Axios interceptor sẽ tự động xử lý việc refresh token
+
+                // Kiểm tra xem có cờ đánh dấu lỗi refresh token không
+                if (localStorage.getItem("token_refresh_failed")) {
+                    // Nếu đã có lỗi refresh token trước đó, xóa cờ và chuyển hướng đến trang login
+                    localStorage.removeItem("token_refresh_failed");
+                    if (to.path !== "/login") {
+                        next("/login");
+                    } else {
+                        next();
+                    }
+                } else {
+                    // Cho phép tiếp tục điều hướng, axios interceptor sẽ xử lý refresh token
+                    next();
+                }
+            } else {
+                // Nếu là lỗi khác (không phải 401), chuyển hướng đến trang login
+                console.log("Lỗi xác thực không phải 401:", error);
+                if (to.path !== "/login") {
+                    next("/login");
+                } else {
+                    next();
+                }
+            }
+        }
+    } else {
+        // Tiếp tục nếu không cần xác thực
         next();
     }
 });

@@ -10,8 +10,7 @@ const authStore = useAuthStore();
 
 const handleLogout = async () => {
     try {
-        await logout();
-        authStore.logout();
+        await logout();       
         router.push("/login");
 
         emitter.emit("show-notification", {
@@ -29,9 +28,7 @@ const handleLogout = async () => {
 
 onMounted(() => {
     // Kiểm tra xem người dùng đã đăng nhập hay chưa
-    if (!authStore.isLoggedIn()) {
-        router.push("/login");
-    }
+    
 });
 </script>
 

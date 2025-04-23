@@ -79,6 +79,7 @@ builder.Services.AddAuthentication(
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsJsonAsync(new { Message = "Authentication failed" });
+                
             },
             // Khi cố gắng truy cập vào một endpoint yêu cầu xác thực nhưng không có token hoặc token không hợp lệ
             OnChallenge = async context =>
