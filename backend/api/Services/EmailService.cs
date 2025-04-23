@@ -75,7 +75,7 @@ namespace api.Services
         {
             try
             {
-                var frontendUrl = "http://localhost:4000";
+                var frontendUrl = "http://localhost:3000";
                 var resetUrl = $"{frontendUrl}/reset-password?token={resetToken}&email={Uri.EscapeDataString(email)}";
 
                 var subject = "SmartBuy Mobile - Đặt Lại Mật Khẩu";

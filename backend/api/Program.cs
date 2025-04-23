@@ -25,7 +25,7 @@ builder.Services.AddDbContext<AppDBContext>(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
-        policy => policy.WithOrigins(["http://localhost:4000", "http://localhost:5000"])
+        policy => policy.WithOrigins(["http://localhost:3000", "http://localhost:4000"])
                         .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .AllowAnyHeader()
                         .AllowCredentials());
@@ -113,7 +113,7 @@ builder.Services.AddRateLimiter(options =>
             return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
             {
                 Window = TimeSpan.FromSeconds(20),
-                PermitLimit = 10,
+                PermitLimit = 6,
                 SegmentsPerWindow = 5,
                 QueueLimit = 0,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
