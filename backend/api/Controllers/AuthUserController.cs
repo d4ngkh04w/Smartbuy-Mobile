@@ -115,5 +115,15 @@ namespace api.Controllers
 
             return Unauthorized(new { Message = message });
         }
+
+        [HttpGet("verify")]
+        [Authorize(Roles = "user")]
+        public IActionResult VerifyToken()
+        {
+            return Ok(new
+            {
+                Message = "Token is valid",
+            });
+        }
     }
 }

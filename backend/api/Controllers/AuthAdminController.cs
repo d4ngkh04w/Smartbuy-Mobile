@@ -82,37 +82,14 @@ namespace api.Controllers
             return Unauthorized(new { Message = result.ErrorMessage });
         }
 
-        [HttpPost("google-login")]
-        [AllowAnonymous]
-        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLogin dto)
+        [HttpGet("verify")]
+        [Authorize(Roles = "admin")]
+        public IActionResult VerifyToken()
         {
-            var (success, message, token) = await _authService.LoginWithGoogleAsync(dto, "admin");
-            if (success)
+            return Ok(new
             {
-                Response.Cookies.Append("token", token!.Token, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
-                });
-                Response.Cookies.Append("refreshToken", token!.RefreshToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
-                });
-
-                return Ok(new
-                {
-                    Message = message,
-                });
-            }
-
-            return Unauthorized(new { Message = message });
+                Message = "Token is valid",
+            });
         }
     }
 }

@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Http;
 
 namespace api.DTOs.Product
 {
@@ -60,6 +59,7 @@ namespace api.DTOs.Product
         [StringLength(100, ErrorMessage = "Processor must be less than 100 characters")]
         public string Processor { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "Sim slots are required")]
         [Range(1, 4, ErrorMessage = "Sim slots must be between 1 and 4")]
         public int SimSlots { get; set; } = 1;
 
