@@ -30,7 +30,7 @@
       },
       height: {
         type: String,
-        default: '300px'
+        default: '250px'
       }
     })
     const handleAddToCart = () => {
@@ -44,7 +44,7 @@
   
 <style scoped>
     .product-card {
-      width: 240px;
+      width: 200px;
       height: var(--height);
       border-radius: 10px;
       background-color: var(--card-bg);
@@ -58,7 +58,7 @@
     }
     .product-img {
       width: 100%;
-      height: 200px;
+      height: 150px;
       object-fit: cover;
     }
     .product-info {

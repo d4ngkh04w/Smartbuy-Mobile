@@ -13,10 +13,8 @@
 </template>
 
 <script setup>
+console.log('Pagination component loaded');
   import { ref, onMounted, computed } from 'vue'
-  import { max, min } from 'lodash-es'
-  import { defineEmits, defineProps } from 'vue';
-
   const emit = defineEmits(['pageChanged'])
   const changePage = (page) => {
     if(page >=1 && page <= totalPages.value){
@@ -28,11 +26,13 @@
     pageSize: Number,
     totalProducts: Number,
   })
-  totalPages = computed(() => Math.ceil(totalProducts / pageSize));
-  displayPages = computed(() =>{
+console.log('Props:', props);
+
+  const totalPages = computed(() => Math.ceil(props.totalProducts / props.pageSize));
+  const displayPages = computed(() => {
     const pages = []
-    const start = max(1, currentPage - 1)
-    const end = min(totalPages, currentPage + 2);
+    const start = Math.max(1, props.currentPage - 1)
+    const end = Math.min(totalPages.value, props.currentPage + 2); // Fixed: Use totalPages.value
     for(let i = start; i <= end; i++){
       pages.push(i)
     }
