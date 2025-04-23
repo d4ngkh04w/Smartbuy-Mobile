@@ -22,7 +22,7 @@ namespace api.Models
         public decimal SalePrice { get; set; }
 
         [Column(TypeName = "text")]
-        public string Description { get; set; } = string.Empty;
+        public string? Description { get; set; }
 
         [Column(TypeName = "decimal(2, 1)")]
         public decimal Rating { get; set; }
@@ -34,8 +34,8 @@ namespace api.Models
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         [Column(TypeName = "timestamp")]
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
-        
+        public DateTime? UpdatedAt { get; set; }
+
         public int ProductLineId { get; set; }
 
         [InverseProperty("Products")]
@@ -53,7 +53,7 @@ namespace api.Models
 
         [InverseProperty("Product")]
         public ProductDetail? Detail { get; set; } = null;
-        
+
         [InverseProperty("Product")]
         public ICollection<ProductTag> ProductTags { get; set; } = new HashSet<ProductTag>();
     }

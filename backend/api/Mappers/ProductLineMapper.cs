@@ -11,12 +11,10 @@ namespace api.Mappers
             {
                 Name = createProductLineDTO.Name,
                 Description = createProductLineDTO.Description,
-                Image = createProductLineDTO.Image,
                 BrandId = createProductLineDTO.BrandId,
                 IsActive = true,
                 CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now,
-                Products = new HashSet<Product>()
+                Products = new HashSet<Product>(),
             };
         }
 
@@ -26,7 +24,7 @@ namespace api.Mappers
             {
                 Id = productLine.Id,
                 Name = productLine.Name,
-                Description = productLine.Description,
+                Description = productLine.Description ?? string.Empty,
                 Image = productLine.Image,
                 IsActive = productLine.IsActive,
                 BrandName = productLine.Brand?.Name ?? string.Empty,

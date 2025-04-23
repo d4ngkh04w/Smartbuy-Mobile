@@ -4,7 +4,6 @@ using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
 using api.Models;
-using Microsoft.AspNetCore.Hosting;
 
 namespace api.Services
 {
@@ -24,16 +23,16 @@ namespace api.Services
             try
             {
                 var products = await _productRepository.GetAllAsync();
-                
+
                 if (!products.Any())
                     return (false, "Products not found", null);
 
                 var productDTOs = products.Select(p => p.ToProductDTO()).ToList();
                 return (true, null, productDTOs);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error retrieving products: {ex.Message}", null);
+                return (false, $"Error retrieving products", null);
             }
         }
 
@@ -42,16 +41,16 @@ namespace api.Services
             try
             {
                 var product = await _productRepository.GetByIdAsync(id);
-                
+
                 if (product == null)
                     return (false, "Product not found", null);
 
                 var productDTO = product.ToProductDTO();
                 return (true, null, productDTO);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error retrieving product: {ex.Message}", null);
+                return (false, $"Error retrieving product", null);
             }
         }
 
@@ -65,7 +64,7 @@ namespace api.Services
 
                 // Create new product model from DTO
                 var product = productDTO.ToProductModel();
-                
+
                 // Add product details
                 product.Detail = productDTO.ToProductDetailModel();
 
@@ -84,18 +83,15 @@ namespace api.Services
                 // Add images
                 if (productDTO.Images != null && productDTO.Images.Any())
                 {
-                    var uploadPath = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "products", createdProduct.Id.ToString());
-                    
-                    if (!Directory.Exists(uploadPath))
-                        Directory.CreateDirectory(uploadPath);
-
                     foreach (var image in productDTO.Images)
                     {
-                        var fileName = await ImageHelper.SaveImageAsync(image, uploadPath, 5 * 1024 * 1024); // 5 MB max size
-                        var imagePath = $"/uploads/products/{createdProduct.Id}/{fileName}";
-                        product.Images.Add(new ProductImage { ImagePath = imagePath, IsMain = product.Images.Count == 0 });
+                        var res = await ImageHelper.SaveImageAsync(image, "products", 5 * 1024 * 1024); // 5 MB max size
+                        if (!res.Success)
+                            return (false, res.ErrorMessage, null);
+
+                        product.Images.Add(new ProductImage { ImagePath = res.FilePath!, IsMain = product.Images.Count == 0 });
                     }
-                    
+
                     // Update product with images
                     await _productRepository.UpdateAsync(product);
                 }
@@ -103,9 +99,9 @@ namespace api.Services
                 var result = await _productRepository.GetByIdAsync(createdProduct.Id);
                 return (true, null, result!.ToProductDTO());
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error creating product: {ex.Message}", null);
+                return (false, $"Error creating product", null);
             }
         }
 
@@ -114,29 +110,29 @@ namespace api.Services
             try
             {
                 var product = await _productRepository.GetByIdAsync(id);
-                
+
                 if (product == null)
                     return (false, "Product not found");
 
                 // Update basic info
                 if (!string.IsNullOrEmpty(productDTO.Name))
                     product.Name = productDTO.Name;
-                
+
                 if (productDTO.Quantity.HasValue)
                     product.Quantity = productDTO.Quantity.Value;
-                
+
                 if (productDTO.ImportPrice.HasValue)
                     product.ImportPrice = productDTO.ImportPrice.Value;
-                
+
                 if (productDTO.SalePrice.HasValue)
                     product.SalePrice = productDTO.SalePrice.Value;
-                
+
                 if (!string.IsNullOrEmpty(productDTO.Description))
                     product.Description = productDTO.Description;
-                
+
                 if (productDTO.IsActive.HasValue)
                     product.IsActive = productDTO.IsActive.Value;
-                
+
                 if (productDTO.ProductLineId.HasValue)
                     product.ProductLineId = productDTO.ProductLineId.Value;
 
@@ -145,25 +141,28 @@ namespace api.Services
                 {
                     if (!string.IsNullOrEmpty(productDTO.Warranty))
                         product.Detail.WarrantyMonths = int.Parse(productDTO.Warranty);
-                    
+
                     if (!string.IsNullOrEmpty(productDTO.RAM))
                         product.Detail.RAMInGB = int.Parse(productDTO.RAM);
-                    
+
                     if (!string.IsNullOrEmpty(productDTO.Storage))
                         product.Detail.StorageInGB = int.Parse(productDTO.Storage);
-                    
+
                     if (!string.IsNullOrEmpty(productDTO.ScreenSize))
                         product.Detail.ScreenSizeInch = decimal.Parse(productDTO.ScreenSize);
-                    
+
                     if (!string.IsNullOrEmpty(productDTO.ScreenResolution))
                         product.Detail.ScreenResolution = productDTO.ScreenResolution;
-                    
+
                     if (!string.IsNullOrEmpty(productDTO.Battery))
                         product.Detail.BatteryCapacityMAh = int.Parse(productDTO.Battery);
-                    
+
+                    if (!string.IsNullOrEmpty(productDTO.OS))
+                        product.Detail.OperatingSystem = productDTO.OS;
+
                     if (!string.IsNullOrEmpty(productDTO.Processor))
                         product.Detail.Processor = productDTO.Processor;
-                    
+
                     if (productDTO.SimSlots.HasValue)
                         product.Detail.SimSlots = productDTO.SimSlots.Value;
                 }
@@ -181,15 +180,10 @@ namespace api.Services
                 // Add new images
                 if (productDTO.AddImages != null && productDTO.AddImages.Any())
                 {
-                    var uploadPath = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "products", product.Id.ToString());
-                    
-                    if (!Directory.Exists(uploadPath))
-                        Directory.CreateDirectory(uploadPath);
-
                     foreach (var image in productDTO.AddImages)
                     {
-                        var fileName = await ImageHelper.SaveImageAsync(image, uploadPath, 5 * 1024 * 1024); // 5 MB max size
-                        var imagePath = $"/uploads/products/{product.Id}/{fileName}";
+                        var fileName = await ImageHelper.SaveImageAsync(image, "products", 5 * 1024 * 1024); // 5 MB max size
+                        var imagePath = $"/uploads/products/{fileName}";
                         product.Images.Add(new ProductImage { ImagePath = imagePath, IsMain = false });
                     }
                 }
@@ -203,10 +197,6 @@ namespace api.Services
                         if (image != null)
                         {
                             product.Images.Remove(image);
-                            // Delete physical file
-                            var filePath = Path.Combine(_webHostEnvironment.WebRootPath, image.ImagePath.TrimStart('/'));
-                            if (File.Exists(filePath))
-                                File.Delete(filePath);
                         }
                     }
                 }
@@ -225,9 +215,9 @@ namespace api.Services
                 var result = await _productRepository.UpdateAsync(product);
                 return result ? (true, null) : (false, "Error updating product");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error updating product: {ex.Message}");
+                return (false, $"Error updating product");
             }
         }
 
@@ -241,9 +231,9 @@ namespace api.Services
                 var result = await _productRepository.DeleteAsync(id);
                 return result ? (true, null) : (false, "Error deleting product");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error deleting product: {ex.Message}");
+                return (false, $"Error deleting product");
             }
         }
     }

@@ -64,7 +64,7 @@ namespace api.Controllers
 
         [HttpPost]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> CreateProductLine([FromBody] CreateProductLineDTO productLineDTO)
+        public async Task<IActionResult> CreateProductLine([FromForm] CreateProductLineDTO productLineDTO)
         {
             var result = await _productLineService.CreateProductLineAsync(productLineDTO);
             if (!result.Success && result.ErrorMessage != null)
@@ -87,7 +87,7 @@ namespace api.Controllers
 
         [HttpPut("{id:int}")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> UpdateProductLine([FromRoute] int id, [FromBody] UpdateProductLineDTO productLineDTO)
+        public async Task<IActionResult> UpdateProductLine([FromRoute] int id, [FromForm] UpdateProductLineDTO productLineDTO)
         {
             var result = await _productLineService.UpdateProductLineAsync(id, productLineDTO);
             if (!result.Success && result.ErrorMessage != null)

@@ -1,8 +1,8 @@
 using api.DTOs.ProductLine;
+using api.Helpers;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
-using api.Models;
 using api.Queries;
 
 namespace api.Services
@@ -26,14 +26,22 @@ namespace api.Services
                     return (false, "Product line already exists", null);
                 }
 
-                ProductLine productLine = productLineDTO.ToModel();
+                var result = await ImageHelper.SaveImageAsync(productLineDTO.Image, "product-lines", 5 * 1024 * 1024);
+
+                if (!result.Success)
+                {
+                    return (false, result.ErrorMessage, null);
+                }
+
+                var productLine = productLineDTO.ToModel();
+                productLine.Image = result.FilePath!;
                 var createdProductLine = await _productLineRepository.CreateProductLineAsync(productLine);
-                
+
                 return (true, null, createdProductLine.ToDTO());
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error creating product line: {ex.Message}", null);
+                return (false, $"Error creating product line", null);
             }
         }
 
@@ -50,9 +58,9 @@ namespace api.Services
                 await _productLineRepository.DeleteProductLineAsync(productLine);
                 return (true, null);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error deleting product line: {ex.Message}");
+                return (false, $"Error deleting product line");
             }
         }
 
@@ -65,12 +73,12 @@ namespace api.Services
                 {
                     return (false, "Product line not found", null);
                 }
-                
+
                 return (true, null, productLine.ToDTO());
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error retrieving product line: {ex.Message}", null);
+                return (false, $"Error retrieving product line", null);
             }
         }
 
@@ -83,12 +91,12 @@ namespace api.Services
                 {
                     return (false, "No product lines found", null);
                 }
-                
+
                 return (true, null, productLines.Select(pl => pl.ToDTO()));
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error retrieving product lines: {ex.Message}", null);
+                return (false, $"Error retrieving product lines", null);
             }
         }
 
@@ -113,11 +121,6 @@ namespace api.Services
                     productLine.Description = productLineDTO.Description;
                 }
 
-                if (!string.IsNullOrEmpty(productLineDTO.Image))
-                {
-                    productLine.Image = productLineDTO.Image;
-                }
-
                 if (productLineDTO.IsActive.HasValue)
                 {
                     productLine.IsActive = productLineDTO.IsActive.Value;
@@ -126,6 +129,24 @@ namespace api.Services
                 if (productLineDTO.BrandId.HasValue)
                 {
                     productLine.BrandId = productLineDTO.BrandId.Value;
+                }
+
+                if (productLineDTO.Image != null)
+                {
+                    var res = await ImageHelper.SaveImageAsync(productLineDTO.Image, "product-lines", 5 * 1024 * 1024);
+                    if (!res.Success)
+                    {
+                        return (false, res.ErrorMessage);
+                    }
+
+                    // Delete the old image
+                    var deleted = ImageHelper.DeleteImage(Directory.GetCurrentDirectory() + "wwwroot" + productLine.Image);
+                    if (!deleted)
+                    {
+                        return (false, "Error deleting old image");
+                    }
+
+                    productLine.Image = res.FilePath!;
                 }
 
                 productLine.UpdatedAt = DateTime.Now;
@@ -138,9 +159,9 @@ namespace api.Services
 
                 return (true, null);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error updating product line: {ex.Message}");
+                return (false, $"Error updating product line");
             }
         }
     }

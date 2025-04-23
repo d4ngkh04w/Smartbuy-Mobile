@@ -15,9 +15,6 @@ namespace api.Models
         [Column(TypeName = "varchar(50)")]
         public string Name { get; set; } = string.Empty;
 
-        [Column(TypeName = "varchar(100)")]
-        public string Description { get; set; } = string.Empty;
-
         [InverseProperty("Tag")]
         public ICollection<ProductTag> ProductTags { get; set; } = new HashSet<ProductTag>();
     }

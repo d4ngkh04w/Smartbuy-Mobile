@@ -76,16 +76,6 @@ namespace api.Controllers
             return BadRequest(new { Message = result.ErrorMessage });
         }
 
-        [HttpGet("verify")]
-        public IActionResult VerifyToken()
-        {
-            return Ok(new
-            {
-                Message = "Token is valid",
-                IsAuthenticated = true
-            });
-        }
-
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDTO forgotPasswordDto)

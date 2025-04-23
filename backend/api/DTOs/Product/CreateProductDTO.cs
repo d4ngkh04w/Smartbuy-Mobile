@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Http;
+using api.Extensions;
 
 namespace api.DTOs.Product
 {
@@ -7,6 +7,7 @@ namespace api.DTOs.Product
     {
         [Required(ErrorMessage = "Name is required")]
         [StringLength(100, ErrorMessage = "Name must be less than 100 characters")]
+        [RegularExpression(@"^[a-zA-Z0-9\s]+$", ErrorMessage = "Name can only contain letters, numbers, and spaces")]
         public string Name { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Quantity is required")]
@@ -22,7 +23,7 @@ namespace api.DTOs.Product
         public decimal SalePrice { get; set; }
 
         [StringLength(2000, ErrorMessage = "Description must be less than 2000 characters")]
-        public string Description { get; set; } = string.Empty;
+        public string? Description { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "ProductLine ID is required")]
         [Range(1, int.MaxValue, ErrorMessage = "ProductLine ID must be greater than 0")]
@@ -69,7 +70,7 @@ namespace api.DTOs.Product
         public List<string>? Colors { get; set; }
 
         [Required(ErrorMessage = "At least one image is required")]
-        [DataType(DataType.Upload)]
+        [AllowFileExtension(extensions: [".jpg", ".jpeg", ".png"], ErrorMessage = "Images must be valid images (jpg, jpeg, png)")]
         public ICollection<IFormFile> Images { get; set; } = new List<IFormFile>();
     }
 }

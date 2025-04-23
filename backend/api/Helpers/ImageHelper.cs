@@ -2,7 +2,6 @@ namespace api.Helpers
 {
     public static class ImageHelper
     {
-        private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
         private const string DEFAULT_ROOT_PATH = "wwwroot";
         private const string DEFAULT_IMAGES_FOLDER = "uploads/images";
 

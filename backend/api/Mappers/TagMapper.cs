@@ -10,7 +10,6 @@ namespace api.Mappers
             return new Tag
             {
                 Name = createTagDTO.Name,
-                Description = createTagDTO.Description,
                 ProductTags = new HashSet<ProductTag>()
             };
         }
@@ -21,7 +20,6 @@ namespace api.Mappers
             {
                 Id = tag.Id,
                 Name = tag.Name,
-                Description = tag.Description
             };
         }
     }

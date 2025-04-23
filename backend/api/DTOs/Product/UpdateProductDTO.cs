@@ -28,8 +28,8 @@ namespace api.DTOs.Product
         public string? ScreenSize { get; set; }
         public string? ScreenResolution { get; set; }
         public string? Battery { get; set; }
-        public string? ChargingPort { get; set; }
         public int? SimSlots { get; set; }
+        public string? OS { get; set; }
         public ICollection<string>? Colors { get; set; }
         public ICollection<IFormFile>? AddImages { get; set; }
         public ICollection<int>? RemoveImagesIds { get; set; }

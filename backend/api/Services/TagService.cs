@@ -27,12 +27,12 @@ namespace api.Services
 
                 Tag tag = tagDTO.ToModel();
                 var createdTag = await _tagRepository.CreateTagAsync(tag);
-                
+
                 return (true, null, createdTag.ToDTO());
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error creating tag: {ex.Message}", null);
+                return (false, $"Error creating tag", null);
             }
         }
 
@@ -49,9 +49,9 @@ namespace api.Services
                 await _tagRepository.DeleteTagAsync(tag);
                 return (true, null);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error deleting tag: {ex.Message}");
+                return (false, $"Error deleting tag");
             }
         }
 
@@ -64,12 +64,12 @@ namespace api.Services
                 {
                     return (false, "No tags found", null);
                 }
-                
+
                 return (true, null, tags.Select(t => t.ToDTO()));
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error retrieving tags: {ex.Message}", null);
+                return (false, $"Error retrieving tags", null);
             }
         }
 
@@ -82,12 +82,12 @@ namespace api.Services
                 {
                     return (false, "Tag not found", null);
                 }
-                
+
                 return (true, null, tag.ToDTO());
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error retrieving tag: {ex.Message}", null);
+                return (false, $"Error retrieving tag", null);
             }
         }
 
@@ -107,11 +107,6 @@ namespace api.Services
                     tag.Name = tagDTO.Name;
                 }
 
-                if (!string.IsNullOrEmpty(tagDTO.Description))
-                {
-                    tag.Description = tagDTO.Description;
-                }
-
                 bool result = await _tagRepository.UpdateTagAsync(tag);
                 if (!result)
                 {
@@ -120,9 +115,9 @@ namespace api.Services
 
                 return (true, null);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error updating tag: {ex.Message}");
+                return (false, $"Error updating tag");
             }
         }
     }

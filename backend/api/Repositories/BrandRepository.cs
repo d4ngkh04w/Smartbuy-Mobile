@@ -49,7 +49,18 @@ namespace api.Repositories
 
             if (query.IncludeProducts)
             {
-                brandsQuery = brandsQuery.Include(b => b.ProductLines).ThenInclude(pl => pl.Products);
+                brandsQuery = brandsQuery.Include(b => b.ProductLines)
+                    .ThenInclude(pl => pl.Products)
+                    .ThenInclude(p => p.Colors)
+                    .Include(b => b.ProductLines)
+                    .ThenInclude(pl => pl.Products)
+                    .ThenInclude(p => p.Images)
+                    .Include(b => b.ProductLines)
+                    .ThenInclude(pl => pl.Products)
+                    .ThenInclude(p => p.Detail)
+                    .Include(b => b.ProductLines)
+                    .ThenInclude(pl => pl.Products)
+                    .ThenInclude(p => p.Discounts);
             }
 
             brandsQuery = query.SortBy.ToLower() switch
@@ -64,7 +75,7 @@ namespace api.Repositories
                 brandsQuery = brandsQuery.Reverse();
             }
 
-            return await brandsQuery.ToListAsync();
+            return await brandsQuery.Where(b => b.IsActive == query.IsActive).ToListAsync();
         }
 
         public async Task<Brand?> GetBrandByIdAsync(int id, BrandQuery? query = null)
@@ -86,7 +97,7 @@ namespace api.Repositories
                 brandQuery = brandQuery.Include(b => b.ProductLines).ThenInclude(pl => pl.Products);
             }
 
-            return await brandQuery.FirstOrDefaultAsync(b => b.Id == id);
+            return await brandQuery.FirstOrDefaultAsync(b => b.Id == id && b.IsActive == query.IsActive);
         }
 
         public async Task<bool> UpdateBrandAsync(Brand brand)

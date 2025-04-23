@@ -13,6 +13,7 @@ namespace api.Mappers
                 Id = brand.Id,
                 Name = brand.Name,
                 Logo = brand.Logo,
+                IsActive = brand.IsActive,
                 ProductLines = brand.ProductLines?.Select(pl => pl.ToDTO()).ToList()
             };
         }

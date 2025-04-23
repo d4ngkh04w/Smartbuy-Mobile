@@ -14,7 +14,7 @@ namespace api.DTOs.Product
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
-        public int ProductLineId { get; set; } 
+        public int ProductLineId { get; set; }
         public string ProductLineName { get; set; } = string.Empty;
         public ICollection<ProductColorDTO> Colors { get; set; } = new HashSet<ProductColorDTO>();
         public ICollection<ProductImageDTO> Images { get; set; } = new HashSet<ProductImageDTO>();

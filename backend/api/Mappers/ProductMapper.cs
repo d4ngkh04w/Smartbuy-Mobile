@@ -38,7 +38,6 @@ namespace api.Mappers
                 Battery = productDetail.BatteryCapacityMAh.ToString(),
                 SimSlots = productDetail.SimSlots,
                 ScreenResolution = productDetail.ScreenResolution,
-           
             };
         }
 
@@ -50,13 +49,13 @@ namespace api.Mappers
                 Name = product.Name,
                 Quantity = product.Quantity,
                 SalePrice = product.SalePrice,
-                Description = product.Description,
+                Description = product.Description ?? string.Empty,
                 Rating = product.Rating,
                 RatingCount = product.RatingCount,
                 Sold = product.Sold,
                 IsActive = product.IsActive,
                 CreatedAt = product.CreatedAt,
-                UpdatedAt = product.UpdatedAt,
+                UpdatedAt = product.UpdatedAt ?? DateTime.Now,
                 ProductLineId = product.ProductLineId,
                 ProductLineName = product.ProductLine?.Name ?? string.Empty,
 

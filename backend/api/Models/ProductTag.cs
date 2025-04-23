@@ -7,11 +7,9 @@ namespace api.Models
     public class ProductTag
     {
         [Key]
-        [Column(Order = 1)]
         public int ProductId { get; set; }
-        
+
         [Key]
-        [Column(Order = 2)]
         public int TagId { get; set; }
 
         [ForeignKey(nameof(ProductId))]

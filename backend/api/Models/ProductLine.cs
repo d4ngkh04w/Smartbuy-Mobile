@@ -16,19 +16,19 @@ namespace api.Models
         public string Name { get; set; } = string.Empty;
 
         [Column(TypeName = "text")]
-        public string Description { get; set; } = string.Empty;
+        public string? Description { get; set; } = string.Empty;
 
         [Column(TypeName = "varchar(255)")]
         public string Image { get; set; } = string.Empty;
 
         [Column(TypeName = "bit")]
         public bool IsActive { get; set; } = true;
-        
-        [Column(TypeName = "timestamp")]
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         [Column(TypeName = "timestamp")]
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; }
+
+        [Column(TypeName = "timestamp")]
+        public DateTime? UpdatedAt { get; set; }
 
         public int BrandId { get; set; }
 
