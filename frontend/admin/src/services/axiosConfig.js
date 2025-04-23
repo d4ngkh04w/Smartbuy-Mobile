@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const apiUrl = import.meta.env.VITE_API_URL || "/api";
+
+const apiUrl = import.meta.env.VITE_API_URL || "/api/v1";
 
 const instance = axios.create({
     baseURL: apiUrl,
@@ -11,56 +12,38 @@ const instance = axios.create({
     },
 });
 
-// Add a request interceptor to add auth token to each request
-instance.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem("auth_token");
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
-
 // Add a response interceptor to handle token refresh
 instance.interceptors.response.use(
     (response) => {
         return response;
     },
     async (error) => {
-        const originalRequest = error.config;
+        console.log("Interceptor bắt lỗi:", error);
 
-        // If the error is 401 and we haven't retried the request yet
-        if (error.response.status === 401 && !originalRequest._retry) {
+        const originalRequest = error.config;
+        console.log("Error response:", error.response);
+        // If the error is 401 (Unauthorized) and we haven't retried the request yet
+        if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
 
             try {
-                const refreshToken = localStorage.getItem("refresh_token");
-                if (!refreshToken) {
-                    // Redirect to login if no refresh token
-                    window.location.href = "/login";
-                    return Promise.reject(error);
-                }
+                console.log("Refreshing token...");
+                // Call the refresh token endpoint directly without using authService
+                await instance.post("/auth/refresh-token");
 
-                // Call the refresh token endpoint
-                const response = await axios.post(
-                    `${import.meta.env.VITE_API_URL}/auth/admin/refresh-token`,
-                    { refreshToken }
-                );
-
-                const { token } = response.data;
-                localStorage.setItem("auth_token", token);
-
-                // Retry the original request with the new token
-                originalRequest.headers.Authorization = `Bearer ${token}`;
+                // After refreshing token, retry the original request
+                // The new token will be in the cookies automatically
                 return instance(originalRequest);
             } catch (refreshError) {
-                // If refresh token fails, logout and redirect to login
-                localStorage.removeItem("auth_token");
-                localStorage.removeItem("refresh_token");
+                // Set flag to indicate token refresh has failed
+                localStorage.setItem("token_refresh_failed", "true");
+
+                // If refresh token fails, redirect to login
+                try {
+                    await instance.post("/auth/logout");
+                } catch (logoutError) {
+                    console.error("Không thể đăng xuất:", logoutError);
+                }
                 window.location.href = "/login";
                 return Promise.reject(refreshError);
             }

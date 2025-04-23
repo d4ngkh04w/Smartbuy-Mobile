@@ -1,12 +1,10 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import { useAuthStore } from "../stores/authStore";
 import emitter from "../utils/evenBus.js";
 import { authService } from "../services/authService.js";
 
 const router = useRouter();
-const authStore = useAuthStore();
 
 // Login state
 const phoneNumber = ref("");
@@ -29,7 +27,10 @@ const login = async () => {
 
     // Validate phone number
     if (!isValidPhoneNumber(phoneNumber.value)) {
-        phoneNumberError.value = "Số điện thoại phải có 10 số";
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Số điện thoại không hợp lệ",
+        });
         return;
     }
 
@@ -45,29 +46,26 @@ const login = async () => {
         isSubmitting.value = true;
 
         // Call login API
-        const response = await authService.login(
+        await authService.login(
             phoneNumber.value,
             password.value
         );
-
-        // Save admin data to store
-        authStore.setAdmin({
-            id: response.data.id,
-            phoneNumber: phoneNumber.value,
-            name: response.data.name || "Admin User",
-        });
 
         emitter.emit("show-notification", {
             status: "success",
             message: "Đăng nhập thành công",
         });
 
+        phoneNumber.value = "";
+        password.value = "";
+        showPassword.value = false;
+
         router.push("/dashboard");
     } catch (error) {
         console.error("Login failed:", error);
         emitter.emit("show-notification", {
             status: "error",
-            message: error.response?.data?.message || "Đăng nhập thất bại",
+            message: "Đăng nhập thất bại",
         });
     } finally {
         isSubmitting.value = false;
@@ -76,26 +74,9 @@ const login = async () => {
 
 // Validate phone number input (only allow numbers and limit to 10 digits)
 const validatePhoneInput = (event) => {
-    // Only allow numeric input
-    const value = event.target.value;
-    if (!/^\d*$/.test(value)) {
-        event.target.value = value.replace(/\D/g, "");
-    }
-
-    // Limit to 10 digits
-    if (value.length > 10) {
-        event.target.value = value.slice(0, 10);
-        phoneNumber.value = value.slice(0, 10);
-    }
-
-    // Check validity
-    if (value.length > 0) {
-        phoneNumberError.value = isValidPhoneNumber(value)
-            ? ""
-            : "Số điện thoại phải có 10 số";
-    } else {
-        phoneNumberError.value = "";
-    }
+    const input = event.target.value.replace(/\D/g, "").slice(0, 10);
+    phoneNumber.value = input;
+    phoneNumberError.value = input.length != 10 ? "Số điện thoại không hợp lệ" : "";    
 };
 
 // Check if phone number is valid (10 digits)
