@@ -1,111 +1,54 @@
-<!-- <template>
-    <div class="home-container">
-        <div class="slideShow-container">
-        </div>
-        <div class="home-content">
-            <div class="sideBar"></div>
-            <div class="products-container">
-                <ProductCard
-                    v-for="product in products"
-                    :key="product.id"
-                    :product="product"
-                />
-            </div>
-            <Pagitation
-                :totalProducts="totalProducts"
-                :currentPage="currentPage"
-                :pageSize="10"
-                @pageChanged="fetchProducts"
-            />
-        </div>
+<template>
+  <div class="home-container">
+    <div class="slideShow-container">
+      <Carousel
+        :items-to-show="1"
+        :autoplay="3000"
+        wrap-around
+        :pause-autoplay-on-hover="true"
+        navigation
+      >
+        <Slide v-for="item in slides" :key="item.id">
+          <a :href="item.link">
+            <img :src="item.image" :alt="item.title" class="carousel-image" />
+          </a>
+        </Slide>
+      </Carousel>
     </div>
+    <div class="home-content">
+      <div class="sideBar"></div>
+      <div>
+        <div class="products-container">
+          <template v-if="products.length > 0">
+            <ProductCard
+              v-for="product in products"
+              :key="product.id"
+              :product="product"
+            />
+          </template>
+          <p v-else>Không có sản phẩm nào để hiển thị.</p>
+        </div>
+        <Pagination
+          :totalProducts="totalProducts"
+          :currentPage="currentPage"
+          :pageSize="pageSize"
+          @pageChanged="fetchProducts"
+        />
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-    import ProductCard from '../../components/ProductCard.vue';
-    import Pagitation from '../../components/Pagitation.vue';
-    import { ref, onMounted } from 'vue';
-    import axios from 'axios';
-    const products = ref([]);
-    const currentPage = ref(1);
-    const totalProducts = ref(0);
-    const fetchProducts = async () => {
-        const res = await axios.get(`http://localhost:3000/api/products?page=${currentPage.value}&pageSize=${pageSize}`)
-        products.value = res.data.items
-        totalProducts.value = res.data.totalItems 
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth', 
-        });
-    }
-    onMounted(fetchProducts);
-</script>
-
-<style scoped>
-    .home-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 20px;
-    }
-    .slide-container {
-        width: 100%;
-        height: 300px;
-        background-color: #f0f0f0;
-        margin-bottom: 20px;
-    }
-    .home-content {
-        display: flex;
-        width: 100%;
-    }
-    .sideBar {
-        width: 200px;
-        background-color: #f0f0f0;
-    }
-    .products-container {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-around;
-        width: 100%;
-    }
-    .products-container > * {
-        margin: 10px;
-    }
-    .products-container > *:nth-child(odd) {
-        background-color: #f9f9f9;
-    }
-    .products-container > *:nth-child(even) {
-        background-color: #fff;
-    }
-    .products-container > *:hover {
-        background-color: #e0e0e0;
-    }
-    .products-container > *:active {
-        background-color: #d0d0d0;
-    }
-    .products-container > *:focus {
-        outline: none;
-        box-shadow: 0 0 5px #007bff;
-    } 
-</style>
- -->
-
-
-
-
-<!-- fake data -->
-<script setup>
 import ProductCard from '../../components/ProductCard.vue';
-import Pagination from '../../components/Pagitation.vue';
+import Pagination from '../../components/Pagination.vue';
+import { getProducts } from '../../services/productService';
 import { ref, onMounted } from 'vue';
-import { Carousel, Slide, Navigation } from 'vue3-carousel'
-import 'vue3-carousel/dist/carousel.css'; // Đảm bảo bạn đã import CSS của Vue 3 Carousel
 
-const allProducts = Array.from({ length: 52 }, (_, i) => ({
-  id: i + 1,
-  title: `Sản phẩm ${i + 1}`,
-  price: (Math.random() * 1000000).toFixed(0),
-}));
+const products = ref([]);
+const currentPage = ref(1);
+const pageSize = ref(10);
+const totalProducts = ref(0);
 
 const slides = [
   {
@@ -134,63 +77,22 @@ const slides = [
   },
 ];
 
-const products = ref([]);
-const currentPage = ref(1);
-const pageSize = 20;
-const totalProducts = ref(allProducts.length);
-
-const fetchProducts = (page = 1) => {
-  currentPage.value = page;
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  products.value = allProducts.slice(start, end);
+const fetchProducts = async () => {
+  const data = await getProducts(currentPage.value, pageSize.value);
+  if (!data) {
+    alert('Không thể tải sản phẩm. Vui lòng thử lại sau!');
+    return;
+  }
+  products.value = data.items;
+  totalProducts.value = data.totalItems;
   window.scrollTo({
     top: 0,
-    behavior: 'smooth', // Smooth scrolling effect
+    behavior: 'smooth',
   });
 };
 
-onMounted(() => fetchProducts(currentPage.value));
+onMounted(fetchProducts);
 </script>
-
-<template>
-  <div class="home-container">
-    <div class="slideShow-container">
-      <!-- Carousel -->
-      <Carousel
-        :items-to-show="1"
-        :autoplay="3000"
-        wrap-around
-        :modules="[Navigation]"        
-        navigation  
-      >
-        <Slide v-for="item in slides" :key="item.id">
-          <a :href="item.link">
-            <img :src="item.image" :alt="item.title" class="carousel-image" />
-          </a>
-        </Slide>
-      </Carousel>
-    </div>
-    <div class="home-content">
-      <div class="sideBar"></div>
-      <div>
-        <div class="products-container">
-          <ProductCard
-            v-for="product in products"
-            :key="product.id"
-            :product="product"
-          />
-        </div>
-        <Pagination
-          :totalProducts="totalProducts"
-          :currentPage="currentPage"
-          :pageSize="pageSize"
-          @pageChanged="fetchProducts"
-        />
-      </div>
-    </div>
-  </div>
-</template>
 
 <style scoped>
 .products-container {
@@ -214,7 +116,7 @@ onMounted(() => fetchProducts(currentPage.value));
 .slideShow-container {
   width: 100%;
   height: 400px;
-  margin-bottom: 20px;
+  margin-bottom: 30px; /* Tăng khoảng cách giữa carousel và nội dung */
   overflow: hidden;
 }
 .carousel-image {
@@ -222,5 +124,9 @@ onMounted(() => fetchProducts(currentPage.value));
   height: 100%;
   object-fit: cover;
   border-radius: 8px;
+  transition: transform 0.3s ease-in-out;
+}
+.carousel-image:hover {
+  transform: scale(1.05); /* Hiệu ứng phóng to khi hover */
 }
 </style>

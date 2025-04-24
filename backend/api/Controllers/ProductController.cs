@@ -117,5 +117,27 @@ namespace api.Controllers
             }
             return NoContent();
         }
+
+        [HttpGet("page")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPagedProducts([FromQuery] int page, int pageSize){
+            var result = await _productService.GetPagedProductsAsync(page, pageSize);
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Products not found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+            return Ok(new
+            {
+                Message = "Products retrieved successfully",
+                Products = result.ProductPagi
+            });
+        }
+
+
     }
 }

@@ -11,5 +11,6 @@ namespace api.Interfaces.Repositories
         Task<bool> DeleteAsync(int id);
         Task<bool> ExistsByNameAsync(string name);
         Task<bool> ExistsByIdAsync(int id);
+        Task<(List<Product> Items, int TotalItems)> GetPagedProductsAsync(int page, int pageSize);
     }
 }

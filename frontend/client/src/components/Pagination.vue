@@ -13,7 +13,6 @@
 </template>
 
 <script setup>
-console.log('Pagination component loaded');
   import { ref, onMounted, computed } from 'vue'
   const emit = defineEmits(['pageChanged'])
   const changePage = (page) => {
@@ -26,7 +25,6 @@ console.log('Pagination component loaded');
     pageSize: Number,
     totalProducts: Number,
   })
-console.log('Props:', props);
 
   const totalPages = computed(() => Math.ceil(props.totalProducts / props.pageSize));
   const displayPages = computed(() => {

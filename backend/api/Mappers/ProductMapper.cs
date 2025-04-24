@@ -101,5 +101,16 @@ namespace api.Mappers
                 ScreenResolution = productDTO.ScreenResolution,
             };
         }
+        public static ProductSummaryDTO ToSummaryDTO(this Product product)
+        {
+            return new ProductSummaryDTO
+            {
+                Id = product.Id,
+                Name = product.Name,
+                Price = product.SalePrice,
+                ImageUrl = product.Images.FirstOrDefault(i => i.IsMain)?.ImagePath ?? string.Empty,
+            };
+        }
+
     }
 }

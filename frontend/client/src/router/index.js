@@ -1,12 +1,12 @@
 import { createRouter, createWebHistory } from "vue-router";
-import HomeView from "../views/Home.vue";
+import Home from '@/views/HomeView/Home.vue';
 import ResetPasswordPage from "../views/ResetPasswordPage.vue";
 
 const routes = [
     {
         path: "/",
         name: "home",
-        component: HomeView,
+        component: Home,
     },
     {
         path: "/reset-password",
