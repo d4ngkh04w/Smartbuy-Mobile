@@ -96,28 +96,28 @@ namespace api.Controllers
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };
             }
-            return Ok(new { Message = "User updated successfully" });
+            return Ok(new { Message = "User updated successfully", User = result.User });
         }
 
-        [HttpPut("{id:guid}")]
-        [Authorize(Roles = "admin,user")]
-        [RequestSizeLimit(15 * 1024 * 1024)]
-        public async Task<IActionResult> UpdateUser([FromRoute] Guid id, [FromForm] UpdateUserDTO userDTO)
-        {
-            if (GetCurrentUserId() != id && !User.IsInRole("admin"))
-                return Forbid();
-            var result = await _userService.UpdateUserAsync(id, userDTO);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new { Message = "User updated successfully" });
-        }
+        // [HttpPut("{id:guid}")]
+        // [Authorize(Roles = "admin,user")]
+        // [RequestSizeLimit(15 * 1024 * 1024)]
+        // public async Task<IActionResult> UpdateUser([FromRoute] Guid id, [FromForm] UpdateUserDTO userDTO)
+        // {
+        //     if (GetCurrentUserId() != id && !User.IsInRole("admin"))
+        //         return Forbid();
+        //     var result = await _userService.UpdateUserAsync(id, userDTO);
+        //     if (!result.Success && result.ErrorMessage != null)
+        //     {
+        //         return result.ErrorMessage switch
+        //         {
+        //             string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
+        //             string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+        //             _ => BadRequest(new { Message = result.ErrorMessage })
+        //         };
+        //     }
+        //     return Ok(new { Message = "User updated successfully" });
+        // }
 
         [HttpDelete("{id:guid}")]
         [Authorize(Roles = "admin,user")]

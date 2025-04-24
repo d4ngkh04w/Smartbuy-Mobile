@@ -103,5 +103,28 @@ namespace api.Controllers
 
             return Ok(new { Message = "Password has been reset successfully. You can now log in with your new password." });
         }
+
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO changePasswordDto)
+        {
+            var userId = User.Claims.FirstOrDefault(c => c.Type == "id")?.Value;
+            if (userId == null)
+                return Unauthorized(new { Message = "User not authenticated" });
+
+            var result = await _authService.ChangePasswordAsync(changePasswordDto, Guid.Parse(userId));
+
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("User not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
+                    string msg when msg.Contains("Incorrect", StringComparison.OrdinalIgnoreCase) => BadRequest(new { Message = result.ErrorMessage }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+
+            return Ok(new { Message = "Password changed successfully" });
+        }
     }
 }

@@ -20,6 +20,8 @@ namespace api.Database
         public DbSet<ProductDetail> ProductDetails { get; set; } = null!;
         public DbSet<Tag> Tags { get; set; } = null!;
         public DbSet<ProductTag> ProductTags { get; set; } = null!;
+        public DbSet<Cart> Carts { get; set; } = null!;
+        public DbSet<CartItem> CartItems { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -69,16 +71,16 @@ namespace api.Database
                 .WithOne(d => d.Product)
                 .HasForeignKey<ProductDetail>(d => d.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
-                
+
             // Cấu hình mối quan hệ Product - Tag (nhiều-nhiều)
             builder.Entity<ProductTag>()
                 .HasKey(pt => new { pt.ProductId, pt.TagId });
-                
+
             builder.Entity<ProductTag>()
                 .HasOne(pt => pt.Product)
                 .WithMany(p => p.ProductTags)
                 .HasForeignKey(pt => pt.ProductId);
-                
+
             builder.Entity<ProductTag>()
                 .HasOne(pt => pt.Tag)
                 .WithMany(t => t.ProductTags)

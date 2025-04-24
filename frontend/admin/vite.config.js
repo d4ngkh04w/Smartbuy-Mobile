@@ -3,8 +3,8 @@ import vue from "@vitejs/plugin-vue";
 
 // https://vite.dev/config/
 export default defineConfig({
-    server: {
-        port: 5000, // Đổi port tại đây
-    },
-    plugins: [vue()],
+	server: {
+		port: 4000,
+	},
+	plugins: [vue()],
 });

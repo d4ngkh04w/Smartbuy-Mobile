@@ -7,7 +7,7 @@ namespace api.Controllers
 {
     [Route("api/v1/admin/auth")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "admin")]
     public class AuthAdminController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -20,7 +20,7 @@ namespace api.Controllers
 
         [HttpPost("register")]
         [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] Register register)
+        public async Task<IActionResult> Register([FromBody] RegisterDTO register)
         {
             var result = await _authService.Register(register, "admin");
             if (result.Success)
@@ -52,7 +52,7 @@ namespace api.Controllers
 
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] Login login)
+        public async Task<IActionResult> Login([FromBody] LoginDTO login)
         {
             var result = await _authService.Login(login, "admin");
             if (result.Success)
@@ -83,7 +83,6 @@ namespace api.Controllers
         }
 
         [HttpGet("verify")]
-        [Authorize(Roles = "admin")]
         public IActionResult VerifyToken()
         {
             return Ok(new

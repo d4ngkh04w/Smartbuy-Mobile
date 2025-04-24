@@ -10,12 +10,12 @@ namespace api.Services
     public class ProductService : IProductService
     {
         private readonly IProductRepository _productRepository;
-        private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly IWebHostEnvironment _env;
 
         public ProductService(IProductRepository productRepository, IWebHostEnvironment webHostEnvironment)
         {
             _productRepository = productRepository;
-            _webHostEnvironment = webHostEnvironment;
+            _env = webHostEnvironment;
         }
 
         public async Task<(bool Success, string? ErrorMessage, IEnumerable<ProductDTO>? Products)> GetProductsAsync()
@@ -85,7 +85,7 @@ namespace api.Services
                 {
                     foreach (var image in productDTO.Images)
                     {
-                        var res = await ImageHelper.SaveImageAsync(image, "products", 5 * 1024 * 1024); // 5 MB max size
+                        var res = await ImageHelper.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024); // 5 MB max size
                         if (!res.Success)
                             return (false, res.ErrorMessage, null);
 
@@ -105,14 +105,14 @@ namespace api.Services
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage)> UpdateProductAsync(int id, UpdateProductDTO productDTO)
+        public async Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> UpdateProductAsync(int id, UpdateProductDTO productDTO)
         {
             try
             {
                 var product = await _productRepository.GetByIdAsync(id);
 
                 if (product == null)
-                    return (false, "Product not found");
+                    return (false, "Product not found", null);
 
                 // Update basic info
                 if (!string.IsNullOrEmpty(productDTO.Name))
@@ -182,9 +182,11 @@ namespace api.Services
                 {
                     foreach (var image in productDTO.AddImages)
                     {
-                        var fileName = await ImageHelper.SaveImageAsync(image, "products", 5 * 1024 * 1024); // 5 MB max size
-                        var imagePath = $"/uploads/products/{fileName}";
-                        product.Images.Add(new ProductImage { ImagePath = imagePath, IsMain = false });
+                        var res = await ImageHelper.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024); // 5 MB max size
+                        if (!res.Success)
+                            return (false, res.ErrorMessage, null);
+
+                        product.Images.Add(new ProductImage { ImagePath = res.FilePath!, IsMain = false });
                     }
                 }
 
@@ -196,6 +198,11 @@ namespace api.Services
                         var image = product.Images.FirstOrDefault(i => i.Id == imageId);
                         if (image != null)
                         {
+                            var deletedImg = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, image.ImagePath));
+                            if (!deletedImg)
+                            {
+                                return (false, "Error deleting old image", null);
+                            }
                             product.Images.Remove(image);
                         }
                     }
@@ -213,11 +220,11 @@ namespace api.Services
                 product.UpdatedAt = DateTime.Now;
 
                 var result = await _productRepository.UpdateAsync(product);
-                return result ? (true, null) : (false, "Error updating product");
+                return result ? (true, null, product.ToProductDTO()) : (false, "Error updating product", null);
             }
             catch (Exception)
             {
-                return (false, $"Error updating product");
+                return (false, $"Error updating product", null);
             }
         }
 
