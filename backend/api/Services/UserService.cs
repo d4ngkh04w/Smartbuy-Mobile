@@ -9,9 +9,11 @@ namespace api.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;
+        private readonly IWebHostEnvironment _env;
 
-        public UserService(IUserRepository userRepository)
+        public UserService(IUserRepository userRepository, IWebHostEnvironment webEnvironment)
         {
+            _env = webEnvironment;
             _userRepository = userRepository;
         }
 
@@ -28,10 +30,10 @@ namespace api.Services
                 // Xóa ảnh đại diện của người dùng nếu tồn tại
                 if (!string.IsNullOrEmpty(user.Avatar))
                 {
-                    var path = Directory.GetCurrentDirectory() + user.Avatar;
-                    if (File.Exists(path))
+                    var deletedImg = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, user.Avatar));
+                    if (!deletedImg)
                     {
-                        ImageHelper.DeleteImage(path);
+                        return (false, "Error deleting avatar image");
                     }
                 }
 
@@ -82,14 +84,14 @@ namespace api.Services
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage)> UpdateUserAsync(Guid id, UpdateUserDTO userDTO)
+        public async Task<(bool Success, string? ErrorMessage, UserDTO? User)> UpdateUserAsync(Guid id, UpdateUserDTO userDTO)
         {
             try
             {
                 var user = await _userRepository.GetUserByIdAsync(id);
                 if (user == null)
                 {
-                    return (false, "User not found");
+                    return (false, "User not found", null);
                 }
 
                 // Xác thực tính duy nhất của email
@@ -98,7 +100,7 @@ namespace api.Services
                     var emailExists = await _userRepository.UserExistsByEmailAsync(userDTO.Email);
                     if (emailExists)
                     {
-                        return (false, "Email already exists");
+                        return (false, "Email already exists", null);
                     }
                 }
 
@@ -108,7 +110,7 @@ namespace api.Services
                     var phoneExists = await _userRepository.UserExistsByPhoneNumberAsync(userDTO.PhoneNumber);
                     if (phoneExists)
                     {
-                        return (false, "Phone number already exists");
+                        return (false, "Phone number already exists", null);
                     }
                 }
 
@@ -119,39 +121,34 @@ namespace api.Services
                 user.Address = userDTO.Address ?? user.Address;
                 user.Gender = userDTO.Gender ?? user.Gender;
 
-                // Xử lý cập nhật ảnh đại diện
                 if (userDTO.Avatar != null)
                 {
                     // Xóa ảnh đại diện cũ nếu tồn tại
                     if (!string.IsNullOrEmpty(user.Avatar))
                     {
-                        var path = Directory.GetCurrentDirectory() + user.Avatar;
-                        if (File.Exists(path))
+                        string path = Path.Combine(_env.WebRootPath, user.Avatar);
+                        var deletedImg = ImageHelper.DeleteImage(path);
+                        if (!deletedImg)
                         {
-                            var deletedImg = ImageHelper.DeleteImage(path);
-                            if (!deletedImg)
-                            {
-                                return (false, "Error deleting old avatar image");
-                            }
+                            return (false, "Error deleting old avatar image", null);
                         }
                     }
 
                     // Lưu ảnh đại diện mới
-                    var saveImg = await ImageHelper.SaveImageAsync(userDTO.Avatar, "users", 15 * 1024 * 1024);
+                    var saveImg = await ImageHelper.SaveImageAsync(userDTO.Avatar, _env.WebRootPath, "users", 15 * 1024 * 1024);
                     if (!saveImg.Success)
                     {
-                        return (false, saveImg.ErrorMessage);
+                        return (false, saveImg.ErrorMessage, null);
                     }
                     user.Avatar = saveImg.FilePath!;
                 }
 
                 await _userRepository.UpdateUserAsync(user);
-
-                return (true, null);
+                return (true, null, user.ToDTO());
             }
             catch (Exception)
             {
-                return (false, "An error occurred while updating the user");
+                return (false, "An error occurred while updating the user", null);
             }
         }
     }

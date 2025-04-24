@@ -7,7 +7,7 @@ namespace api.Controllers
 {
     [Route("api/v1/user/auth")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "user")]
     public class AuthUserController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -21,7 +21,7 @@ namespace api.Controllers
 
         [HttpPost("register")]
         [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] Register register)
+        public async Task<IActionResult> Register([FromBody] RegisterDTO register)
         {
             var result = await _authService.Register(register, "user");
             if (result.Success)
@@ -53,7 +53,7 @@ namespace api.Controllers
 
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] Login login)
+        public async Task<IActionResult> Login([FromBody] LoginDTO login)
         {
             var result = await _authService.Login(login, "user");
             if (result.Success)
@@ -85,7 +85,7 @@ namespace api.Controllers
 
         [HttpPost("google-login")]
         [AllowAnonymous]
-        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLogin dto)
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDTO dto)
         {
             var (success, message, token) = await _authService.LoginWithGoogleAsync(dto, "user");
             if (success)
@@ -117,7 +117,6 @@ namespace api.Controllers
         }
 
         [HttpGet("verify")]
-        [Authorize(Roles = "user")]
         public IActionResult VerifyToken()
         {
             return Ok(new

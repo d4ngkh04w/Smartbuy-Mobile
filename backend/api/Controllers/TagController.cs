@@ -57,7 +57,7 @@ namespace api.Controllers
             return Ok(new
             {
                 Message = "Tag retrieved successfully",
-                Tag = result.Tag
+                result.Tag
             });
         }
 
@@ -80,7 +80,7 @@ namespace api.Controllers
                             new
                             {
                                 Message = "Tag created successfully",
-                                Tag = result.Tag
+                                result.Tag
                             });
         }
 
@@ -98,7 +98,11 @@ namespace api.Controllers
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };
             }
-            return Ok(new { Message = "Tag updated successfully" });
+            return Ok(new
+            {
+                Message = "Tag updated successfully",
+                result.Tag
+            });
         }
 
         [HttpDelete("{id:int}")]

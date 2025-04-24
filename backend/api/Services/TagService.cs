@@ -91,14 +91,14 @@ namespace api.Services
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage)> UpdateTagAsync(int id, UpdateTagDTO tagDTO)
+        public async Task<(bool Success, string? ErrorMessage, TagDTO? Tag)> UpdateTagAsync(int id, UpdateTagDTO tagDTO)
         {
             try
             {
                 var tag = await _tagRepository.GetTagByIdAsync(id);
                 if (tag == null)
                 {
-                    return (false, "Tag not found");
+                    return (false, "Tag not found", null);
                 }
 
                 // Only update fields that are provided in the DTO
@@ -110,14 +110,14 @@ namespace api.Services
                 bool result = await _tagRepository.UpdateTagAsync(tag);
                 if (!result)
                 {
-                    return (false, "Failed to update tag");
+                    return (false, "Failed to update tag", null);
                 }
 
-                return (true, null);
+                return (true, null, tag.ToDTO());
             }
             catch (Exception)
             {
-                return (false, $"Error updating tag");
+                return (false, $"Error updating tag", null);
             }
         }
     }

@@ -185,10 +185,10 @@ else
     app.UseHsts();
 }
 
-app.UseStaticFiles();
-app.UseRateLimiter();
-app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
+app.UseCors("AllowFrontend");
+app.UseStaticFiles();
 app.MapControllers();
 app.Run();

@@ -45,7 +45,7 @@ namespace api.Controllers
             return Ok(new
             {
                 Message = "Cart retrieved successfully",
-                Cart = result.Cart
+                result.Cart
             });
         }
 
@@ -71,7 +71,7 @@ namespace api.Controllers
             return Ok(new
             {
                 Message = "Product added to cart successfully",
-                Cart = result.Cart
+                result.Cart
             });
         }
 
@@ -90,7 +90,7 @@ namespace api.Controllers
                     return Ok(new
                     {
                         Message = result.ErrorMessage,
-                        Cart = result.Cart
+                        result.Cart
                     });
                 }
 
@@ -105,7 +105,7 @@ namespace api.Controllers
             return Ok(new
             {
                 Message = "Cart item updated successfully",
-                Cart = result.Cart
+                result.Cart
             });
         }
 

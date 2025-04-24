@@ -9,6 +9,6 @@ namespace api.Interfaces.Services
         Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> GetProductByIdAsync(int id);
         Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> CreateProductAsync(CreateProductDTO productDTO);
         Task<(bool Success, string? ErrorMessage)> DeleteProductAsync(int id);
-        Task<(bool Success, string? ErrorMessage)> UpdateProductAsync(int id, UpdateProductDTO productDTO);
+        Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> UpdateProductAsync(int id, UpdateProductDTO productDTO);
     }
 }

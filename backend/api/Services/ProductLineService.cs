@@ -10,10 +10,12 @@ namespace api.Services
     public class ProductLineService : IProductLineService
     {
         private readonly IProductLineRepository _productLineRepository;
+        private readonly IWebHostEnvironment _env;
 
-        public ProductLineService(IProductLineRepository productLineRepository)
+        public ProductLineService(IProductLineRepository productLineRepository, IWebHostEnvironment webEnvironment)
         {
             _productLineRepository = productLineRepository;
+            _env = webEnvironment;
         }
 
         public async Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> CreateProductLineAsync(CreateProductLineDTO productLineDTO)
@@ -26,8 +28,7 @@ namespace api.Services
                     return (false, "Product line already exists", null);
                 }
 
-                var result = await ImageHelper.SaveImageAsync(productLineDTO.Image, "product-lines", 5 * 1024 * 1024);
-
+                var result = await ImageHelper.SaveImageAsync(productLineDTO.Image, _env.WebRootPath, "product-lines", 5 * 1024 * 1024);
                 if (!result.Success)
                 {
                     return (false, result.ErrorMessage, null);
@@ -53,6 +54,15 @@ namespace api.Services
                 if (productLine == null)
                 {
                     return (false, "Product line not found");
+                }
+
+                if (!string.IsNullOrEmpty(productLine.Image))
+                {
+                    var deleted = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, productLine.Image));
+                    if (!deleted)
+                    {
+                        return (false, "Error deleting image");
+                    }
                 }
 
                 await _productLineRepository.DeleteProductLineAsync(productLine);
@@ -100,14 +110,14 @@ namespace api.Services
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage)> UpdateProductLineAsync(int id, UpdateProductLineDTO productLineDTO)
+        public async Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> UpdateProductLineAsync(int id, UpdateProductLineDTO productLineDTO)
         {
             try
             {
                 var productLine = await _productLineRepository.GetProductLineByIdAsync(id);
                 if (productLine == null)
                 {
-                    return (false, "Product line not found");
+                    return (false, "Product line not found", null);
                 }
 
                 // Only update fields that are provided in the DTO
@@ -133,17 +143,16 @@ namespace api.Services
 
                 if (productLineDTO.Image != null)
                 {
-                    var res = await ImageHelper.SaveImageAsync(productLineDTO.Image, "product-lines", 5 * 1024 * 1024);
-                    if (!res.Success)
-                    {
-                        return (false, res.ErrorMessage);
-                    }
-
-                    // Delete the old image
-                    var deleted = ImageHelper.DeleteImage(Directory.GetCurrentDirectory() + "wwwroot" + productLine.Image);
+                    // Xoá hình cũ
+                    var deleted = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, productLine.Image));
                     if (!deleted)
                     {
-                        return (false, "Error deleting old image");
+                        return (false, "Error deleting old image", null);
+                    }
+                    var res = await ImageHelper.SaveImageAsync(productLineDTO.Image, _env.WebRootPath, "product-lines", 5 * 1024 * 1024);
+                    if (!res.Success)
+                    {
+                        return (false, res.ErrorMessage, null);
                     }
 
                     productLine.Image = res.FilePath!;
@@ -154,14 +163,14 @@ namespace api.Services
                 bool result = await _productLineRepository.UpdateProductLineAsync(productLine);
                 if (!result)
                 {
-                    return (false, "Failed to update product line");
+                    return (false, "Failed to update product line", null);
                 }
 
-                return (true, null);
+                return (true, null, productLine.ToDTO());
             }
             catch (Exception)
             {
-                return (false, $"Error updating product line");
+                return (false, $"Error updating product line", null);
             }
         }
     }

@@ -37,7 +37,7 @@ namespace api.Controllers
             return Ok(new
             {
                 Message = "Product lines retrieved successfully",
-                ProductLines = result.ProductLines
+                result.ProductLines
             });
         }
 
@@ -58,7 +58,7 @@ namespace api.Controllers
             return Ok(new
             {
                 Message = "Product line retrieved successfully",
-                ProductLine = result.ProductLine
+                result.ProductLine
             });
         }
 
@@ -81,7 +81,7 @@ namespace api.Controllers
                             new
                             {
                                 Message = "Product line created successfully",
-                                ProductLine = result.ProductLine
+                                result.ProductLine
                             });
         }
 
@@ -99,7 +99,11 @@ namespace api.Controllers
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };
             }
-            return Ok(new { Message = "Product line updated successfully" });
+            return Ok(new
+            {
+                Message = "Product line updated successfully",
+                result.ProductLine
+            });
         }
 
         [HttpDelete("{id:int}")]

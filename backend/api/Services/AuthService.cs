@@ -21,7 +21,7 @@ namespace api.Services
             _googleClientId = config["Google:ClientId"]!;
         }
 
-        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Register(Register registerDto, string role)
+        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Register(RegisterDTO registerDto, string role)
         {
             // Validate unique phone number and email
             if (await _userRepository.UserExistsByPhoneNumberAsync(registerDto.PhoneNumber))
@@ -55,7 +55,7 @@ namespace api.Services
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Login(Login loginDto, string role)
+        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Login(LoginDTO loginDto, string role)
         {
             try
             {
@@ -90,7 +90,7 @@ namespace api.Services
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> LoginWithGoogleAsync(GoogleLogin dto, string role)
+        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> LoginWithGoogleAsync(GoogleLoginDTO dto, string role)
         {
             try
             {
@@ -211,6 +211,34 @@ namespace api.Services
             catch (Exception)
             {
                 return (false, $"Error resetting password");
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> ChangePasswordAsync(ChangePasswordDTO changePasswordDto, Guid userId)
+        {
+            try
+            {
+                var user = await _userRepository.GetUserByIdAsync(userId);
+                if (user == null)
+                {
+                    return (false, "User not found");
+                }
+
+                // Kiểm tra mật khẩu cũ
+                if (!BCrypt.Net.BCrypt.Verify(changePasswordDto.OldPassword, user.Password))
+                {
+                    return (false, "Old password is incorrect");
+                }
+
+                // Cập nhật mật khẩu mới
+                user.Password = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
+                await _userRepository.UpdateUserAsync(user);
+
+                return (true, null);
+            }
+            catch (Exception)
+            {
+                return (false, $"Error changing password");
             }
         }
     }
