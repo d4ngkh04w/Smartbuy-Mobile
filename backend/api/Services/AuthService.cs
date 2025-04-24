@@ -10,16 +10,18 @@ namespace api.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly ITokenService _tokenService;
+        private readonly IEmailService _emailService;
         private readonly string _googleClientId;
 
-        public AuthService(IUserRepository userRepository, ITokenService tokenService, IConfiguration config)
+        public AuthService(IUserRepository userRepository, ITokenService tokenService, IEmailService emailService, IConfiguration config)
         {
             _userRepository = userRepository;
             _tokenService = tokenService;
+            _emailService = emailService;
             _googleClientId = config["Google:ClientId"]!;
         }
 
-        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Register(Register registerDto, string role)
+        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Register(RegisterDTO registerDto, string role)
         {
             // Validate unique phone number and email
             if (await _userRepository.UserExistsByPhoneNumberAsync(registerDto.PhoneNumber))
@@ -47,13 +49,13 @@ namespace api.Services
 
                 return (true, null, new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error during registration: {ex.Message}", null);
+                return (false, $"Error during registration", null);
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Login(Login loginDto, string role)
+        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Login(LoginDTO loginDto, string role)
         {
             try
             {
@@ -82,17 +84,17 @@ namespace api.Services
 
                 return (true, "Login successful", new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error during login: {ex.Message}", null);
+                return (false, $"Error during login", null);
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> LoginWithGoogleAsync(GoogleLogin dto, string role)
+        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> LoginWithGoogleAsync(GoogleLoginDTO dto, string role)
         {
             try
             {
-                // Validate Google token
+                // Xác thực token Google
                 var payload = await GoogleJsonWebSignature.ValidateAsync(dto.Token, new GoogleJsonWebSignature.ValidationSettings
                 {
                     Audience = new List<string> { _googleClientId },
@@ -103,17 +105,11 @@ namespace api.Services
                     return (false, "Invalid Google token", null);
                 }
 
-                // Validate that email from token matches provided email
-                if (payload.Email != dto.Email)
-                {
-                    return (false, "Email from token doesn't match provided email", null);
-                }
-
-                // Find or create user
+                // Kiểm tra xem người dùng đã tồn tại trong hệ thống chưa
                 var user = await _userRepository.GetUserByEmailAsync(payload.Email);
                 if (user == null)
                 {
-                    // Create new user with Google account
+                    // Tao người dùng mới nếu chưa tồn tại
                     user = new User
                     {
                         PhoneNumber = string.Empty,
@@ -131,19 +127,118 @@ namespace api.Services
                     return (false, $"Your account does not have access as a '{role}'", null);
                 }
 
-                // Generate authentication tokens
+                // Tạo token xác thực
                 var token = _tokenService.CreateToken(user, role);
                 var refreshToken = await _tokenService.GenerateRefreshToken(user);
 
-                // Update last login time
                 user.LastLogin = DateTime.Now;
                 await _userRepository.UpdateUserAsync(user);
 
                 return (true, "Login with Google successful", new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error during Google login: {ex.Message}", null);
+                return (false, $"Error during Google login", null);
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> ForgotPasswordAsync(ForgotPasswordDTO forgotPasswordDto)
+        {
+            try
+            {
+                var user = await _userRepository.GetUserByEmailAsync(forgotPasswordDto.Email);
+                if (user == null)
+                {
+                    return (true, null);
+                }
+
+                // Xác thực token reset mật khẩu và thiết lập thời gian hết hạn
+                var resetToken = _tokenService.GeneratePasswordResetToken();
+                Console.WriteLine($"[INF] Password reset token: {resetToken}"); // For debugging purposes
+                user.PasswordResetToken = resetToken;
+                user.PasswordResetTokenExpiry = DateTime.Now.AddMinutes(5);
+                await _userRepository.UpdateUserAsync(user);
+
+                // Gửi email reset mật khẩu với token
+                var emailSent = await _emailService.SendPasswordResetEmailAsync(user.Email, resetToken);
+
+                if (!emailSent)
+                {
+                    return (false, "Failed to send password reset email");
+                }
+
+                return (true, null);
+            }
+            catch (Exception)
+            {
+                return (false, $"Error processing password reset request");
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> ResetPasswordAsync(ResetPasswordDTO resetPasswordDto)
+        {
+            try
+            {
+                var user = await _userRepository.GetUserByEmailAsync(resetPasswordDto.Email);
+                if (user == null)
+                {
+                    // Không trả về thông báo lỗi nếu người dùng không tồn tại
+                    // để tránh lộ thông tin người dùng
+                    return (false, "Invalid reset request");
+                }
+
+                // Xác thực token reset mật khẩu và thiết lập thời gian hết hạn
+                if (user.PasswordResetToken != resetPasswordDto.Token)
+                {
+                    return (false, "Invalid reset token");
+                }
+
+                // Kiểm tra thời gian hết hạn của token
+                if (user.PasswordResetTokenExpiry == null ||
+                    !_tokenService.ValidatePasswordResetToken(resetPasswordDto.Token, user.PasswordResetTokenExpiry.Value))
+                {
+                    return (false, "Password reset token has expired");
+                }
+
+                // Cập nhật mật khẩu của người dùng và xóa token reset
+                user.Password = BCrypt.Net.BCrypt.HashPassword(resetPasswordDto.Password);
+                user.PasswordResetToken = null;
+                user.PasswordResetTokenExpiry = null;
+                await _userRepository.UpdateUserAsync(user);
+
+                return (true, null);
+            }
+            catch (Exception)
+            {
+                return (false, $"Error resetting password");
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> ChangePasswordAsync(ChangePasswordDTO changePasswordDto, Guid userId)
+        {
+            try
+            {
+                var user = await _userRepository.GetUserByIdAsync(userId);
+                if (user == null)
+                {
+                    return (false, "User not found");
+                }
+
+                // Kiểm tra mật khẩu cũ
+                if (!BCrypt.Net.BCrypt.Verify(changePasswordDto.OldPassword, user.Password))
+                {
+                    return (false, "Old password is incorrect");
+                }
+
+                // Cập nhật mật khẩu mới
+                user.Password = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
+                await _userRepository.UpdateUserAsync(user);
+
+                return (true, null);
+            }
+            catch (Exception)
+            {
+                return (false, $"Error changing password");
             }
         }
     }

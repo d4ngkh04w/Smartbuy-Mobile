@@ -11,78 +11,85 @@ namespace api.Controllers
     public class AuthAdminController : ControllerBase
     {
         private readonly IAuthService _authService;
-
-        public AuthAdminController(IAuthService authService)
+        private readonly IConfiguration _config;
+        public AuthAdminController(IAuthService authService, IConfiguration config)
         {
             _authService = authService;
+            _config = config;
         }
 
         [HttpPost("register")]
         [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] Register register)
+        public async Task<IActionResult> Register([FromBody] RegisterDTO register)
         {
             var result = await _authService.Register(register, "admin");
-            if (result.Success) return Ok(new
-            {
-                Message = "Admin registered successfully",
-                result.token!.Token,
-                ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
-            });
-
-            return BadRequest(new { Message = "Admin registration failed", Errors = result.ErrorMessage });
-        }
-
-        [HttpPost("login")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] Login login)
-        {
-            var result = await _authService.Login(login, "admin");
-
             if (result.Success)
             {
+                Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
+                });
                 Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = false,
                     SameSite = SameSiteMode.Lax,
                     Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(7),
+                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
+                });
+                return Ok(new
+                {
+                    Message = "Admin registered successfully",
+                });
+            }
+
+            return BadRequest(new { Message = "Admin registration failed", Errors = result.ErrorMessage });
+        }
+
+        [HttpPost("login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Login([FromBody] LoginDTO login)
+        {
+            var result = await _authService.Login(login, "admin");
+            if (result.Success)
+            {
+                Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
+                });
+                Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
                 });
                 return Ok(new
                 {
                     Message = "Login successful",
-                    Token = result.token!.Token,
-                    ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
                 });
             }
 
             return Unauthorized(new { Message = result.ErrorMessage });
         }
 
-        [HttpPost("google-login")]
-        [AllowAnonymous]
-        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLogin dto)
+        [HttpGet("verify")]
+        public IActionResult VerifyToken()
         {
-            var (success, message, token) = await _authService.LoginWithGoogleAsync(dto, "admin");
-            if (success)
+            return Ok(new
             {
-                Response.Cookies.Append("refreshToken", token!.RefreshToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(7),
-                });
-                return Ok(new
-                {
-                    Message = "Login successful",
-                    token!.Token,
-                    ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
-                });
-            }
-
-            return Unauthorized(new { Message = message });
+                Message = "Token is valid",
+            });
         }
+
     }
 }

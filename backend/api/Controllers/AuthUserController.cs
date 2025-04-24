@@ -7,53 +7,76 @@ namespace api.Controllers
 {
     [Route("api/v1/user/auth")]
     [ApiController]
-    [Authorize]
-    public class AccountController : ControllerBase
+    [Authorize(Roles = "user")]
+    public class AuthUserController : ControllerBase
     {
         private readonly IAuthService _authService;
-        private readonly ITokenService _tokenService;
+        private readonly IConfiguration _config;
 
-        public AccountController(IAuthService authService, ITokenService tokenService)
+        public AuthUserController(IAuthService authService, IConfiguration config)
         {
             _authService = authService;
-            _tokenService = tokenService;
+            _config = config;
         }
 
         [HttpPost("register")]
         [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] Register register)
+        public async Task<IActionResult> Register([FromBody] RegisterDTO register)
         {
             var result = await _authService.Register(register, "user");
-            if (result.Success) return Ok(new
-            {
-                Message = "User registered successfully",
-                result.token!.Token,
-                ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
-            });
-
-            return BadRequest(new { Message = "User registration failed", Errors = result.ErrorMessage });
-        }
-
-        [HttpPost("login")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] Login login)
-        {
-            var result = await _authService.Login(login, "user");
             if (result.Success)
             {
+                Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
+                });
                 Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = false,
                     SameSite = SameSiteMode.Lax,
                     Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(7),
+                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
+                });
+                return Ok(new
+                {
+                    Message = "User registered successfully",
+                });
+            }
+
+            return BadRequest(new { Message = "User registration failed", Errors = result.ErrorMessage });
+        }
+
+        [HttpPost("login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Login([FromBody] LoginDTO login)
+        {
+            var result = await _authService.Login(login, "user");
+            if (result.Success)
+            {
+                Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
+                });
+                Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
                 });
                 return Ok(new
                 {
                     Message = "Login successful",
-                    result.token!.Token,
-                    ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
                 });
             }
 
@@ -62,89 +85,43 @@ namespace api.Controllers
 
         [HttpPost("google-login")]
         [AllowAnonymous]
-        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLogin dto)
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDTO dto)
         {
             var (success, message, token) = await _authService.LoginWithGoogleAsync(dto, "user");
             if (success)
             {
+                Response.Cookies.Append("token", token!.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
+                });
                 Response.Cookies.Append("refreshToken", token!.RefreshToken, new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = false,
                     SameSite = SameSiteMode.Lax,
                     Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(7),
+                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
                 });
 
                 return Ok(new
                 {
                     Message = message,
-                    token!.Token,
-                    ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
                 });
             }
 
             return Unauthorized(new { Message = message });
         }
 
-        [Route("/api/v1/auth/refresh-token")]
-        [HttpPost]
-        [AllowAnonymous]
-        public async Task<IActionResult> RefreshToken()
-        {
-            var refreshToken = Request.Cookies["refreshToken"];
-            if (string.IsNullOrEmpty(refreshToken))
-                return Unauthorized(new { Message = "Refresh token is missing" });
-
-
-            var result = await _tokenService.ValidateRefreshToken(refreshToken);
-            if (result.Success)
-            {
-                Response.Cookies.Append("refreshToken", result.Token!.RefreshToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(7),
-                });
-                return Ok(new
-                {
-                    Message = "Token refreshed successfully",
-                    result.Token!.Token,
-                    ExpireAt = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-dd HH:mm:ss"),
-                });
-            }
-
-            return Unauthorized(new { Message = result.ErrorMessage });
-        }
-
-        [Route("/api/v1/auth/logout")]
-        [HttpPost]
-        public async Task<IActionResult> Logout()
-        {
-            var refreshToken = Request.Cookies["refreshToken"];
-            if (string.IsNullOrEmpty(refreshToken))
-                return Unauthorized(new { Message = "Refresh token is missing" });
-
-            var result = await _tokenService.RevokeRefreshToken(refreshToken);
-            if (result.Success)
-            {
-                Response.Cookies.Delete("refreshToken");
-                return Ok(new { Message = "Logout successful" });
-            }
-
-            return Unauthorized(new { Message = result.ErrorMessage });
-        }
-
-        [Route("/api/v1/auth/verify")]
-        [HttpGet]
+        [HttpGet("verify")]
         public IActionResult VerifyToken()
         {
             return Ok(new
             {
                 Message = "Token is valid",
-                IsAuthenticated = true
             });
         }
     }

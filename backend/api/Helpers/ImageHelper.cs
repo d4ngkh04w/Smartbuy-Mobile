@@ -2,7 +2,7 @@ namespace api.Helpers
 {
     public static class ImageHelper
     {
-        public static async Task<(bool Success, string? ErrorMessage, string? FilePath)> SaveImageAsync(IFormFile file, string folder, long maxSize)
+        public static async Task<(bool Success, string? ErrorMessage, string? FilePath)> SaveImageAsync(IFormFile file, string webRootPath, string folder, long maxSize)
         {
             if (file == null || file.Length == 0)
             {
@@ -20,7 +20,7 @@ namespace api.Helpers
             }
 
             string fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
-            string uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "images", folder);
+            string uploadFolder = Path.Combine(webRootPath, "uploads", "images", folder);
 
             try
             {
@@ -36,7 +36,7 @@ namespace api.Helpers
                     await file.CopyToAsync(stream);
                 }
 
-                return (true, null, $"/uploads/images/{folder}/{fileName}");
+                return (true, null, Path.Combine("uploads", "images", folder, fileName));
             }
             catch (Exception)
             {
@@ -48,8 +48,19 @@ namespace api.Helpers
         {
             try
             {
-                File.Delete(filePath);
-                return true;
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    return false;
+                }
+
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                    Console.WriteLine("File deleted successfully");
+                    return true;
+                }
+                Console.WriteLine("File not found");
+                return false;
             }
             catch (Exception)
             {

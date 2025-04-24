@@ -37,7 +37,7 @@ namespace api.Controllers.Brand
             return Ok(new
             {
                 Message = "Brands retrieved successfully",
-                Brands = result.Brands
+                result.Brands
             });
         }
 
@@ -58,7 +58,7 @@ namespace api.Controllers.Brand
             return Ok(new
             {
                 Message = "Brand retrieved successfully",
-                Brand = result.Brand
+                result.Brand
             });
         }
 
@@ -98,7 +98,7 @@ namespace api.Controllers.Brand
                                 new
                                 {
                                     Message = "Brand created successfully",
-                                    Brand = result.Brand
+                                    result.Brand
                                 });
         }
 
@@ -116,7 +116,11 @@ namespace api.Controllers.Brand
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };
             }
-            return Ok(new { Message = "Brand updated successfully" });
+            return Ok(new
+            {
+                Message = "Brand updated successfully",
+                result.Brand
+            });
         }
     }
 }
