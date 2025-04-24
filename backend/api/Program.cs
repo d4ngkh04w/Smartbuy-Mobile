@@ -90,7 +90,7 @@ builder.Services.AddAuthentication(
 
 builder.Services.AddRateLimiter(options =>
 {
-    // Global limiter theo IP để bảo vệ toàn bộ hệ thống
+    // Global limiter theo IP
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
     {
         var remoteIpAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -135,7 +135,7 @@ builder.Services.AddRateLimiter(options =>
             return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
             {
                 Window = TimeSpan.FromSeconds(10),
-                PermitLimit = 20,
+                PermitLimit = 30,
                 SegmentsPerWindow = 5,
                 QueueLimit = 1,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
@@ -168,6 +168,8 @@ builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ICartRepository, CartRepository>();
+builder.Services.AddScoped<ICartService, CartService>();
 
 var app = builder.Build();
 

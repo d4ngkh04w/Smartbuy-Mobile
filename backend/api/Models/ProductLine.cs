@@ -34,7 +34,7 @@ namespace api.Models
 
         [ForeignKey(nameof(BrandId))]
         [InverseProperty("ProductLines")]
-        public Brand? Brand { get; set; } = null;
+        public Brand? Brand { get; set; }
 
         [InverseProperty("ProductLine")]
         public ICollection<Product> Products { get; set; } = new HashSet<Product>();

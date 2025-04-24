@@ -49,9 +49,9 @@ namespace api.Services
 
                 return (true, null, new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error during registration: {ex.Message}", null);
+                return (false, $"Error during registration", null);
             }
         }
 
@@ -84,9 +84,9 @@ namespace api.Services
 
                 return (true, "Login successful", new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error during login: {ex.Message}", null);
+                return (false, $"Error during login", null);
             }
         }
 
@@ -136,9 +136,9 @@ namespace api.Services
 
                 return (true, "Login with Google successful", new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error during Google login: {ex.Message}", null);
+                return (false, $"Error during Google login", null);
             }
         }
 
@@ -169,9 +169,9 @@ namespace api.Services
 
                 return (true, null);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error processing password reset request: {ex.Message}");
+                return (false, $"Error processing password reset request");
             }
         }
 
@@ -208,9 +208,9 @@ namespace api.Services
 
                 return (true, null);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error resetting password: {ex.Message}");
+                return (false, $"Error resetting password");
             }
         }
     }
