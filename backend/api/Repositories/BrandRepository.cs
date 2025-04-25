@@ -37,10 +37,12 @@ namespace api.Repositories
         {
             var brandsQuery = _db.Brands.AsQueryable();
 
-            if (query.IsActive)
+            // Only apply IsActive filter if it has a value
+            if (query.IsActive.HasValue)
             {
-                brandsQuery = brandsQuery.Where(b => b.IsActive == query.IsActive);
+                brandsQuery = brandsQuery.Where(b => b.IsActive == query.IsActive.Value);
             }
+            // No else clause needed - when IsActive is null, we want all brands
 
             if (query.IncludeProductLines)
             {
@@ -75,7 +77,7 @@ namespace api.Repositories
                 brandsQuery = brandsQuery.Reverse();
             }
 
-            return await brandsQuery.Where(b => b.IsActive == query.IsActive).ToListAsync();
+            return await brandsQuery.ToListAsync();
         }
 
         public async Task<Brand?> GetBrandByIdAsync(int id, BrandQuery? query = null)
@@ -97,7 +99,14 @@ namespace api.Repositories
                 brandQuery = brandQuery.Include(b => b.ProductLines).ThenInclude(pl => pl.Products);
             }
 
-            return await brandQuery.FirstOrDefaultAsync(b => b.Id == id && b.IsActive == query.IsActive);
+            var baseQuery = brandQuery.Where(b => b.Id == id);
+            
+            if (query.IsActive.HasValue)
+            {
+                baseQuery = baseQuery.Where(b => b.IsActive == query.IsActive.Value);
+            }
+
+            return await baseQuery.FirstOrDefaultAsync();
         }
 
         public async Task<bool> UpdateBrandAsync(Brand brand)

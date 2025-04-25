@@ -1,18 +1,53 @@
 <script setup>
 import { onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { useAuthStore } from "../stores/authStore";
 import { logout } from "../services/authService.js";
 import emitter from "../utils/evenBus.js";
 
-const router = useRouter();
-const authStore = useAuthStore();
 
+const router = useRouter();
+
+/**
+ * Xóa toàn bộ lịch sử điều hướng của trình duyệt
+ * Ngăn chặn việc quay lại Dashboard sau khi đăng xuất
+ */
+function clearBrowserHistory() {
+    const locationOrigin = window.location.origin;
+    const currentPath = "/login";
+    const maxHistoryLength = 50;
+
+    // Thêm nhiều state vào lịch sử để đảm bảo ghi đè lên lịch sử trước đó
+    for (let i = 0; i < maxHistoryLength; i++) {
+        window.history.pushState(null, "", locationOrigin + currentPath);
+    }
+
+    // Làm mới trang để đảm bảo trạng thái mới
+    window.location.replace(locationOrigin + currentPath);
+}
+
+// Hook lifecycle
+onMounted(() => {
+    // Thêm meta tags để ngăn cache trang
+   // addNoCacheMeta();
+});
+
+/**
+ * Xử lý đăng xuất
+ */
 const handleLogout = async () => {
     try {
-        await logout();       
-        router.push("/login");
+        // Gọi API đăng xuất
+        await logout();
 
+        // Xóa lịch sử trình duyệt
+        // clearBrowserHistory();
+               
+        router.replace("/login");      
+       
+
+
+
+        // Thông báo thành công
         emitter.emit("show-notification", {
             status: "success",
             message: "Đăng xuất thành công",
@@ -25,11 +60,6 @@ const handleLogout = async () => {
         });
     }
 };
-
-onMounted(() => {
-    // Kiểm tra xem người dùng đã đăng nhập hay chưa
-    
-});
 </script>
 
 <template>
@@ -43,9 +73,7 @@ onMounted(() => {
 
         <div class="dashboard-content">
             <div class="welcome-message">
-                <h2>
-                    Chào mừng trở lại, {{ authStore.admin?.name || "Admin" }}!
-                </h2>
+                <h2>Chào mừng trở lại, Admin!</h2>
                 <p>Đây là trang quản trị hệ thống SmartBuy Mobile.</p>
             </div>
 
@@ -159,7 +187,6 @@ onMounted(() => {
                         <p>Quản lý khuyến mãi và giảm giá</p>
                     </div>
                 </div>
-              
 
                 <!-- Cài đặt hệ thống -->
                 <div class="dashboard-card" @click="router.push('/settings')">

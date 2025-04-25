@@ -1,30 +1,54 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
-import { useAuthStore } from "../stores/authStore";
+import meService from "../services/meService";
 import emitter from "../utils/evenBus.js";
 
 const router = useRouter();
-const authStore = useAuthStore();
 const activeTab = ref("profile");
+const loading = ref(false);
+const isEditing = ref(false);
 
-// Mock admin data (would normally come from API)
-const admin = ref({
-    name: "Admin User",
-    email: "admin@smartbuy.com",
-    phone: "0123456789",
-    role: "Super Admin",
-    createdAt: "15/03/2023",
-    avatar: "https://randomuser.me/api/portraits/men/1.jpg",
+// Single source of truth for user data
+const userData = ref({
+    name: "",
+    email: "",
+    phoneNumber: "",
+    createdAt: "",
+    avatar: "",
+    gender: "",
+    address: "",
+    avatarFile: null,
 });
 
-// Form states
-const isEditing = ref(false);
-const formData = ref({
-    name: "",
-    phone: "",
-    email: "",
-    avatar: "",
+// File handling refs
+const fileInput = ref(null);
+const avatarPreview = ref(null);
+
+// URL hiển thị avatar
+const userAvatar = computed(() => {
+    if (avatarPreview.value) return avatarPreview.value;
+    if (userData.value && userData.value.avatar) {
+        // Nếu avatar đã là URL đầy đủ (bắt đầu bằng http hoặc https)
+        if (userData.value.avatar.startsWith("http")) {
+            return userData.value.avatar;
+        }
+
+        // Lấy base URL từ cấu hình API
+        const apiUrl = import.meta.env.VITE_API_URL || "";
+        const baseUrl = apiUrl.includes("/api") ? apiUrl.split("/api")[0] : "";
+
+        // Chuẩn hóa đường dẫn file (chuyển \ thành /)
+        const normalizedPath = userData.value.avatar.replace(/\\/g, "/");
+
+        // Kiểm tra xem có prefix / hay không
+        const avatarPath = normalizedPath.startsWith("/")
+            ? normalizedPath
+            : `/${normalizedPath}`;
+
+        return `${baseUrl}${avatarPath}`;
+    }
+    return "https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg";
 });
 
 // Password change form
@@ -34,94 +58,173 @@ const passwordForm = ref({
     confirmPassword: "",
 });
 
-// Activity logs mock data
-const activityLogs = ref([
-    {
-        id: 1,
-        action: "Đăng nhập",
-        timestamp: "19/04/2025 08:30:15",
-        ipAddress: "192.168.1.1",
-        details: "Đăng nhập thành công",
-    },
-    {
-        id: 2,
-        action: "Chỉnh sửa sản phẩm",
-        timestamp: "18/04/2025 15:22:10",
-        ipAddress: "192.168.1.1",
-        details: "Cập nhật giá sản phẩm iPhone 15 Pro",
-    },
-    {
-        id: 3,
-        action: "Thêm danh mục",
-        timestamp: "17/04/2025 10:45:03",
-        ipAddress: "192.168.1.1",
-        details: 'Thêm danh mục "Phụ kiện gaming"',
-    },
-    {
-        id: 4,
-        action: "Xử lý đơn hàng",
-        timestamp: "16/04/2025 14:18:32",
-        ipAddress: "192.168.1.1",
-        details: "Cập nhật trạng thái đơn hàng #123456",
-    },
-    {
-        id: 5,
-        action: "Đăng xuất",
-        timestamp: "15/04/2025 17:30:00",
-        ipAddress: "192.168.1.1",
-        details: "Đăng xuất hệ thống",
-    },
-]);
-
-onMounted(() => {
-    if (!authStore.isLoggedIn()) {
-        router.push("/login");
-    } else {
-        // In a real app, would fetch admin details from API here
-        // For now just copying mock data to form
-        formData.value = {
-            name: admin.value.name,
-            phone: admin.value.phone,
-            email: admin.value.email,
-            avatar: admin.value.avatar,
-        };
-    }
+onMounted(async () => {
+    await fetchUserData();
 });
 
+// Fetch user data
+const fetchUserData = async () => {
+    loading.value = true;
+    try {
+        // Fetch admin data from API
+        const response = await meService.getMe();
+        const data = response.data;
+        console.log("Response data:", data);
+        // Format date if needed
+        if (data.createdAt) {
+            const date = new Date(data.createdAt);
+            data.createdAt = date.toLocaleDateString("vi-VN");
+        }
+
+        // Update userData with response data
+        userData.value = {
+            ...data,
+            avatarFile: null,
+        };
+    } catch (error) {
+        console.error("Error fetching admin profile:", error);
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Không thể tải thông tin tài khoản",
+        });
+        router.push("/login");
+    } finally {
+        loading.value = false;
+    }
+};
+
+// Handle avatar upload
+const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Kiểm tra định dạng file
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+    if (!allowedTypes.includes(file.type)) {
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Chỉ chấp nhận file hình ảnh (jpg, jpeg, png)",
+        });
+        return;
+    }
+
+    // Giới hạn kích thước file (15MB)
+    if (file.size > 15 * 1024 * 1024) {
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Kích thước file quá lớn (tối đa 15MB)",
+        });
+        return;
+    }
+
+    // Lưu file để gửi lên server
+    userData.value.avatarFile = file;
+
+    // Tạo URL để hiển thị preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        avatarPreview.value = e.target.result;
+    };
+    reader.readAsDataURL(file);
+};
+
+// Toggle edit mode
 const enableEditing = () => {
+    // Lưu trạng thái ban đầu trong trường hợp hủy
+    userData.value = { ...userData.value, avatarFile: null };
     isEditing.value = true;
 };
 
+// Cancel editing
 const cancelEditing = () => {
     isEditing.value = false;
-    // Reset form data to original values
-    formData.value = {
-        name: admin.value.name,
-        phone: admin.value.phone,
-        email: admin.value.email,
-        avatar: admin.value.avatar,
-    };
+    avatarPreview.value = null;
+
+    // Fetch lại dữ liệu để đảm bảo dữ liệu hiển thị là mới nhất
+    fetchUserData();
+
+    if (fileInput.value) {
+        fileInput.value.value = "";
+    }
 };
 
-const saveProfile = () => {
-    // Mock update profile - in real app would call API
-    admin.value = {
-        ...admin.value,
-        name: formData.value.name,
-        phone: formData.value.phone,
-        email: formData.value.email,
-        avatar: formData.value.avatar,
-    };
+// Save profile
+const saveProfile = async () => {
+    loading.value = true;
+    try {
+        // Tạo đối tượng FormData để gửi lên server (giống cách trong BrandManagement.vue)
+        const formData = new FormData();
 
-    isEditing.value = false;
+        // Thêm các trường thông tin vào formData
+        formData.append("name", userData.value.name || "");
+        formData.append("email", userData.value.email || "");
 
-    emitter.emit("show-notification", {
-        status: "success",
-        message: "Cập nhật thông tin thành công",
-    });
+        if (userData.value.gender) {
+            formData.append("gender", userData.value.gender);
+        }
+
+        if (userData.value.address) {
+            formData.append("address", userData.value.address);
+        }
+
+        // Nếu có avatar mới, thêm vào formData
+        if (userData.value.avatarFile) {
+            formData.append("avatar", userData.value.avatarFile);
+        }
+
+        // Gọi API cập nhật thông tin với FormData
+        const response = await meService.updateUserProfile(formData);
+
+        if (response && response.data) {
+            // Lấy dữ liệu từ response
+            const data = response.data.user;
+            console.log("Response data:", data);
+
+            // Format date if needed
+            if (data.createdAt) {
+                const date = new Date(data.createdAt);
+                data.createdAt = date.toLocaleDateString("vi-VN");
+            }
+
+            // Cập nhật userData với dữ liệu mới từ server
+            userData.value = {
+                ...data,
+                avatarFile: null,
+            };
+
+            // Hiển thị thông báo thành công
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Cập nhật thông tin thành công",
+            });
+        } else {
+            emitter.emit("show-notification", {
+                status: "warning",
+                message: "Dữ liệu trả về không hợp lệ",
+            });
+        }
+
+        // Reset state
+        isEditing.value = false;
+        avatarPreview.value = null;
+
+        if (fileInput.value) {
+            fileInput.value.value = "";
+        }
+    } catch (error) {
+        console.error("Error updating profile:", error);
+        emitter.emit("show-notification", {
+            status: "error",
+            message:
+                error.response?.data?.message || "Cập nhật thông tin thất bại",
+        });
+    } finally {
+        loading.value = false;
+    }
 };
 
-const changePassword = () => {
+// Change password
+const changePassword = async () => {
     // Validate password
     if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
         emitter.emit("show-notification", {
@@ -142,44 +245,52 @@ const changePassword = () => {
         return;
     }
 
-    // Mock password change - in real app would call API
-    passwordForm.value = {
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-    };
+    loading.value = true;
+    try {
+        await meService.changePassword({
+            oldPassword: passwordForm.value.currentPassword,
+            newPassword: passwordForm.value.newPassword,
+            confirmNewPassword: passwordForm.value.confirmPassword,
+        });
 
-    emitter.emit("show-notification", {
-        status: "success",
-        message: "Đổi mật khẩu thành công",
-    });
+        emitter.emit("show-notification", {
+            status: "success",
+            message: "Đổi mật khẩu thành công",
+        });
+
+        // Reset password form
+        passwordForm.value.currentPassword = "";
+        passwordForm.value.newPassword = "";
+        passwordForm.value.confirmPassword = "";
+    } catch (error) {
+        console.error("Error changing password:", error);
+        emitter.emit("show-notification", {
+            status: "error",
+            message: error.response?.data?.message || "Đổi mật khẩu thất bại",
+        });
+    } finally {
+        loading.value = false;
+    }
 };
 
 const goBack = () => {
-    router.push("/");
-};
-
-const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        // In a real app, would upload the file to server
-        // For now, just create a local URL
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            formData.value.avatar = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
+    router.push("/dashboard");
 };
 </script>
 
 <template>
     <div class="accounts-page">
         <div class="page-header">
-            <button class="back-button" @click="goBack">
-                <i class="fas fa-arrow-left"></i> Quay lại Dashboard
-            </button>
-            <h1>Quản lý Tài khoản</h1>
+            <div class="header-top">
+                <button class="back-button" @click="goBack">
+                    <i class="fas fa-arrow-left"></i> Quay lại Dashboard
+                </button>
+                <h1>Quản lý Tài khoản</h1>
+                <!-- Thêm nút giả mà không có chức năng để giữ layout -->
+                <button class="invisible-button" style="visibility: hidden">
+                    <i class="fas fa-sync-alt"></i> Nút ẩn
+                </button>
+            </div>
         </div>
 
         <div class="account-container">
@@ -198,15 +309,6 @@ const handleFileChange = (event) => {
                     @click="activeTab = 'password'"
                 >
                     <i class="fas fa-key"></i> Đổi mật khẩu
-                </button>
-                <button
-                    :class="[
-                        'tab-button',
-                        { active: activeTab === 'activity' },
-                    ]"
-                    @click="activeTab = 'activity'"
-                >
-                    <i class="fas fa-history"></i> Lịch sử hoạt động
                 </button>
             </div>
 
@@ -242,11 +344,7 @@ const handleFileChange = (event) => {
                         <div class="avatar-section">
                             <div class="avatar-container">
                                 <img
-                                    :src="
-                                        isEditing
-                                            ? formData.avatar
-                                            : admin.avatar
-                                    "
+                                    :src="userAvatar"
                                     alt="Avatar"
                                     class="avatar-image"
                                 />
@@ -260,63 +358,97 @@ const handleFileChange = (event) => {
                                     <input
                                         id="avatar-upload"
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/jpeg,image/png,image/jpg"
                                         @change="handleFileChange"
                                         class="avatar-upload"
+                                        ref="fileInput"
                                     />
                                 </div>
                             </div>
+                            <span v-if="isEditing" class="avatar-helper"
+                                >Thêm ảnh đại diện</span
+                            >
                         </div>
 
                         <div class="info-section">
-                            <div class="info-group">
-                                <label>Họ và tên:</label>
-                                <input
-                                    v-if="isEditing"
-                                    v-model="formData.name"
-                                    type="text"
-                                    class="info-input"
-                                />
-                                <div v-else class="info-text">
-                                    {{ admin.name }}
+                            <div class="info-grid">
+                                <div class="info-group">
+                                    <label>Họ và tên:</label>
+                                    <input
+                                        v-if="isEditing"
+                                        v-model="userData.name"
+                                        type="text"
+                                        class="info-input"
+                                        placeholder="Nhập họ và tên"
+                                    />
+                                    <div v-else class="info-text">
+                                        {{ userData.name || "Chưa cập nhật" }}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div class="info-group">
-                                <label>Email:</label>
-                                <input
-                                    v-if="isEditing"
-                                    v-model="formData.email"
-                                    type="email"
-                                    class="info-input"
-                                />
-                                <div v-else class="info-text">
-                                    {{ admin.email }}
+                                <div class="info-group">
+                                    <label>Email:</label>
+                                    <input
+                                        v-if="isEditing"
+                                        v-model="userData.email"
+                                        type="email"
+                                        class="info-input"
+                                        placeholder="Nhập email"
+                                    />
+                                    <div v-else class="info-text">
+                                        {{ userData.email || "Chưa cập nhật" }}
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div class="info-group">
-                                <label>Số điện thoại:</label>
-                                <input
-                                    v-if="isEditing"
-                                    v-model="formData.phone"
-                                    type="tel"
-                                    class="info-input"
-                                />
-                                <div v-else class="info-text">
-                                    {{ admin.phone }}
+                                <div class="info-group">
+                                    <label>Giới tính:</label>
+                                    <select
+                                        v-if="isEditing"
+                                        v-model="userData.gender"
+                                        class="info-input"
+                                    >
+                                        <option value="">
+                                            -- Chọn giới tính --
+                                        </option>
+                                        <option value="Nam">Nam</option>
+                                        <option value="Nữ">Nữ</option>
+                                        <option value="Khác">Khác</option>
+                                    </select>
+                                    <div v-else class="info-text">
+                                        {{ userData.gender || "Chưa cập nhật" }}
+                                    </div>
                                 </div>
-                            </div>
+                                <div class="info-group">
+                                    <label>Địa chỉ:</label>
+                                    <textarea
+                                        v-if="isEditing"
+                                        v-model="userData.address"
+                                        class="info-input address-input"
+                                        placeholder="Nhập địa chỉ"
+                                    ></textarea>
+                                    <div v-else class="info-text">
+                                        {{
+                                            userData.address || "Chưa cập nhật"
+                                        }}
+                                    </div>
+                                </div>
+                                <div class="info-group">
+                                    <label>Số điện thoại:</label>
+                                    <div class="info-text">
+                                        {{
+                                            userData.phoneNumber ||
+                                            "Chưa cập nhật"
+                                        }}
+                                    </div>
+                                </div>
 
-                            <div class="info-group">
-                                <label>Vai trò:</label>
-                                <div class="info-text">{{ admin.role }}</div>
-                            </div>
-
-                            <div class="info-group">
-                                <label>Ngày tạo tài khoản:</label>
-                                <div class="info-text">
-                                    {{ admin.createdAt }}
+                                <div class="info-group">
+                                    <label>Ngày tạo tài khoản:</label>
+                                    <div class="info-text">
+                                        {{
+                                            userData.createdAt ||
+                                            "Chưa cập nhật"
+                                        }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -380,52 +512,6 @@ const handleFileChange = (event) => {
                         </button>
                     </form>
                 </div>
-
-                <!-- Activity History Tab -->
-                <div v-if="activeTab === 'activity'" class="activity-tab">
-                    <h2>Lịch sử hoạt động</h2>
-
-                    <div class="activity-list">
-                        <div
-                            v-for="log in activityLogs"
-                            :key="log.id"
-                            class="activity-item"
-                        >
-                            <div class="activity-icon">
-                                <i class="fas fa-history"></i>
-                            </div>
-                            <div class="activity-details">
-                                <div class="activity-header">
-                                    <span class="activity-action">{{
-                                        log.action
-                                    }}</span>
-                                    <span class="activity-time">{{
-                                        log.timestamp
-                                    }}</span>
-                                </div>
-                                <div class="activity-info">
-                                    <span class="activity-ip"
-                                        ><i class="fas fa-network-wired"></i>
-                                        {{ log.ipAddress }}</span
-                                    >
-                                    <p class="activity-description">
-                                        {{ log.details }}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="activity-pagination">
-                        <button class="pagination-button">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <span class="pagination-info">Trang 1 / 1</span>
-                        <button class="pagination-button">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -440,34 +526,51 @@ const handleFileChange = (event) => {
 
 .page-header {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     margin-bottom: 2rem;
+    background-color: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-left: 4px solid var(--primary-color);
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 0.5rem;
 }
 
 .back-button {
-    background-color: #f5f5f5;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 0.5rem 1rem;
-    margin-right: 1rem;
-    cursor: pointer;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    transition: all 0.3s;
+    padding: 0.5rem 1rem;
+    background-color: #fff;
+    color: #666;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.back-button i {
+    color: var(--primary-color);
 }
 
 .back-button:hover {
-    background-color: #f8d7e3;
+    background-color: #f8f0f4;
     color: var(--primary-color);
-    border-color: var(--primary-color);
 }
 
 .page-header h1 {
+    margin: 0;
     font-size: 1.8rem;
     font-weight: 600;
     color: #333;
-    margin: 0;
 }
 
 .account-container {
@@ -479,36 +582,48 @@ const handleFileChange = (event) => {
 
 .account-tabs {
     display: flex;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 1.5rem;
+    background-color: white;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
 }
 
 .tab-button {
     padding: 1rem 1.5rem;
-    background: none;
+    background-color: white;
     border: none;
-    border-bottom: 3px solid transparent;
     cursor: pointer;
+    color: #666;
     font-weight: 500;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #6c757d;
     transition: all 0.3s;
+    position: relative;
+}
+
+.tab-button i {
+    font-size: 1.2rem;
 }
 
 .tab-button:hover {
     color: var(--primary-color);
+    background-color: #fff5fc;
 }
 
 .tab-button.active {
     color: var(--primary-color);
     border-bottom: 3px solid var(--primary-color);
-    background-color: rgba(248, 110, 211, 0.05);
+    font-weight: 600;
 }
 
 .account-content {
-    padding: 2rem;
+    background-color: white;
+    border-radius: 0 0 12px 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 /* Profile Tab Styles */
@@ -581,7 +696,9 @@ const handleFileChange = (event) => {
 }
 
 .avatar-section {
-    flex: 0 0 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .avatar-container {
@@ -591,12 +708,23 @@ const handleFileChange = (event) => {
     border-radius: 50%;
     overflow: hidden;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.avatar-container:hover {
+    transform: scale(1.02);
 }
 
 .avatar-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.avatar-container:hover .avatar-image {
+    transform: scale(1.05);
 }
 
 .avatar-overlay {
@@ -608,16 +736,28 @@ const handleFileChange = (event) => {
     display: flex;
     justify-content: center;
     padding: 0.5rem;
+    transition: opacity 0.3s ease;
 }
 
 .avatar-upload-label {
     color: white;
     cursor: pointer;
     font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+
+.avatar-upload-label:hover {
+    transform: scale(1.1);
 }
 
 .avatar-upload {
     display: none;
+}
+
+.avatar-helper {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
 }
 
 .info-section {
@@ -625,8 +765,14 @@ const handleFileChange = (event) => {
     min-width: 300px;
 }
 
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
 .info-group {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .info-group label {
@@ -641,6 +787,16 @@ const handleFileChange = (event) => {
     font-size: 1rem;
     color: #212529;
     padding: 0.5rem 0;
+}
+
+.role-badge {
+    display: inline-block;
+    background-color: rgba(224, 92, 182, 0.15);
+    color: var(--primary-color);
+    font-weight: 500;
+    padding: 0.35rem 0.8rem;
+    border-radius: 50px;
+    font-size: 0.9rem;
 }
 
 .info-input {
@@ -658,6 +814,11 @@ const handleFileChange = (event) => {
     outline: none;
 }
 
+.address-input {
+    min-height: 100px;
+    resize: vertical;
+}
+
 /* Password Tab Styles */
 .password-tab h2 {
     margin-top: 0;
@@ -667,7 +828,7 @@ const handleFileChange = (event) => {
 }
 
 .password-form {
-    max-width: 600px;
+    max-width: 500px;
 }
 
 .form-group {
@@ -681,14 +842,9 @@ const handleFileChange = (event) => {
     margin-bottom: 0.5rem;
 }
 
-.password-input-group {
-    position: relative;
-}
-
 .password-input-group input {
     width: 100%;
     padding: 0.75rem;
-    padding-right: 2.5rem;
     border: 1px solid #ced4da;
     border-radius: 6px;
     font-size: 1rem;
@@ -725,113 +881,19 @@ const handleFileChange = (event) => {
     background-color: #e056b2;
 }
 
-/* Activity Tab Styles */
-.activity-tab h2 {
-    margin-top: 0;
-    margin-bottom: 2rem;
-    font-size: 1.5rem;
-    color: #333;
-}
+@media (max-width: 768px) {
+    .profile-content {
+        flex-direction: column;
+        align-items: center;
+    }
 
-.activity-list {
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    overflow: hidden;
-}
+    .info-section {
+        width: 100%;
+    }
 
-.activity-item {
-    display: flex;
-    padding: 1rem;
-    border-bottom: 1px solid #e9ecef;
-    transition: background-color 0.3s;
-}
-
-.activity-item:hover {
-    background-color: #f8f9fa;
-}
-
-.activity-item:last-child {
-    border-bottom: none;
-}
-
-.activity-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    background-color: #f8f9fa;
-    border-radius: 50%;
-    margin-right: 1rem;
-    color: var(--primary-color);
-}
-
-.activity-details {
-    flex: 1;
-}
-
-.activity-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-}
-
-.activity-action {
-    font-weight: 500;
-    color: #212529;
-}
-
-.activity-time {
-    color: #6c757d;
-    font-size: 0.9rem;
-}
-
-.activity-info {
-    color: #6c757d;
-}
-
-.activity-ip {
-    font-size: 0.9rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    margin-bottom: 0.25rem;
-}
-
-.activity-description {
-    margin: 0.25rem 0 0;
-    color: #495057;
-}
-
-.activity-pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 1.5rem;
-    gap: 1rem;
-}
-
-.pagination-button {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.pagination-button:hover {
-    background-color: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
-}
-
-.pagination-info {
-    font-size: 0.9rem;
-    color: #6c757d;
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
+```````````````````````````````

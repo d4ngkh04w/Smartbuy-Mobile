@@ -13,6 +13,9 @@ namespace api.DTOs.Brand
         [AllowFileExtension(extensions: [".jpg", ".jpeg", ".png"], ErrorMessage = "Logo must be a valid image (jpg, jpeg, png)")]
         public IFormFile? Logo { get; set; } = null;
 
+        [StringLength(2000, ErrorMessage = "Description cannot exceed 2000 characters")]
+        public string? Description { get; set; }
+
         public bool? IsActive { get; set; }
     }
 }

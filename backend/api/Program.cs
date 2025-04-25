@@ -90,7 +90,7 @@ builder.Services.AddAuthentication(
 
 builder.Services.AddRateLimiter(options =>
 {
-    // Global limiter theo IP
+    // Global limiter theo IP để bảo vệ toàn bộ hệ thống
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
     {
         var remoteIpAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -102,9 +102,9 @@ builder.Services.AddRateLimiter(options =>
             return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
             {
                 Window = TimeSpan.FromSeconds(10),
-                PermitLimit = 20,
+                PermitLimit = 35,
                 SegmentsPerWindow = 5,
-                QueueLimit = 0,
+                QueueLimit = 2,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
             });
         }
@@ -112,10 +112,10 @@ builder.Services.AddRateLimiter(options =>
         {
             return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
             {
-                Window = TimeSpan.FromSeconds(20),
-                PermitLimit = 6,
-                SegmentsPerWindow = 5,
-                QueueLimit = 0,
+                Window = TimeSpan.FromSeconds(10),
+                PermitLimit = 10,
+                SegmentsPerWindow = 6,
+                QueueLimit = 2,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
             });
         }
@@ -135,7 +135,7 @@ builder.Services.AddRateLimiter(options =>
             return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
             {
                 Window = TimeSpan.FromSeconds(10),
-                PermitLimit = 30,
+                PermitLimit = 20,
                 SegmentsPerWindow = 5,
                 QueueLimit = 1,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
@@ -168,8 +168,6 @@ builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddScoped<ICartRepository, CartRepository>();
-builder.Services.AddScoped<ICartService, CartService>();
 
 var app = builder.Build();
 
@@ -185,10 +183,10 @@ else
     app.UseHsts();
 }
 
-app.UseAuthentication();
-app.UseAuthorization();
+app.UseStaticFiles();
 app.UseRateLimiter();
 app.UseCors("AllowFrontend");
-app.UseStaticFiles();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 app.Run();

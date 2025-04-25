@@ -4,13 +4,6 @@ import emitter from "../utils/evenBus.js";
 
 const notifications = ref([]); // Chứa tất cả các thông báo
 
-// Mapping trạng thái -> icon HTML
-const statusMap = {
-    success: '<i class="fa-solid fa-circle-check"></i>',
-    error: '<i class="fa-solid fa-circle-xmark"></i>',
-    warning: '<i class="fa-solid fa-circle-exclamation"></i>',
-};
-
 const handler = (payload) => {
     const notification = {
         id: Date.now(), // Sử dụng id duy nhất cho từng thông báo
@@ -92,7 +85,7 @@ onUnmounted(() => {
     transition: all 0.5s ease;
 }
 
-.notification.success{
+.notification.success {
     background: #d4edda;
     color: #155724;
 }
@@ -104,7 +97,6 @@ onUnmounted(() => {
     background: #fff3cd;
     color: #856404;
 }
-
 
 .notification i {
     font-size: 35px;
