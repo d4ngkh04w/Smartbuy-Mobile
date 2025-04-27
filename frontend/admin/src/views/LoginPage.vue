@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import emitter from "../utils/evenBus.js";
 import { authService } from "../services/authService.js";
@@ -20,7 +20,11 @@ const forgotPasswordError = ref("");
 const showForgotPasswordSuccess = ref(false);
 const isSubmittingForgotPassword = ref(false);
 
-// Handle login
+// Thêm kiểm tra khi trang login được tải
+
+/**
+ * Xử lý đăng nhập
+ */
 const login = async () => {
     // Reset error
     phoneNumberError.value = "";
@@ -45,24 +49,21 @@ const login = async () => {
     try {
         isSubmitting.value = true;
 
-        // Call login API
-        await authService.login(
-            phoneNumber.value,
-            password.value
-        );
-
+        // Gọi API đăng nhập
+        await authService.login(phoneNumber.value, password.value);          
         emitter.emit("show-notification", {
             status: "success",
             message: "Đăng nhập thành công",
         });
-
+        
+        // Reset form
         phoneNumber.value = "";
         password.value = "";
         showPassword.value = false;
 
-        router.push("/dashboard");
+        // Chuyển đến dashboard
+        router.replace("/dashboard");
     } catch (error) {
-        console.error("Login failed:", error);
         emitter.emit("show-notification", {
             status: "error",
             message: "Đăng nhập thất bại",
@@ -72,19 +73,26 @@ const login = async () => {
     }
 };
 
-// Validate phone number input (only allow numbers and limit to 10 digits)
+/**
+ * Validate số điện thoại (chỉ cho phép số và giới hạn 10 chữ số)
+ */
 const validatePhoneInput = (event) => {
     const input = event.target.value.replace(/\D/g, "").slice(0, 10);
     phoneNumber.value = input;
-    phoneNumberError.value = input.length != 10 ? "Số điện thoại không hợp lệ" : "";    
+    phoneNumberError.value =
+        input.length != 10 ? "Số điện thoại không hợp lệ" : "";
 };
 
-// Check if phone number is valid (10 digits)
+/**
+ * Kiểm tra số điện thoại có hợp lệ không (10 chữ số)
+ */
 const isValidPhoneNumber = (phone) => {
     return /^[0-9]{10}$/.test(phone);
 };
 
-// Handle forgot password
+/**
+ * Xử lý quên mật khẩu
+ */
 const handleForgotPassword = async () => {
     // Validate email
     if (!email.value || !isValidEmail(email.value)) {
@@ -96,10 +104,10 @@ const handleForgotPassword = async () => {
         isSubmittingForgotPassword.value = true;
         forgotPasswordError.value = "";
 
-        // Call forgot password API
+        // Gọi API quên mật khẩu
         await authService.forgotPassword({ email: email.value });
 
-        // Show success message
+        // Hiển thị thông báo thành công
         showForgotPasswordSuccess.value = true;
     } catch (err) {
         console.error("Lỗi gửi yêu cầu đặt lại mật khẩu:", err);
@@ -116,12 +124,16 @@ const handleForgotPassword = async () => {
     }
 };
 
-// Show forgot password form
+/**
+ * Hiển thị form quên mật khẩu
+ */
 const showForgotPassword = () => {
     showForgotPasswordForm.value = true;
 };
 
-// Back to login form
+/**
+ * Quay lại form đăng nhập
+ */
 const backToLogin = () => {
     showForgotPasswordForm.value = false;
     showForgotPasswordSuccess.value = false;
@@ -129,7 +141,9 @@ const backToLogin = () => {
     forgotPasswordError.value = "";
 };
 
-// Check if email is valid
+/**
+ * Kiểm tra email có hợp lệ không
+ */
 const isValidEmail = (email) => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email);

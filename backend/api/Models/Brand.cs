@@ -19,6 +19,9 @@ namespace api.Models
         [Column(TypeName = "varchar(255)")]
         public string Logo { get; set; } = string.Empty;
 
+        [Column(TypeName = "varchar(2000)")]
+        public string? Description { get; set; }
+
         [Column(TypeName = "bit")]
         public bool IsActive { get; set; } = true;
 

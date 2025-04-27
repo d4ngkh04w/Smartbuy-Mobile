@@ -1,80 +1,81 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { authService } from "../services/authService.js";
+
+// Định nghĩa các routes
 const routes = [
-	{
-		path: "/login",
-		name: "login",
-		component: () => import("../views/LoginPage.vue"),
-	},
-	{
-		path: "/dashboard",
-		name: "dashboard",
-		component: () => import("../views/DashboardPage.vue"),
-		meta: { requiresAuth: true },
-	},
-	{
-		path: "/reports",
-		name: "reports",
-		component: () => import("../views/ReportsPage.vue"),
-		meta: { requiresAuth: true },
-	},
-	{
-		path: "/accounts",
-		name: "accounts",
-		component: () => import("../views/AccountsPage.vue"),
-		meta: { requiresAuth: true },
-	},
-	{
-		path: "/",
-		redirect: "/dashboard",
-	},
+    {
+        path: "/login",
+        name: "login",
+        component: () => import("../views/LoginPage.vue"),
+        meta: { requiresAuth: false},
+    },
+    {
+        path: "/dashboard",
+        name: "dashboard",
+        component: () => import("../views/DashboardPage.vue"),
+        meta: { requiresAuth: true },
+    },
+    {
+        path: "/reports",
+        name: "reports",
+        component: () => import("../views/ReportsPage.vue"),
+        meta: { requiresAuth: true },
+    },
+    {
+        path: "/accounts",
+        name: "accounts",
+        component: () => import("../views/AccountsPage.vue"),
+        meta: { requiresAuth: true },
+    },
+    {
+        path: "/categories",
+        name: "categories",
+        component: () => import("../views/CategoryPage.vue"),
+        meta: { requiresAuth: true },
+    },
+    {
+        path: "/",
+        redirect: "/login",
+    },
+    // Catch all route for 404
+    {
+        path: "/:catchAll(.*)",
+        redirect: "/login",
+    },
 ];
 
+// Khởi tạo router
 const router = createRouter({
-	history: createWebHistory(import.meta.env.BASE_URL),
-	routes,
-	scrollBehavior(to, from, savedPosition) {
-		if (to.hash) {
-			return {
-				el: to.hash,
-				behavior: "smooth",
-			};
-		} else if (savedPosition) {
-			return savedPosition;
-		} else {
-			return { top: 0 };
-		}
-	},
+    history: createWebHistory(import.meta.env.BASE_URL),
+    routes,
+    scrollBehavior(to, from, savedPosition) {
+        if (to.hash) {
+            return { el: to.hash, behavior: "smooth" };
+        }
+        return savedPosition || { top: 0 };
+    },
 });
+
+// Navigation guards
 router.beforeEach(async (to, from, next) => {
-	const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
+    const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
 
-	if (requiresAuth) {
-		try {
-			// Kiểm tra xác thực người dùng
-			await authService.verifyAdmin();
+    if (requiresAuth) {
+        try {
+            await authService.verifyAdmin(); 
+            next();
+          
+        } catch (error) {
+            if(error.response?.status != 401) {
+                console.error("Lỗi xác thực:", error);
+                next("/login");
+            }
+        }
+    } else {
+        next();
+    }
 
-			// Nếu đã xác thực và đang cố truy cập trang login, chuyển hướng về dashboard
-			if (to.path === "/login") {
-				next("/dashboard");
-			} else {
-				next();
-			}
-		} catch (error) {
-			if (error.response?.status === 401) {
-				throw error; // Ném lại lỗi để xử lý ở interceptor
-			} else {
-				if (to.path !== "/login") {
-					next("/login");
-				} else {
-					next();
-				}
-			}
-		}
-	} else {
-		// Tiếp tục nếu không cần xác thực
-		next();
-	}
+    
 });
 
 export default router;

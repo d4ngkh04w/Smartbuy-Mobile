@@ -40,7 +40,7 @@ namespace api.Controllers
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };
             }
-            return Ok(result.Users);
+            return Ok(new { Message = "Users retrieved successfully", result.Users });
         }
 
         [HttpGet("me")]

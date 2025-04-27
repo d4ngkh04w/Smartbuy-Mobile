@@ -31,6 +31,8 @@ namespace api.Services
                 var brand = new Brand
                 {
                     Name = newName,
+                    Description = brandDTO.Description,
+                    IsActive = brandDTO.IsActive
                 };
 
                 var (success, errorMessage, path) = await ImageHelper.SaveImageAsync(brandDTO.Logo, _env.WebRootPath, "brands", 2 * 1024 * 1024);
@@ -100,8 +102,9 @@ namespace api.Services
             {
                 var brands = await _repo.GetBrandsAsync(query);
 
-                if (brands == null || !brands.Any())
-                    return (false, "Not found brands", null);
+                // Return empty list instead of error when no brands are found
+                if (brands == null)
+                    return (true, null, new List<BrandDTO>());
 
                 var brandDTOs = brands.Select(b => b.ToDTO()).ToList();
 
@@ -124,9 +127,14 @@ namespace api.Services
                 if (brand == null)
                     return (false, "Brand not found", null);
 
-                var newName = brandDTO.Name?.Trim();
-                if (!string.IsNullOrEmpty(newName))
-                    brand.Name = newName;
+                if (!string.IsNullOrEmpty(brandDTO.Name))
+                    brand.Name = brandDTO.Name;
+
+                brand.Description = brandDTO.Description;
+
+                // Add check for IsActive property
+                if (brandDTO.IsActive.HasValue)
+                    brand.IsActive = brandDTO.IsActive.Value;
 
                 if (brandDTO.Logo != null)
                 {
