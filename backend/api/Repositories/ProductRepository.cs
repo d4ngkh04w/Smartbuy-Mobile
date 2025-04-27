@@ -71,5 +71,22 @@ namespace api.Repositories
         {
             return await _context.Products.AnyAsync(p => p.Name.ToLower() == name.ToLower());
         }
+
+        public async Task<(List<Product> Items, int TotalItems)> GetPagedProductsAsync(int page, int pageSize)
+        {
+            var totalItems = await _context.Products.CountAsync(p => p.IsActive);
+
+            var items = await _context.Products
+                .Include(p => p.Images)
+                .Where(p => p.IsActive)
+                .OrderBy(p => p.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return (items, totalItems);
+        }
+
     }
 }

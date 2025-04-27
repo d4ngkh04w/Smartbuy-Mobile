@@ -22,6 +22,8 @@ namespace api.Database
         public DbSet<ProductTag> ProductTags { get; set; } = null!;
         public DbSet<Cart> Carts { get; set; } = null!;
         public DbSet<CartItem> CartItems { get; set; } = null!;
+        public DbSet<CarouselImage> CarouselImages { get; set; } = null!;
+
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -113,6 +115,10 @@ namespace api.Database
                 .WithOne(ci => ci.Cart)
                 .HasForeignKey(ci => ci.CartId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<CarouselImage>()
+                .HasKey(c => c.Id);
+
 
             base.OnModelCreating(builder);
         }

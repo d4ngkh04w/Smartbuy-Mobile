@@ -268,5 +268,30 @@ namespace api.Services
                 return (false, $"Error deleting product: {ex.Message}");
             }
         }
+        public async Task<(bool Success, string? ErrorMessage, ProductPagiDTO? ProductPagi)> GetPagedProductsAsync(int page, int pageSize)
+        {
+            try
+            {
+                var (items, totalItems) = await _productRepository.GetPagedProductsAsync(page, pageSize);
+
+                if (items == null || !items.Any())
+                {
+                    return (false, "Not found", null);
+                }
+                var productSummaries = items.Select(ProductMapper.ToSummaryDTO).ToList();
+                var result = new ProductPagiDTO
+                {
+                    TotalItems = totalItems,
+                    Items = productSummaries
+                };
+
+                return (true, null, result);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error retrieving paged products: {ex.Message}", null);
+            }
+        }
+
     }
 }

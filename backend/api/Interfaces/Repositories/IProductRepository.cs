@@ -10,5 +10,6 @@ namespace api.Interfaces.Repositories
         Task<bool> UpdateAsync(Product product);
         public Task<bool> DeleteAsync(Product product);
         Task<bool> ExistsByNameAsync(string name);
+        Task<(List<Product> Items, int TotalItems)> GetPagedProductsAsync(int page, int pageSize);
     }
 }

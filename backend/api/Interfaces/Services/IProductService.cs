@@ -3,12 +3,13 @@ using api.Queries;
 
 namespace api.Interfaces.Services
 {
-    public interface IProductService
-    {
-        Task<(bool Success, string? ErrorMessage, IEnumerable<ProductDTO>? Products)> GetProductsAsync();
-        Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> GetProductByIdAsync(int id);
-        Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> CreateProductAsync(CreateProductDTO productDTO);
-        Task<(bool Success, string? ErrorMessage)> DeleteProductAsync(int id);
-        Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> UpdateProductAsync(int id, UpdateProductDTO productDTO);
-    }
+        public interface IProductService
+        {
+                Task<(bool Success, string? ErrorMessage, IEnumerable<ProductDTO>? Products)> GetProductsAsync();
+                Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> GetProductByIdAsync(int id);
+                Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> CreateProductAsync(CreateProductDTO productDTO);
+                Task<(bool Success, string? ErrorMessage)> DeleteProductAsync(int id);
+                Task<(bool Success, string? ErrorMessage, ProductPagiDTO? ProductPagi)> GetPagedProductsAsync(int page, int pageSize);
+                Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> UpdateProductAsync(int id, UpdateProductDTO productDTO);
+        }
 }
