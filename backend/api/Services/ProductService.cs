@@ -59,8 +59,10 @@ namespace api.Services
             try
             {
                 // Check if product with same name already exists
-                if (await _productRepository.ExistsByNameAsync(productDTO.Name))
+                if (await _productRepository.ExistsByNameAsync(productDTO.Name.Trim()))
                     return (false, "Product with this name already exists", null);
+                else
+                    productDTO.Name = productDTO.Name.Trim();
 
                 // Create new product model from DTO
                 var product = productDTO.ToProductModel();
@@ -115,8 +117,8 @@ namespace api.Services
                     return (false, "Product not found", null);
 
                 // Update basic info
-                if (!string.IsNullOrEmpty(productDTO.Name))
-                    product.Name = productDTO.Name;
+                if (!string.IsNullOrEmpty(productDTO.Name?.Trim()))
+                    product.Name = productDTO.Name.Trim();
 
                 if (productDTO.Quantity.HasValue)
                     product.Quantity = productDTO.Quantity.Value;
@@ -127,8 +129,8 @@ namespace api.Services
                 if (productDTO.SalePrice.HasValue)
                     product.SalePrice = productDTO.SalePrice.Value;
 
-                if (!string.IsNullOrEmpty(productDTO.Description))
-                    product.Description = productDTO.Description;
+                if (!string.IsNullOrEmpty(productDTO.Description?.Trim()))
+                    product.Description = productDTO.Description.Trim();
 
                 if (productDTO.IsActive.HasValue)
                     product.IsActive = productDTO.IsActive.Value;
@@ -139,29 +141,29 @@ namespace api.Services
                 // Update details if they exist
                 if (product.Detail != null)
                 {
-                    if (!string.IsNullOrEmpty(productDTO.Warranty))
+                    if (!string.IsNullOrEmpty(productDTO.Warranty?.Trim()))
                         product.Detail.WarrantyMonths = int.Parse(productDTO.Warranty);
 
-                    if (!string.IsNullOrEmpty(productDTO.RAM))
+                    if (!string.IsNullOrEmpty(productDTO.RAM?.Trim()))
                         product.Detail.RAMInGB = int.Parse(productDTO.RAM);
 
-                    if (!string.IsNullOrEmpty(productDTO.Storage))
+                    if (!string.IsNullOrEmpty(productDTO.Storage?.Trim()))
                         product.Detail.StorageInGB = int.Parse(productDTO.Storage);
 
-                    if (!string.IsNullOrEmpty(productDTO.ScreenSize))
+                    if (!string.IsNullOrEmpty(productDTO.ScreenSize?.Trim()))
                         product.Detail.ScreenSizeInch = decimal.Parse(productDTO.ScreenSize);
 
-                    if (!string.IsNullOrEmpty(productDTO.ScreenResolution))
-                        product.Detail.ScreenResolution = productDTO.ScreenResolution;
+                    if (!string.IsNullOrEmpty(productDTO.ScreenResolution?.Trim()))
+                        product.Detail.ScreenResolution = productDTO.ScreenResolution.Trim();
 
-                    if (!string.IsNullOrEmpty(productDTO.Battery))
+                    if (!string.IsNullOrEmpty(productDTO.Battery?.Trim()))
                         product.Detail.BatteryCapacityMAh = int.Parse(productDTO.Battery);
 
-                    if (!string.IsNullOrEmpty(productDTO.OS))
-                        product.Detail.OperatingSystem = productDTO.OS;
+                    if (!string.IsNullOrEmpty(productDTO.OS?.Trim()))
+                        product.Detail.OperatingSystem = productDTO.OS.Trim();
 
-                    if (!string.IsNullOrEmpty(productDTO.Processor))
-                        product.Detail.Processor = productDTO.Processor;
+                    if (!string.IsNullOrEmpty(productDTO.Processor?.Trim()))
+                        product.Detail.Processor = productDTO.Processor.Trim();
 
                     if (productDTO.SimSlots.HasValue)
                         product.Detail.SimSlots = productDTO.SimSlots.Value;
@@ -173,7 +175,7 @@ namespace api.Services
                     product.Colors.Clear();
                     foreach (var colorName in productDTO.Colors)
                     {
-                        product.Colors.Add(new ProductColor { Name = colorName, ProductId = product.Id });
+                        product.Colors.Add(new ProductColor { Name = colorName.Trim(), ProductId = product.Id });
                     }
                 }
 
@@ -232,15 +234,38 @@ namespace api.Services
         {
             try
             {
-                if (!await _productRepository.ExistsByIdAsync(id))
+                // Get product first to check if it exists and to access its images
+                var product = await _productRepository.GetByIdAsync(id);
+
+                if (product == null)
                     return (false, "Product not found");
 
-                var result = await _productRepository.DeleteAsync(id);
-                return result ? (true, null) : (false, "Error deleting product");
+                // Delete associated images
+                if (product.Images != null && product.Images.Any())
+                {
+                    foreach (var image in product.Images.ToList())
+                    {
+                        if (!string.IsNullOrEmpty(image.ImagePath))
+                        {
+                            bool success = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, image.ImagePath));
+                            if (!success)
+                            {
+                                // Log the error but continue with product deletion
+                                Console.WriteLine($"[WARN]: Failed to delete image file: {image.ImagePath}");
+                            }
+                        }
+                    }
+                }
+
+                // Proceed with product deletion
+                var result = await _productRepository.DeleteAsync(product);
+                return result ? (true, null) : (false, "Error deleting product from database");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return (false, $"Error deleting product");
+                // Log the actual exception for debugging
+                Console.WriteLine($"Error in DeleteProductAsync: {ex.Message}");
+                return (false, $"Error deleting product: {ex.Message}");
             }
         }
     }

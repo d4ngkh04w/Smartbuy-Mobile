@@ -13,11 +13,9 @@ namespace api.Models
         public int TagId { get; set; }
 
         [ForeignKey(nameof(ProductId))]
-        [InverseProperty("ProductTags")]
         public Product? Product { get; set; } = null;
 
         [ForeignKey(nameof(TagId))]
-        [InverseProperty("ProductTags")]
         public Tag? Tag { get; set; } = null;
     }
 }

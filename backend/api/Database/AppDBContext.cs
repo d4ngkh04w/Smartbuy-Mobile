@@ -45,7 +45,7 @@ namespace api.Database
                 .HasMany(pl => pl.Products)
                 .WithOne(p => p.ProductLine)
                 .HasForeignKey(p => p.ProductLineId)
-                .OnDelete(DeleteBehavior.Cascade); // Xóa dòng sản phẩm sẽ xóa tất cả các sản phẩm thuộc dòng đó
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Cấu hình mối quan hệ Product - ProductColor
             builder.Entity<Product>()
@@ -65,6 +65,18 @@ namespace api.Database
             builder.Entity<ProductDiscount>()
                 .HasKey(pd => new { pd.ProductId, pd.DiscountId });
 
+            builder.Entity<ProductDiscount>()
+                .HasOne(pd => pd.Product)
+                .WithMany(p => p.Discounts)
+                .HasForeignKey(pd => pd.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ProductDiscount>()
+                .HasOne(pd => pd.Discount)
+                .WithMany(d => d.Products)
+                .HasForeignKey(pd => pd.DiscountId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Cấu hình mối quan hệ Product - ProductDetail
             builder.Entity<Product>()
                 .HasOne(p => p.Detail)
@@ -72,19 +84,35 @@ namespace api.Database
                 .HasForeignKey<ProductDetail>(d => d.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Cấu hình mối quan hệ Product - Tag (nhiều-nhiều)
+            // Cấu hình mối quan hệ Product - Tag
             builder.Entity<ProductTag>()
                 .HasKey(pt => new { pt.ProductId, pt.TagId });
 
             builder.Entity<ProductTag>()
                 .HasOne(pt => pt.Product)
                 .WithMany(p => p.ProductTags)
-                .HasForeignKey(pt => pt.ProductId);
+                .HasForeignKey(pt => pt.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<ProductTag>()
                 .HasOne(pt => pt.Tag)
                 .WithMany(t => t.ProductTags)
-                .HasForeignKey(pt => pt.TagId);
+                .HasForeignKey(pt => pt.TagId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Cấu hình mối quan hệ User - Cart
+            builder.Entity<User>()
+                .HasOne(u => u.Cart)
+                .WithOne(c => c.User)
+                .HasForeignKey<Cart>(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Cấu hình mối quan hệ Cart - CartItem
+            builder.Entity<Cart>()
+                .HasMany(c => c.Items)
+                .WithOne(ci => ci.Cart)
+                .HasForeignKey(ci => ci.CartId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(builder);
         }

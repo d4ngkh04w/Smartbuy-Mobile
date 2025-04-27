@@ -28,14 +28,13 @@ namespace api.Models
         [Column(TypeName = "varchar(20)")]
         public string ScreenResolution { get; set; } = string.Empty;
 
-        public int BatteryCapacityMAh { get; set; }      
+        public int BatteryCapacityMAh { get; set; }
 
         public int SimSlots { get; set; } = 1;
 
         public int ProductId { get; set; }
 
         [ForeignKey(nameof(ProductId))]
-        [InverseProperty("Detail")]
         public Product? Product { get; set; } = null;
     }
 }

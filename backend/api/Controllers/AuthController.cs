@@ -61,19 +61,15 @@ namespace api.Controllers
         public async Task<IActionResult> Logout()
         {
             var refreshToken = Request.Cookies["refreshToken"];
-            var token = Request.Cookies["token"];
-            if (string.IsNullOrEmpty(refreshToken) || string.IsNullOrEmpty(token))
-                return Unauthorized(new { Message = "Token is missing" });
-
-            var result = await _tokenService.RevokeRefreshToken(refreshToken);
-            if (result.Success)
+            if (!string.IsNullOrEmpty(refreshToken))
             {
-                Response.Cookies.Delete("refreshToken");
-                Response.Cookies.Delete("token");
-                return Ok(new { Message = "Logged out successfully" });
+                await _tokenService.RevokeRefreshToken(refreshToken);
             }
 
-            return BadRequest(new { Message = result.ErrorMessage });
+            Response.Cookies.Delete("token");
+            Response.Cookies.Delete("refreshToken");
+
+            return Ok(new { Message = "Logged out successfully" });
         }
 
         [HttpPost("forgot-password")]
@@ -82,12 +78,16 @@ namespace api.Controllers
         {
             var result = await _authService.ForgotPasswordAsync(forgotPasswordDto);
 
-            if (!result.Success && result.ErrorMessage != null && result.ErrorMessage.Contains("Failed to send"))
+            if (!result.Success && result.ErrorMessage != null)
             {
-                return StatusCode(500, new { Message = "Failed to send password reset email. Please try again later." });
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
             }
 
-            return Ok(new { Message = "If your email exists in our system, you will receive password reset instructions." });
+            return Ok(new { Message = "If the email address exists in our system, we will send a password reset link." });
         }
 
         [HttpPost("reset-password")]
@@ -96,7 +96,7 @@ namespace api.Controllers
         {
             var result = await _authService.ResetPasswordAsync(resetPasswordDto);
 
-            if (!result.Success)
+            if (!result.Success && result.ErrorMessage != null && result.ErrorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
             {
                 return BadRequest(new { Message = result.ErrorMessage });
             }

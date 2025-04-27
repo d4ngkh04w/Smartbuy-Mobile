@@ -28,8 +28,6 @@ namespace api.Services
             var claims = new List<Claim>
             {
                 new Claim("id", user.Id.ToString()),
-                new Claim("email", user.Email),
-                new Claim("phone", user.PhoneNumber),
                 new Claim("role", role),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
@@ -87,9 +85,9 @@ namespace api.Services
                     RefreshToken = newRefreshToken
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error validating refresh token: {ex.Message}", null);
+                return (false, $"Error validating refresh token", null);
             }
         }
 
@@ -108,9 +106,9 @@ namespace api.Services
 
                 return (true, null);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error revoking refresh token: {ex.Message}");
+                return (false, $"Error revoking refresh token");
             }
         }
 
@@ -135,12 +133,25 @@ namespace api.Services
 
         public bool ValidatePasswordResetToken(string token, DateTime tokenCreationTime)
         {
-            if (DateTime.Now > tokenCreationTime)
-            {
-                return false;
-            }
+            return DateTime.Now <= tokenCreationTime;
+        }
 
-            return true;
+        public string GenerateAccountUnlockToken()
+        {
+            var randomBytes = new byte[64];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomBytes);
+                return Convert.ToBase64String(randomBytes)
+                    .Replace("/", "_")
+                    .Replace("+", "-")
+                    .Replace("=", "");
+            }
+        }
+
+        public bool ValidateAccountUnlockToken(string token, DateTime tokenExpiryTime)
+        {
+            return DateTime.Now <= tokenExpiryTime;
         }
     }
 }

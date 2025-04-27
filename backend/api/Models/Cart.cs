@@ -8,10 +8,20 @@ namespace api.Models
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int Id { get; set; }
+        // public int Id { get; set; }
+        public Guid Id { get; set; }
+
         public Guid UserId { get; set; }
 
-        [InverseProperty("Cart")]
-        public ICollection<CartItem> CartItems { get; set; } = new HashSet<CartItem>();
+        [ForeignKey("UserId")]
+        public User? User { get; set; }
+
+        public ICollection<CartItem> Items { get; set; } = new HashSet<CartItem>();
+
+        [Column(TypeName = "timestamp")]
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        [Column(TypeName = "timestamp")]
+        public DateTime? UpdatedAt { get; set; }
     }
 }

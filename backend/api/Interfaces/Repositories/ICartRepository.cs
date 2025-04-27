@@ -7,11 +7,11 @@ namespace api.Interfaces.Repositories
         Task<Cart?> GetCartByUserIdAsync(Guid userId);
         Task<Cart> CreateCartAsync(Cart cart);
         Task<Cart> UpdateCartAsync(Cart cart);
-        Task<bool> DeleteCartAsync(int cartId);
+        Task<bool> DeleteCartAsync(Guid cartId);
         Task<CartItem?> GetCartItemByIdAsync(int itemId);
         Task<CartItem> AddCartItemAsync(CartItem cartItem);
         Task<CartItem> UpdateCartItemAsync(CartItem cartItem);
         Task RemoveCartItemAsync(CartItem cartItem);
-        Task RemoveAllCartItemsAsync(int cartId);
+        Task RemoveAllCartItemsAsync(Guid cartId);
     }
 }

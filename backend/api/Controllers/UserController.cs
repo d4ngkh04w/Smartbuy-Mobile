@@ -43,25 +43,6 @@ namespace api.Controllers
             return Ok(result.Users);
         }
 
-        [HttpGet("{id:guid}")]
-        [Authorize(Roles = "admin,user")]
-        public async Task<IActionResult> GetUserById([FromRoute] Guid id)
-        {
-            if (GetCurrentUserId() != id && !User.IsInRole("admin"))
-                return Forbid();
-            var result = await _userService.GetUserByIdAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "User not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(result.User);
-        }
-
         [HttpGet("me")]
         [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetCurrentUser()
@@ -77,7 +58,7 @@ namespace api.Controllers
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };
             }
-            return Ok(result.User);
+            return Ok(new { Message = "User retrieved successfully", result.User });
         }
 
         [HttpPut("me")]
@@ -99,32 +80,11 @@ namespace api.Controllers
             return Ok(new { Message = "User updated successfully", User = result.User });
         }
 
-        // [HttpPut("{id:guid}")]
-        // [Authorize(Roles = "admin,user")]
-        // [RequestSizeLimit(15 * 1024 * 1024)]
-        // public async Task<IActionResult> UpdateUser([FromRoute] Guid id, [FromForm] UpdateUserDTO userDTO)
-        // {
-        //     if (GetCurrentUserId() != id && !User.IsInRole("admin"))
-        //         return Forbid();
-        //     var result = await _userService.UpdateUserAsync(id, userDTO);
-        //     if (!result.Success && result.ErrorMessage != null)
-        //     {
-        //         return result.ErrorMessage switch
-        //         {
-        //             string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-        //             string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-        //             _ => BadRequest(new { Message = result.ErrorMessage })
-        //         };
-        //     }
-        //     return Ok(new { Message = "User updated successfully" });
-        // }
-
-        [HttpDelete("{id:guid}")]
-        [Authorize(Roles = "admin,user")]
-        public async Task<IActionResult> DeleteUser([FromRoute] Guid id)
+        [HttpDelete("me")]
+        [Authorize(Roles = "user")]
+        public async Task<IActionResult> DeleteCurrentUser()
         {
-            if (GetCurrentUserId() != id && !User.IsInRole("admin"))
-                return Forbid();
+            var id = GetCurrentUserId();
             var result = await _userService.DeleteUserAsync(id);
             if (!result.Success && result.ErrorMessage != null)
             {
@@ -135,7 +95,65 @@ namespace api.Controllers
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };
             }
+            Response.Cookies.Delete("token");
+            Response.Cookies.Delete("refreshToken");
+
             return NoContent();
+        }
+
+        [HttpPut("{id:guid}/lock")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> LockUser([FromRoute] Guid id, [FromBody] LockUserDTO lockUserDTO)
+        {
+            var result = await _userService.LockUserAsync(id, lockUserDTO, "admin");
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+            return Ok(new { Message = "User locked successfully" });
+        }
+
+        [HttpPut("{id:guid}/unlock")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> UnlockUser([FromRoute] Guid id)
+        {
+            var result = await _userService.UnlockUserAsync(id);
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+            return Ok(new { Message = "User unlocked successfully" });
+        }
+
+        [HttpPut("me/lock")]
+        [Authorize(Roles = "user")]
+        public async Task<IActionResult> LockCurrentUser([FromBody] LockUserDTO lockUserDTO)
+        {
+            var id = GetCurrentUserId();
+            var result = await _userService.LockUserAsync(id, lockUserDTO, "user");
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+
+            Response.Cookies.Delete("token");
+            Response.Cookies.Delete("refreshToken");
+            return Ok(new { Message = "User locked successfully" });
         }
     }
 }

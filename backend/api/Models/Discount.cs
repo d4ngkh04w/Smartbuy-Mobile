@@ -19,7 +19,6 @@ namespace api.Models
         [Column(TypeName = "timestamp")]
         public DateTime EndDate { get; set; }
 
-        [InverseProperty("Discount")]
         public ICollection<ProductDiscount> Products { get; set; } = new HashSet<ProductDiscount>();
         public bool IsActive => StartDate <= DateTime.Now && EndDate >= DateTime.Now;
     }

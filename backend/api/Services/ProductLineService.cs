@@ -22,7 +22,7 @@ namespace api.Services
         {
             try
             {
-                bool exists = await _productLineRepository.ProductLineExistAsync(productLineDTO.Name);
+                bool exists = await _productLineRepository.ProductLineExistAsync(productLineDTO.Name.Trim());
                 if (exists)
                 {
                     return (false, "Product line already exists", null);
@@ -120,15 +120,16 @@ namespace api.Services
                     return (false, "Product line not found", null);
                 }
 
-                // Only update fields that are provided in the DTO
-                if (!string.IsNullOrEmpty(productLineDTO.Name))
+                // Chỉ cập nhật các trường hợp có trong DTO
+                var newName = productLineDTO.Name?.Trim();
+                if (!string.IsNullOrEmpty(newName))
                 {
-                    productLine.Name = productLineDTO.Name;
+                    productLine.Name = newName;
                 }
 
-                if (!string.IsNullOrEmpty(productLineDTO.Description))
+                if (!string.IsNullOrEmpty(productLineDTO.Description?.Trim()))
                 {
-                    productLine.Description = productLineDTO.Description;
+                    productLine.Description = productLineDTO.Description.Trim();
                 }
 
                 if (productLineDTO.IsActive.HasValue)

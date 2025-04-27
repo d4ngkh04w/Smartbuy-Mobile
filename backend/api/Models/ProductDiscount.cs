@@ -12,11 +12,9 @@ namespace api.Models
         [Key]
         public int DiscountId { get; set; }
 
-        [InverseProperty("Discounts")]
         [ForeignKey(nameof(ProductId))]
         public Product? Product { get; set; } = null;
 
-        [InverseProperty("Products")]
         [ForeignKey(nameof(DiscountId))]
         public Discount? Discount { get; set; } = null;
     }

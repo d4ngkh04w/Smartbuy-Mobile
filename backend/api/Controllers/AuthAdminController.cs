@@ -23,31 +23,36 @@ namespace api.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterDTO register)
         {
             var result = await _authService.Register(register, "admin");
-            if (result.Success)
+            if (!result.Success && result.ErrorMessage != null)
             {
-                Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+                return result.ErrorMessage switch
                 {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
-                });
-                Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
-                });
-                return Ok(new
-                {
-                    Message = "Admin registered successfully",
-                });
+                    string msg when msg.Contains("Already exists", StringComparison.OrdinalIgnoreCase) => Conflict(new { Message = "Phone number already exists" }),
+                    _ => StatusCode(500, new { Message = result.ErrorMessage })
+                };
             }
 
-            return BadRequest(new { Message = "Admin registration failed", Errors = result.ErrorMessage });
+            Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
+            });
+            Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
+            });
+
+            return Ok(new
+            {
+                Message = "Admin registered successfully",
+            });
         }
 
         [HttpPost("login")]
@@ -55,31 +60,37 @@ namespace api.Controllers
         public async Task<IActionResult> Login([FromBody] LoginDTO login)
         {
             var result = await _authService.Login(login, "admin");
-            if (result.Success)
+            if (!result.Success && result.ErrorMessage != null)
             {
-                Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+                return result.ErrorMessage switch
                 {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
-                });
-                Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
-                });
-                return Ok(new
-                {
-                    Message = "Login successful",
-                });
+                    string msg when msg.Contains("Does not have access", StringComparison.OrdinalIgnoreCase) => Forbid(),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
             }
 
-            return Unauthorized(new { Message = result.ErrorMessage });
+            Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
+            });
+            Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
+            });
+
+            return Ok(new
+            {
+                Message = "Admin logged in successfully",
+            });
         }
 
         [HttpGet("verify")]

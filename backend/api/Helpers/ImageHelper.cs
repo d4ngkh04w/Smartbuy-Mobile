@@ -56,10 +56,10 @@ namespace api.Helpers
                 if (File.Exists(filePath))
                 {
                     File.Delete(filePath);
-                    Console.WriteLine("File deleted successfully");
+                    Console.WriteLine("[INF] File deleted successfully");
                     return true;
                 }
-                Console.WriteLine("File not found");
+                Console.WriteLine("[ERR] File not found");
                 return false;
             }
             catch (Exception)

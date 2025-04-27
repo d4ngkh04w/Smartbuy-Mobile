@@ -15,7 +15,6 @@ namespace api.Models
 
         public int ProductId { get; set; }
 
-        [InverseProperty("Colors")]
         [ForeignKey(nameof(ProductId))]
         public Product? Product { get; set; } = null;
     }

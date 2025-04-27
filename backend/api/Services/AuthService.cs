@@ -24,7 +24,7 @@ namespace api.Services
         public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Register(RegisterDTO registerDto, string role)
         {
             // Validate unique phone number and email
-            if (await _userRepository.UserExistsByPhoneNumberAsync(registerDto.PhoneNumber))
+            if (await _userRepository.UserExistsByPhoneNumberAsync(registerDto.PhoneNumber.Trim()))
                 return (false, "Phone number already exists", null);
 
             if (await _userRepository.UserExistsByEmailAsync(registerDto.Email))
@@ -32,20 +32,20 @@ namespace api.Services
 
             try
             {
-                // Create new user with hashed password
                 var user = new User
                 {
-                    PhoneNumber = registerDto.PhoneNumber,
+                    PhoneNumber = registerDto.PhoneNumber.Trim(),
                     Email = registerDto.Email,
                     Password = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
-                    Role = role
+                    Role = role,
+                    LastLogin = DateTime.Now
                 };
 
                 await _userRepository.CreateUserAsync(user);
 
-                // Generate authentication tokens
-                var token = _tokenService.CreateToken(user, role);
+                // Tạo access token và refresh token
                 var refreshToken = await _tokenService.GenerateRefreshToken(user);
+                var token = _tokenService.CreateToken(user, role);
 
                 return (true, null, new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
             }
@@ -59,28 +59,35 @@ namespace api.Services
         {
             try
             {
-                // Find user by phone number
                 var user = await _userRepository.GetUserByPhoneNumberAsync(loginDto.PhoneNumber);
 
-                // Validate credentials
                 if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password))
                 {
                     return (false, "Invalid phone number or password", null);
                 }
 
-                // Validate user role
+                // Kiểm tra trạng thái khóa tài khoản
+                if (user.IsLocked)
+                {
+                    string lockMessage = user.LockedBy == "user"
+                        ? "Your account has been temporarily locked by yourself.\nPlease contact support at smartbuymobile.team@gmail.com to unlock it"
+                        : $"Your account has been restricted by administrator.\nReason: {user.LockReason}.\nPlease contact support at smartbuymobile.team@gmail.com to unlock it";
+
+                    return (false, lockMessage, null);
+                }
+
                 if (user.Role != role)
                 {
                     return (false, $"Your account does not have access as a '{role}'", null);
                 }
 
-                // Update last login time
+                // Update last login
                 user.LastLogin = DateTime.Now;
                 await _userRepository.UpdateUserAsync(user);
 
-                // Generate authentication tokens
-                var token = _tokenService.CreateToken(user, role);
+                // Tạo access token và refresh token
                 var refreshToken = await _tokenService.GenerateRefreshToken(user);
+                var token = _tokenService.CreateToken(user, role);
 
                 return (true, "Login successful", new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
             }
@@ -126,6 +133,14 @@ namespace api.Services
                 {
                     return (false, $"Your account does not have access as a '{role}'", null);
                 }
+                else if (user.IsLocked)
+                {
+                    string lockMessage = user.LockedBy == "user"
+                        ? "Your account has been temporarily locked by yourself.\nPlease contact support at smartbuymobile.team@gmail.com to unlock it"
+                        : $"Your account has been restricted by administrator.\nReason: {user.LockReason}.\nPlease contact support at smartbuymobile.team@gmail.com to unlock it";
+
+                    return (false, lockMessage, null);
+                }
 
                 // Tạo token xác thực
                 var token = _tokenService.CreateToken(user, role);
@@ -149,23 +164,24 @@ namespace api.Services
                 var user = await _userRepository.GetUserByEmailAsync(forgotPasswordDto.Email);
                 if (user == null)
                 {
+                    Console.WriteLine($"[INF] User not found for email: {forgotPasswordDto.Email}");
                     return (true, null);
                 }
 
                 // Xác thực token reset mật khẩu và thiết lập thời gian hết hạn
                 var resetToken = _tokenService.GeneratePasswordResetToken();
-                Console.WriteLine($"[INF] Password reset token: {resetToken}"); // For debugging purposes
+                Console.WriteLine($"[INF] Password reset token: {resetToken}"); // For debugging
                 user.PasswordResetToken = resetToken;
-                user.PasswordResetTokenExpiry = DateTime.Now.AddMinutes(5);
-                await _userRepository.UpdateUserAsync(user);
+                user.PasswordResetTokenExpiry = DateTime.Now.AddMinutes(15);
 
                 // Gửi email reset mật khẩu với token
                 var emailSent = await _emailService.SendPasswordResetEmailAsync(user.Email, resetToken);
-
                 if (!emailSent)
                 {
                     return (false, "Failed to send password reset email");
                 }
+
+                await _userRepository.UpdateUserAsync(user);
 
                 return (true, null);
             }
@@ -182,15 +198,15 @@ namespace api.Services
                 var user = await _userRepository.GetUserByEmailAsync(resetPasswordDto.Email);
                 if (user == null)
                 {
-                    // Không trả về thông báo lỗi nếu người dùng không tồn tại
-                    // để tránh lộ thông tin người dùng
-                    return (false, "Invalid reset request");
+                    Console.WriteLine($"[INF] User not found for email: {resetPasswordDto.Email}");
+                    return (true, null);
                 }
 
                 // Xác thực token reset mật khẩu và thiết lập thời gian hết hạn
                 if (user.PasswordResetToken != resetPasswordDto.Token)
                 {
-                    return (false, "Invalid reset token");
+                    Console.WriteLine($"[INF] Invalid reset token for email: {resetPasswordDto.Email}");
+                    return (true, null);
                 }
 
                 // Kiểm tra thời gian hết hạn của token

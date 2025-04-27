@@ -1,3 +1,4 @@
+using api.DTOs.Auth;
 using api.DTOs.User;
 using api.Helpers;
 using api.Interfaces.Repositories;
@@ -84,6 +85,55 @@ namespace api.Services
             }
         }
 
+        public async Task<(bool Success, string? ErrorMessage)> LockUserAsync(Guid id, LockUserDTO lockUserDTO, string lockedBy)
+        {
+
+            try
+            {
+                var user = await _userRepository.GetUserByIdAsync(id);
+                if (user == null)
+                {
+                    return (false, "User not found");
+                }
+
+                user.IsLocked = true;
+                user.LockReason = lockUserDTO.Reason?.Trim() ?? user.LockReason;
+                user.LockedBy = lockedBy;
+                user.LockedAt = DateTime.Now;
+
+                await _userRepository.UpdateUserAsync(user);
+                return (true, null);
+            }
+            catch (Exception)
+            {
+                return (false, "An error occurred while locking the user");
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> UnlockUserAsync(Guid id)
+        {
+            try
+            {
+                var user = await _userRepository.GetUserByIdAsync(id);
+                if (user == null)
+                {
+                    return (false, "User not found");
+                }
+
+                user.IsLocked = false;
+                user.LockReason = null;
+                user.LockedBy = null;
+                user.LockedAt = null;
+
+                await _userRepository.UpdateUserAsync(user);
+                return (true, null);
+            }
+            catch (Exception)
+            {
+                return (false, "An error occurred while unlocking the user");
+            }
+        }
+
         public async Task<(bool Success, string? ErrorMessage, UserDTO? User)> UpdateUserAsync(Guid id, UpdateUserDTO userDTO)
         {
             try
@@ -107,19 +157,18 @@ namespace api.Services
                 // Xác thực tính duy nhất của số điện thoại
                 if (!string.IsNullOrEmpty(userDTO.PhoneNumber) && userDTO.PhoneNumber != user.PhoneNumber)
                 {
-                    var phoneExists = await _userRepository.UserExistsByPhoneNumberAsync(userDTO.PhoneNumber);
-                    if (phoneExists)
+                    var phoneExists = await _userRepository.UserExistsByPhoneNumberAsync(userDTO.PhoneNumber.Trim());
                     {
                         return (false, "Phone number already exists", null);
                     }
                 }
 
                 // Cập nhật thông tin người dùng
-                user.Name = userDTO.Name ?? user.Name;
+                user.Name = userDTO.Name?.Trim() ?? user.Name;
                 user.Email = userDTO.Email ?? user.Email;
                 user.PhoneNumber = userDTO.PhoneNumber ?? user.PhoneNumber;
-                user.Address = userDTO.Address ?? user.Address;
-                user.Gender = userDTO.Gender ?? user.Gender;
+                user.Address = userDTO.Address?.Trim() ?? user.Address;
+                user.Gender = userDTO.Gender?.Trim() ?? user.Gender;
 
                 if (userDTO.Avatar != null)
                 {
@@ -142,6 +191,8 @@ namespace api.Services
                     }
                     user.Avatar = saveImg.FilePath!;
                 }
+
+                user.UpdatedAt = DateTime.Now;
 
                 await _userRepository.UpdateUserAsync(user);
                 return (true, null, user.ToDTO());

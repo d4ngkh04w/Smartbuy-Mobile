@@ -35,11 +35,27 @@ namespace api.Models
         [Column(TypeName = "varchar(70)")]
         public string? Avatar { get; set; } = null;
 
+        [Column(TypeName = "timestamp")]
+        public DateTime? DateOfBirth { get; set; }
+        public bool IsLocked { get; set; } = false;
+
+        [Column(TypeName = "enum('admin', 'user')")]
+        public string? LockedBy { get; set; } = null;
+
+        [Column(TypeName = "timestamp")]
+        public DateTime? LockedAt { get; set; } = null;
+
+        [Column(TypeName = "text")]
+        public string? LockReason { get; set; } = null;
+
         [Column(TypeName = "enum('user', 'admin')")]
         public string Role { get; set; } = string.Empty;
 
         [Column(TypeName = "timestamp")]
         public DateTime CreatedAt { get; set; }
+
+        [Column(TypeName = "timestamp")]
+        public DateTime? UpdatedAt { get; set; } = null;
 
         [Column(TypeName = "timestamp")]
         public DateTime? LastLogin { get; set; }
@@ -52,5 +68,6 @@ namespace api.Models
 
         [Column(TypeName = "timestamp")]
         public DateTime? PasswordResetTokenExpiry { get; set; } = null;
+        public Cart? Cart { get; set; }
     }
 }

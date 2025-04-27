@@ -155,7 +155,7 @@ namespace api.Services
                                             
                                             <!-- EXPIRATION NOTICE -->
                                             <div class=""expiration-notice"" style=""background-color: #f2f6ff; border-left: 4px solid #FF5DB3; margin: 20px 0; padding: 12px 15px; font-size: 15px; color: #555; text-align: left;"">
-                                                <strong style=""color: #333;"">Lưu ý:</strong> Liên kết này sẽ hết hạn sau 5 phút kể từ khi email được gửi.
+                                                <strong style=""color: #333;"">Lưu ý:</strong> Liên kết này sẽ hết hạn sau 15 phút kể từ khi email được gửi.
                                             </div>
                                             
                                             <p style=""color: #777; font-size: 14px; line-height: 21px; margin: 30px 0 0 0; padding-top: 20px; border-top: 1px solid #f0e0ea;"">

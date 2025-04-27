@@ -32,7 +32,8 @@ namespace api.Repositories
 
         public async Task DeleteProductLineAsync(ProductLine productLine)
         {
-            _db.ProductLines.Remove(productLine);
+            productLine.IsActive = false;
+            _db.ProductLines.Update(productLine);
             await _db.SaveChangesAsync();
         }
 

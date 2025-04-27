@@ -29,7 +29,8 @@ namespace api.Repositories
 
         public async Task DeleteBrandAsync(Brand brand)
         {
-            _db.Brands.Remove(brand);
+            brand.IsActive = false;
+            _db.Brands.Update(brand);
             await _db.SaveChangesAsync();
         }
 

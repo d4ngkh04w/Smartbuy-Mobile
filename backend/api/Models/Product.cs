@@ -38,23 +38,17 @@ namespace api.Models
 
         public int ProductLineId { get; set; }
 
-        [InverseProperty("Products")]
         [ForeignKey(nameof(ProductLineId))]
         public ProductLine? ProductLine { get; set; } = null;
 
-        [InverseProperty("Product")]
         public ICollection<ProductColor> Colors { get; set; } = new HashSet<ProductColor>();
 
-        [InverseProperty("Product")]
         public ICollection<ProductImage> Images { get; set; } = new HashSet<ProductImage>();
 
-        [InverseProperty("Product")]
         public ICollection<ProductDiscount> Discounts { get; set; } = new HashSet<ProductDiscount>();
 
-        [InverseProperty("Product")]
         public ProductDetail? Detail { get; set; } = null;
 
-        [InverseProperty("Product")]
         public ICollection<ProductTag> ProductTags { get; set; } = new HashSet<ProductTag>();
     }
 }

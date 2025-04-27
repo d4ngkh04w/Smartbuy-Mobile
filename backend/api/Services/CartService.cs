@@ -29,7 +29,7 @@ namespace api.Services
                     cart = new Cart
                     {
                         UserId = userId,
-                        CartItems = new List<CartItem>()
+                        Items = new List<CartItem>()
                     };
 
                     await _cartRepository.CreateCartAsync(cart);
@@ -64,14 +64,14 @@ namespace api.Services
                     cart = new Cart
                     {
                         UserId = userId,
-                        CartItems = new List<CartItem>()
+                        Items = new List<CartItem>()
                     };
 
                     cart = await _cartRepository.CreateCartAsync(cart);
                 }
 
                 // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
-                var existingItem = cart.CartItems?.FirstOrDefault(ci => ci.ProductId == dto.ProductId);
+                var existingItem = cart.Items?.FirstOrDefault(ci => ci.ProductId == dto.ProductId);
                 if (existingItem != null)
                 {
                     // Cập nhật số lượng sản phẩm trong giỏ hàng

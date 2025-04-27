@@ -23,13 +23,14 @@ namespace api.Services
         {
             try
             {
-                var existsBrand = await _repo.BrandExistsAsync(brandDTO.Name);
+                var newName = brandDTO.Name.Trim();
+                var existsBrand = await _repo.BrandExistsAsync(newName);
                 if (existsBrand)
                     return (false, "Brand already exists", null);
 
                 var brand = new Brand
                 {
-                    Name = brandDTO.Name,
+                    Name = newName,
                 };
 
                 var (success, errorMessage, path) = await ImageHelper.SaveImageAsync(brandDTO.Logo, _env.WebRootPath, "brands", 2 * 1024 * 1024);
@@ -58,10 +59,9 @@ namespace api.Services
                 if (brand == null)
                     return (false, "Brand not found");
 
-                // Delete the logo image if it exists
                 if (!string.IsNullOrEmpty(brand.Logo))
                 {
-                    var deletedImg = ImageHelper.DeleteImage(_env.WebRootPath + brand.Logo);
+                    var deletedImg = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, brand.Logo));
                     if (!deletedImg)
                     {
                         return (false, "Error deleting old avatar image");
@@ -124,8 +124,9 @@ namespace api.Services
                 if (brand == null)
                     return (false, "Brand not found", null);
 
-                if (!string.IsNullOrEmpty(brandDTO.Name))
-                    brand.Name = brandDTO.Name;
+                var newName = brandDTO.Name?.Trim();
+                if (!string.IsNullOrEmpty(newName))
+                    brand.Name = newName;
 
                 if (brandDTO.Logo != null)
                 {

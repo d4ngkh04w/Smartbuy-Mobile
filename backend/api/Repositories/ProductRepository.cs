@@ -54,24 +54,22 @@ namespace api.Repositories
             return await _context.SaveChangesAsync() > 0;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(Product product)
         {
-            var product = await _context.Products.FindAsync(id);
+            // Ensure the product exists and is not already deactivated
             if (product == null)
                 return false;
 
             product.IsActive = false;
+            product.UpdatedAt = DateTime.Now;
+
+            _context.Products.Update(product);
             return await _context.SaveChangesAsync() > 0;
         }
 
         public async Task<bool> ExistsByNameAsync(string name)
         {
             return await _context.Products.AnyAsync(p => p.Name.ToLower() == name.ToLower());
-        }
-
-        public async Task<bool> ExistsByIdAsync(int id)
-        {
-            return await _context.Products.AnyAsync(p => p.Id == id);
         }
     }
 }

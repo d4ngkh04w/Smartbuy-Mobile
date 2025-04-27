@@ -12,7 +12,7 @@ namespace api.Mappers
             {
                 Id = cart.Id,
                 UserId = cart.UserId,
-                CartItems = cart.CartItems?.Select(ci => ci.ToCartItemDTO()) ?? new List<CartItemDTO>(),
+                CartItems = cart.Items?.Select(ci => ci.ToCartItemDTO()) ?? new List<CartItemDTO>(),
             };
 
             // Calculate total price based on all item subtotals

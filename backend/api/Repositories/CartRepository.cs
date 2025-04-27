@@ -17,10 +17,10 @@ namespace api.Repositories
         public async Task<Cart?> GetCartByUserIdAsync(Guid userId)
         {
             return await _context.Carts
-                .Include(c => c.CartItems!)
+                .Include(c => c.Items!)
                     .ThenInclude(ci => ci.Product!)
                         .ThenInclude(p => p.Images!)
-                .Include(c => c.CartItems!)
+                .Include(c => c.Items!)
                     .ThenInclude(ci => ci.Product!)
                         .ThenInclude(p => p.Colors!)
                 .FirstOrDefaultAsync(c => c.UserId.ToString() == userId.ToString());
@@ -40,7 +40,7 @@ namespace api.Repositories
             return cart;
         }
 
-        public async Task<bool> DeleteCartAsync(int cartId)
+        public async Task<bool> DeleteCartAsync(Guid cartId)
         {
             var cart = await _context.Carts.FindAsync(cartId);
             if (cart == null)
@@ -81,7 +81,7 @@ namespace api.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task RemoveAllCartItemsAsync(int cartId)
+        public async Task RemoveAllCartItemsAsync(Guid cartId)
         {
             var cartItems = await _context.CartItems
                 .Where(ci => ci.CartId == cartId)

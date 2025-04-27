@@ -8,8 +8,7 @@ namespace api.Interfaces.Repositories
         Task<Product?> GetByIdAsync(int id);
         Task<Product> CreateAsync(Product product);
         Task<bool> UpdateAsync(Product product);
-        Task<bool> DeleteAsync(int id);
+        public Task<bool> DeleteAsync(Product product);
         Task<bool> ExistsByNameAsync(string name);
-        Task<bool> ExistsByIdAsync(int id);
     }
 }

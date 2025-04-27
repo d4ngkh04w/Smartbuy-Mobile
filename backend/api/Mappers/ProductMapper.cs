@@ -48,6 +48,7 @@ namespace api.Mappers
                 Id = product.Id,
                 Name = product.Name,
                 Quantity = product.Quantity,
+                ImportPrice = product.ImportPrice,
                 SalePrice = product.SalePrice,
                 Description = product.Description ?? string.Empty,
                 Rating = product.Rating,

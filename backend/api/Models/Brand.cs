@@ -22,7 +22,6 @@ namespace api.Models
         [Column(TypeName = "bit")]
         public bool IsActive { get; set; } = true;
 
-        [InverseProperty("Brand")]
         public ICollection<ProductLine> ProductLines { get; set; } = new HashSet<ProductLine>();
     }
 }

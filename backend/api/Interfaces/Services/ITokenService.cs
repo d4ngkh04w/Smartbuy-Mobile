@@ -11,5 +11,7 @@ namespace api.Interfaces.Services
         Task<(bool Success, string? ErrorMessage)> RevokeRefreshToken(string refreshToken);
         string GeneratePasswordResetToken();
         bool ValidatePasswordResetToken(string token, DateTime tokenCreationTime);
+        string GenerateAccountUnlockToken();
+        bool ValidateAccountUnlockToken(string token, DateTime tokenExpiryTime);
     }
 }
