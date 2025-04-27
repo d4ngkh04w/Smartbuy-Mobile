@@ -121,10 +121,10 @@ namespace api.Controllers
             }
             return NoContent();
         }
-
         [HttpGet("page")]
         [AllowAnonymous]
         public async Task<IActionResult> GetPagedProducts([FromQuery] int page, int pageSize){
+            
             var result = await _productService.GetPagedProductsAsync(page, pageSize);
             if (!result.Success && result.ErrorMessage != null)
             {
@@ -141,7 +141,5 @@ namespace api.Controllers
                 Products = result.ProductPagi
             });
         }
-
-
     }
 }

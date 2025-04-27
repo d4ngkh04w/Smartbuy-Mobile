@@ -35,8 +35,9 @@ namespace api.Helpers
                 {
                     await file.CopyToAsync(stream);
                 }
+                var relativePath = Path.Combine("uploads", "images", folder, fileName).Replace("\\", "/");
+                return (true, null, "/" + relativePath);
 
-                return (true, null, Path.Combine("uploads", "images", folder, fileName));
             }
             catch (Exception)
             {

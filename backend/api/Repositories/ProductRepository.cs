@@ -80,6 +80,7 @@ namespace api.Repositories
             var items = await _context.Products
                 .Include(p => p.Images)
                 .Where(p => p.IsActive)
+                .OrderBy(p => p.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .AsNoTracking()

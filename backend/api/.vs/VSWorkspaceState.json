@@ -1,12 +1,17 @@
 {
   "ExpandedNodes": [
     "",
-    "\\Database",
     "\\DTOs",
-    "\\Properties",
-    "\\Repositories",
+    "\\DTOs\\Carousel",
+    "\\Helpers",
+    "\\Interfaces",
+    "\\Interfaces\\Repositories",
+    "\\Interfaces\\Services",
+    "\\Mappers",
+    "\\Models",
+    "\\Queries",
     "\\Services"
   ],
-  "SelectedNode": "\\appsettings.Development.json",
+  "SelectedNode": "\\Services\\ProductService.cs",
   "PreviewInSolutionExplorer": false
 }

@@ -16,6 +16,7 @@ namespace api.Repositories
         {
             user.CreatedAt = DateTime.Now;
             await db.Users.AddAsync(user);
+            
             await db.SaveChangesAsync();
         }
 
