@@ -28,7 +28,7 @@ namespace api.Controllers.Brand
             {
                 return result.ErrorMessage switch
                 {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Brands not found" }),
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
                     string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };

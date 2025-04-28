@@ -25,7 +25,7 @@ namespace api.Services
                 var products = await _productRepository.GetAllAsync();
 
                 if (!products.Any())
-                    return (false, "Products not found", null);
+                    return (false, "Not found any products", null);
 
                 var productDTOs = products.Select(p => p.ToProductDTO()).ToList();
                 return (true, null, productDTOs);
@@ -58,16 +58,13 @@ namespace api.Services
         {
             try
             {
-                // Check if product with same name already exists
                 if (await _productRepository.ExistsByNameAsync(productDTO.Name.Trim()))
                     return (false, "Product with this name already exists", null);
                 else
                     productDTO.Name = productDTO.Name.Trim();
 
-                // Create new product model from DTO
                 var product = productDTO.ToProductModel();
 
-                // Add product details
                 product.Detail = productDTO.ToProductDetailModel();
 
                 // Add colors
@@ -200,7 +197,7 @@ namespace api.Services
                         var image = product.Images.FirstOrDefault(i => i.Id == imageId);
                         if (image != null)
                         {
-                            var deletedImg = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, image.ImagePath));
+                            var deletedImg = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
                             if (!deletedImg)
                             {
                                 return (false, "Error deleting old image", null);
@@ -241,31 +238,29 @@ namespace api.Services
                     return (false, "Product not found");
 
                 // Delete associated images
-                if (product.Images != null && product.Images.Any())
-                {
-                    foreach (var image in product.Images.ToList())
-                    {
-                        if (!string.IsNullOrEmpty(image.ImagePath))
-                        {
-                            bool success = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, image.ImagePath));
-                            if (!success)
-                            {
-                                // Log the error but continue with product deletion
-                                Console.WriteLine($"[WARN]: Failed to delete image file: {image.ImagePath}");
-                            }
-                        }
-                    }
-                }
+                // if (product.Images != null && product.Images.Any())
+                // {
+                //     foreach (var image in product.Images.ToList())
+                //     {
+                //         if (!string.IsNullOrEmpty(image.ImagePath))
+                //         {
+                //             bool success = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
+                //             if (!success)
+                //             {
+                //                 // Log the error but continue with product deletion
+                //                 Console.WriteLine($"[WARN]: Failed to delete image file: {image.ImagePath}");
+                //             }
+                //         }
+                //     }
+                // }
 
                 // Proceed with product deletion
                 var result = await _productRepository.DeleteAsync(product);
                 return result ? (true, null) : (false, "Error deleting product from database");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // Log the actual exception for debugging
-                Console.WriteLine($"Error in DeleteProductAsync: {ex.Message}");
-                return (false, $"Error deleting product: {ex.Message}");
+                return (false, $"Error deleting product");
             }
         }
         public async Task<(bool Success, string? ErrorMessage, ProductPagiDTO? ProductPagi)> GetPagedProductsAsync(int page, int pageSize)
@@ -276,7 +271,7 @@ namespace api.Services
 
                 if (items == null || !items.Any())
                 {
-                    return (false, "Not found", null);
+                    return (false, "Not found any products", null);
                 }
                 var productSummaries = items.Select(ProductMapper.ToSummaryDTO).ToList();
                 var result = new ProductPagiDTO
@@ -287,9 +282,9 @@ namespace api.Services
 
                 return (true, null, result);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error retrieving paged products: {ex.Message}", null);
+                return (false, $"Error retrieving paged products", null);
             }
         }
 

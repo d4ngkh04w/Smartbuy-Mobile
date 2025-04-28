@@ -56,14 +56,15 @@ namespace api.Services
                     return (false, "Product line not found");
                 }
 
-                if (!string.IsNullOrEmpty(productLine.Image))
-                {
-                    var deleted = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, productLine.Image));
-                    if (!deleted)
-                    {
-                        return (false, "Error deleting image");
-                    }
-                }
+                // if (!string.IsNullOrEmpty(productLine.Image))
+                // {
+                //     var deleted = ImageHelper.DeleteImage(_env.WebRootPath + productLine.Image);
+                //     if (!deleted)
+                //     {
+                //         return (false, "Error deleting image");
+                //     }
+                //     productLine.Image = string.Empty;
+                // }
 
                 await _productLineRepository.DeleteProductLineAsync(productLine);
                 return (true, null);
@@ -99,7 +100,7 @@ namespace api.Services
                 var productLines = await _productLineRepository.GetProductLinesAsync(query);
                 if (productLines == null || !productLines.Any())
                 {
-                    return (false, "No product lines found", null);
+                    return (false, "Not found any product lines", null);
                 }
 
                 return (true, null, productLines.Select(pl => pl.ToDTO()));
@@ -145,7 +146,7 @@ namespace api.Services
                 if (productLineDTO.Image != null)
                 {
                     // Xoá hình cũ
-                    var deleted = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, productLine.Image));
+                    var deleted = ImageHelper.DeleteImage(_env.WebRootPath + productLine.Image);
                     if (!deleted)
                     {
                         return (false, "Error deleting old image", null);

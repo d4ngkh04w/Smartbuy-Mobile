@@ -23,8 +23,7 @@ namespace api.Database
         public DbSet<Cart> Carts { get; set; } = null!;
         public DbSet<CartItem> CartItems { get; set; } = null!;
         public DbSet<CarouselImage> CarouselImages { get; set; } = null!;
-
-
+        public DbSet<Comment> Comments { get; set; } = null!;
         protected override void OnModelCreating(ModelBuilder builder)
         {
             builder.Entity<User>()
@@ -119,6 +118,11 @@ namespace api.Database
             builder.Entity<CarouselImage>()
                 .HasKey(c => c.Id);
 
+            builder.Entity<Comment>()
+                .HasOne(c => c.Parent)
+                .WithMany()
+                .HasForeignKey(c => c.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(builder);
         }
