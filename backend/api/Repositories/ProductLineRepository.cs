@@ -46,6 +46,12 @@ namespace api.Repositories
         {
             var productLinesQuery = _db.ProductLines.AsQueryable();
 
+            // Lọc theo trạng thái IsActive nếu có
+            if (query.IsActive.HasValue)
+            {
+                productLinesQuery = productLinesQuery.Where(pl => pl.IsActive == query.IsActive.Value);
+            }
+
             if (query.IncludeProducts)
             {
                 productLinesQuery = productLinesQuery.Include(pl => pl.Products);
@@ -63,7 +69,10 @@ namespace api.Repositories
                 productLinesQuery = productLinesQuery.Reverse();
             }
 
-            return await productLinesQuery.Include(pl => pl.Brand).ToListAsync();
+            // Thay vì chỉ Include Brand, cần giữ nguyên việc Include Products nếu đã được yêu cầu
+            var query_with_brand = productLinesQuery.Include(pl => pl.Brand);
+            
+            return await query_with_brand.ToListAsync();
         }
 
         public async Task<ProductLine?> GetProductLineByIdAsync(int id, ProductLineQuery? query = null)

@@ -12,12 +12,28 @@ export const getProductLineById = async (id, params) => {
 
 // Create a new product line (accepts FormData for image upload)
 export const createProductLine = async (productLineData) => {
-    return await instance.post("/product-line", productLineData);
+    // Nếu productLineData là FormData, đảm bảo header được đặt đúng
+    const isFormData = productLineData instanceof FormData;
+    return await instance.post("/product-line", productLineData, {
+        headers: isFormData
+            ? {
+                  "Content-Type": "multipart/form-data",
+              }
+            : {},
+    });
 };
 
 // Update a product line (accepts FormData for image upload)
 export const updateProductLine = async (id, productLineData) => {
-    return await instance.put(`/product-line/${id}`, productLineData);
+    // Nếu productLineData là FormData, đảm bảo header được đặt đúng
+    const isFormData = productLineData instanceof FormData;
+    return await instance.put(`/product-line/${id}`, productLineData, {
+        headers: isFormData
+            ? {
+                  "Content-Type": "multipart/form-data",
+              }
+            : {},
+    });
 };
 
 // Delete a product line

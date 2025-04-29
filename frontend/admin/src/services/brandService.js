@@ -1,8 +1,16 @@
 import instance from "./axiosConfig";
 
 // Get all brands with optional query parameters
-export const getBrands = async (params) => {
-    return await instance.get("/brand", { params });
+export const getBrands = async (params = {}) => {
+    // Bảo đảm luôn bao gồm productLines trong response mặc định
+    const queryParams = {
+        ...params,
+        includeProductLines:
+            params.includeProductLines !== undefined
+                ? params.includeProductLines
+                : true,
+    };
+    return await instance.get("/brand", { params: queryParams });
 };
 
 // Get a brand by ID with optional query parameters

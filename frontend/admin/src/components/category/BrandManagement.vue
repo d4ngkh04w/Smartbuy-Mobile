@@ -74,27 +74,43 @@ const activeCount = computed(() => {
 });
 
 const productLinesCount = computed(() => {
-    return productLines.value.length;
+    // Tính tổng số dòng sản phẩm từ tất cả thương hiệu
+    console.log("Brands:", brands.value);
+    return brands.value.reduce((total, brand) => {
+        return total + (brand.productLines?.length || 0);
+    }, 0);
 });
 
 // Methods
 const getBrandProductLinesCount = (brandId) => {
-    return productLines.value.filter((pl) => pl.brandId === brandId).length;
+    const brand = brands.value.find((b) => b.id === brandId);
+    return brand?.productLines?.length || 0;
 };
 
 // Fetch all brands
 const fetchBrands = async () => {
     loading.value = true;
     try {
-        // Truyền tham số isActive theo bộ lọc được chọn
-        const params = {};
+        // Truyền tham số isActive theo bộ lọc được chọn và đảm bảo includeProductLines=true
+        const params = {
+            includeProductLines: true,
+        };
         if (statusFilter.value !== "all") {
             params.isActive = statusFilter.value === "active";
         }
         const response = await getBrands(params);
 
         brands.value = response.data.brands;
-        console.log("Fetched brands:", brands.value);
+
+        // Kiểm tra xem productLines có được trả về không
+        console.log(
+            "Received brands with productLines:",
+            brands.value.map((b) => ({
+                id: b.id,
+                name: b.name,
+                productLinesCount: b.productLines?.length || 0,
+            }))
+        );
     } catch (error) {
         console.error("Error fetching brands:", error);
         // Hiển thị thông báo lỗi (có thể thêm later)
@@ -247,7 +263,7 @@ const closeModal = () => {
 // Confirm delete
 const confirmDelete = async (brand) => {
     brandToDelete.value = brand;
-    hasProductLines.value = getBrandProductLinesCount(brand.id) > 0;
+    hasProductLines.value = brand.productLines && brand.productLines.length > 0;
     showDeleteModal.value = true;
 };
 
@@ -469,36 +485,24 @@ watch(statusFilter, async () => {
                     </div>
 
                     <div class="form-group">
-                        <label>Logo thương hiệu</label>
+                        <label>Ảnh minh họa</label>
                         <div
                             class="upload-area"
                             @click="() => fileInput && fileInput.click()"
                         >
-                            <div v-if="!logoPreview" class="upload-placeholder">
+                            <img
+                                v-if="logoPreview"
+                                :src="
+                                    logoPreview.startsWith('data:')
+                                        ? logoPreview
+                                        : formatLogoUrl(logoPreview)
+                                "
+                                alt="Logo Preview"
+                                class="image-preview"
+                            />
+                            <div v-else class="upload-placeholder">
                                 <i class="fas fa-cloud-upload-alt"></i>
-                                <p>Kéo thả file hoặc click để tải lên</p>
-                                <span
-                                    >Hỗ trợ định dạng: JPG, PNG, SVG (max
-                                    2MB)</span
-                                >
-                            </div>
-                            <div v-else class="logo-preview-container">
-                                <img
-                                    :src="
-                                        logoPreview.startsWith('data:')
-                                            ? logoPreview
-                                            : formatLogoUrl(logoPreview)
-                                    "
-                                    alt="Logo Preview"
-                                    class="logo-preview"
-                                />
-                                <button
-                                    type="button"
-                                    @click.stop="clearLogo"
-                                    class="remove-preview"
-                                >
-                                    <i class="fas fa-times"></i> Xóa
-                                </button>
+                                <span>Nhấp để tải lên ảnh (SVG, PNG, JPG)</span>
                             </div>
                             <input
                                 type="file"
@@ -507,6 +511,44 @@ watch(statusFilter, async () => {
                                 @change="handleFileChange"
                                 accept="image/jpeg,image/png,image/jpg,image/svg+xml"
                             />
+                        </div>
+                        <div v-if="logoPreview" class="preview-actions">
+                            <button
+                                type="button"
+                                @click="clearLogo"
+                                class="remove-button"
+                            >
+                                <i class="fas fa-trash-alt"></i> Xóa ảnh
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Trạng thái thương hiệu</label>
+                        <div class="toggle-switch-wrapper">
+                            <div class="toggle-switch-container">
+                                <label class="toggle-switch">
+                                    <input
+                                        type="checkbox"
+                                        v-model="formData.isActive"
+                                    />
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span class="toggle-status">
+                                    {{
+                                        formData.isActive
+                                            ? "Đang kích hoạt"
+                                            : "Không kích hoạt"
+                                    }}
+                                </span>
+                            </div>
+                            <div class="toggle-description">
+                                {{
+                                    formData.isActive
+                                        ? "Thương hiệu sẽ hiển thị cho khách hàng trên trang web."
+                                        : "Thương hiệu sẽ bị ẩn khỏi trang web."
+                                }}
+                            </div>
                         </div>
                     </div>
 
@@ -517,16 +559,6 @@ watch(statusFilter, async () => {
                             placeholder="Nhập mô tả thương hiệu"
                             rows="3"
                         ></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input
-                                type="checkbox"
-                                v-model="formData.isActive"
-                            />
-                            <span>Kích hoạt thương hiệu</span>
-                        </label>
                     </div>
 
                     <div class="form-actions">
@@ -1099,33 +1131,21 @@ watch(statusFilter, async () => {
     border-radius: 4px;
 }
 
-.remove-preview {
-    position: absolute;
-    top: -10px;
-    right: -10px;
-    background-color: #fee2e2;
-    color: #ef4444;
+.preview-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.75rem;
+}
+
+.remove-button {
+    background: none;
     border: none;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 0.9rem;
     display: flex;
     align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 0.85rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s;
-}
-
-.remove-preview:hover {
-    background-color: #ef4444;
-    color: white;
-    transform: scale(1.1);
-}
-
-.remove-preview i {
-    font-size: 0.85rem;
+    gap: 0.25rem;
 }
 
 .hidden-input {
@@ -1285,6 +1305,81 @@ watch(statusFilter, async () => {
     outline: none;
 }
 
+/* Toggle Switch Styles */
+.toggle-switch-wrapper {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 8px;
+}
+
+.toggle-switch-container {
+    display: flex;
+    align-items: center;
+    margin: 0;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+    margin-right: 12px;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #e2e8f0;
+    transition: 0.3s;
+    border-radius: 24px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--primary-color);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+}
+
+.toggle-status {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+input:checked ~ .toggle-status {
+    color: var(--primary-color);
+}
+
+.toggle-description {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #e5e7eb;
+    font-size: 0.85rem;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
 @media (max-width: 768px) {
     .section-header {
         flex-direction: column;
@@ -1316,3 +1411,4 @@ watch(statusFilter, async () => {
     }
 }
 </style>
+```
