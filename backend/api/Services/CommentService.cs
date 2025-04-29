@@ -26,6 +26,7 @@ namespace api.Services
                     return (false, "Comment not found", null);
                 }
 
+                // Lấy những phản hồi của bình luận
                 var replies = await _commentRepository.GetRepliesByParentIdAsync(id);
                 var commentDto = comment.ToCommentDTO();
                 commentDto.Replies = replies.Select(r => r.ToCommentDTO()).ToList();
@@ -48,9 +49,12 @@ namespace api.Services
                 }
 
                 var comments = await _commentRepository.GetCommentsByProductIdAsync(productId, page, pageSize);
+                // Tổng số bình luận cho sản phẩm
                 var totalComments = await _commentRepository.GetCommentsCountByProductIdAsync(productId);
+                // Tổng số trang
                 var totalPages = (int)Math.Ceiling(totalComments / (double)pageSize);
 
+                // Lấy các reply của từng comment
                 var commentDtos = new List<CommentDTO>();
                 foreach (var comment in comments)
                 {
@@ -95,11 +99,13 @@ namespace api.Services
                         return (false, "Parent comment not found", null);
                     }
 
+                    // Kiểm tra xem bình luận cha có thuộc về sản phẩm không
                     if (parentComment.ProductId != commentDTO.ProductId)
                     {
                         return (false, "Parent comment is not associated with the specified product", null);
                     }
 
+                    // Rating chỉ cho bình luận gốc
                     if (commentDTO.Rating.HasValue)
                     {
                         return (false, "Rating can only be provided in top-level comments", null);
@@ -112,6 +118,7 @@ namespace api.Services
                 }
 
                 var comment = commentDTO.ToCommentModel(userId);
+                comment.Content = comment.Content.Trim();
                 var createdComment = await _commentRepository.CreateCommentAsync(comment);
 
                 var commentDto = createdComment.ToCommentDTO();

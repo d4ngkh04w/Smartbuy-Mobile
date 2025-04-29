@@ -23,7 +23,7 @@ namespace api.Repositories
 
         public async Task<List<Comment>> GetCommentsByProductIdAsync(int productId, int page, int pageSize)
         {
-            // Get top-level comments with pagination (comments that don't have a parent)
+            // Lấy các bình luận không có replies (ParentId = null) và phân trang
             return await _db.Comments
                 .Include(c => c.User)
                 .Where(c => c.ProductId == productId && c.ParentId == null)
