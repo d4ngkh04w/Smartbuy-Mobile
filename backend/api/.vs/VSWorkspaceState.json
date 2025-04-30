@@ -1,17 +1,13 @@
 {
   "ExpandedNodes": [
     "",
+    "\\Controllers",
     "\\DTOs",
     "\\DTOs\\Carousel",
-    "\\Helpers",
-    "\\Interfaces",
+    "\\DTOs\\Product",
     "\\Interfaces\\Repositories",
-    "\\Interfaces\\Services",
-    "\\Mappers",
-    "\\Models",
-    "\\Queries",
-    "\\Services"
+    "\\Interfaces\\Services"
   ],
-  "SelectedNode": "\\Services\\ProductService.cs",
+  "SelectedNode": "\\DTOs\\Carousel\\CarouselDTO.cs",
   "PreviewInSolutionExplorer": false
 }

@@ -3,6 +3,18 @@
   "WorkspaceRootPath": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Carousel\\CarouselDTO.cs||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:DTOs\\Carousel\\CarouselDTO.cs||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Product\\CreateProductDTO.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:DTOs\\Product\\CreateProductDTO.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Controllers\\CarouselController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Controllers\\CarouselController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Services\\CarouselService.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Services\\CarouselService.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -21,14 +33,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Interfaces\\Repositories\\ICarouselRepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Interfaces\\Repositories\\ICarouselRepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Carousel\\CarouselDTO.cs||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:DTOs\\Carousel\\CarouselDTO.cs||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Controllers\\CarouselController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Controllers\\CarouselController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Helpers\\ImageHelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -97,10 +101,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Product\\ProductImageDTO.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:DTOs\\Product\\ProductImageDTO.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Product\\CreateProductDTO.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:DTOs\\Product\\CreateProductDTO.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Brand\\CreateBrandDTO.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -174,7 +174,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Bookmark",
@@ -182,59 +182,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 3,
               "Title": "CarouselService.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Services\\CarouselService.cs",
               "RelativeDocumentMoniker": "Services\\CarouselService.cs",
               "ToolTip": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Services\\CarouselService.cs",
               "RelativeToolTip": "Services\\CarouselService.cs",
-              "ViewState": "AgIAAHoAAAAAAAAAAAAUwIYAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAFAAAAAAAAAAAAAUwH0AAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-04-27T14:49:25.102Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "ICarouselService.cs",
-              "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Interfaces\\Services\\ICarouselService.cs",
-              "RelativeDocumentMoniker": "Interfaces\\Services\\ICarouselService.cs",
-              "ToolTip": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Interfaces\\Services\\ICarouselService.cs",
-              "RelativeToolTip": "Interfaces\\Services\\ICarouselService.cs",
-              "ViewState": "AgIAAAEAAAAAAAAAAAAUwBAAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-27T13:33:25.88Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "ICarouselRepository.cs",
-              "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Interfaces\\Repositories\\ICarouselRepository.cs",
-              "RelativeDocumentMoniker": "Interfaces\\Repositories\\ICarouselRepository.cs",
-              "ToolTip": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Interfaces\\Repositories\\ICarouselRepository.cs",
-              "RelativeToolTip": "Interfaces\\Repositories\\ICarouselRepository.cs",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAUwBAAAAArAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-27T13:28:43.741Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "CarouselMapper.cs",
-              "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Mappers\\CarouselMapper.cs",
-              "RelativeDocumentMoniker": "Mappers\\CarouselMapper.cs",
-              "ToolTip": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Mappers\\CarouselMapper.cs",
-              "RelativeToolTip": "Mappers\\CarouselMapper.cs",
-              "ViewState": "AgIAAB8AAAAAAAAAAAAUwCgAAAA2AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-27T13:34:16.73Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 5,
               "Title": "ProductService.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Services\\ProductService.cs",
               "RelativeDocumentMoniker": "Services\\ProductService.cs",
@@ -247,33 +208,85 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "CarouselDTO.cs",
-              "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Carousel\\CarouselDTO.cs",
-              "RelativeDocumentMoniker": "DTOs\\Carousel\\CarouselDTO.cs",
-              "ToolTip": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Carousel\\CarouselDTO.cs",
-              "RelativeToolTip": "DTOs\\Carousel\\CarouselDTO.cs",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAUwBUAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-27T13:09:20.761Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 2,
               "Title": "CarouselController.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Controllers\\CarouselController.cs",
               "RelativeDocumentMoniker": "Controllers\\CarouselController.cs",
               "ToolTip": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Controllers\\CarouselController.cs",
               "RelativeToolTip": "Controllers\\CarouselController.cs",
-              "ViewState": "AgIAAGEAAAAAAAAAAAAUwHAAAAAJAAAAAAAAAA==",
+              "ViewState": "AgIAAD8AAAAAAAAAAAAAAGYAAABIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-04-27T14:01:35.264Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "CarouselDTO.cs",
+              "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Carousel\\CarouselDTO.cs",
+              "RelativeDocumentMoniker": "DTOs\\Carousel\\CarouselDTO.cs",
+              "ToolTip": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Carousel\\CarouselDTO.cs",
+              "RelativeToolTip": "DTOs\\Carousel\\CarouselDTO.cs",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAAAA0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-27T13:09:20.761Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "CreateProductDTO.cs",
+              "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Product\\CreateProductDTO.cs",
+              "RelativeDocumentMoniker": "DTOs\\Product\\CreateProductDTO.cs",
+              "ToolTip": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Product\\CreateProductDTO.cs",
+              "RelativeToolTip": "DTOs\\Product\\CreateProductDTO.cs",
+              "ViewState": "AgIAAAIAAAAAAAAAAADwvwoAAAAXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-27T13:07:16.842Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "CarouselMapper.cs",
+              "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Mappers\\CarouselMapper.cs",
+              "RelativeDocumentMoniker": "Mappers\\CarouselMapper.cs",
+              "ToolTip": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Mappers\\CarouselMapper.cs",
+              "RelativeToolTip": "Mappers\\CarouselMapper.cs",
+              "ViewState": "AgIAAB8AAAAAAAAAAAAUwCgAAAA2AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-27T13:34:16.73Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 7,
+              "Title": "ICarouselRepository.cs",
+              "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Interfaces\\Repositories\\ICarouselRepository.cs",
+              "RelativeDocumentMoniker": "Interfaces\\Repositories\\ICarouselRepository.cs",
+              "ToolTip": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Interfaces\\Repositories\\ICarouselRepository.cs",
+              "RelativeToolTip": "Interfaces\\Repositories\\ICarouselRepository.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAUwBAAAAArAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-27T13:28:43.741Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "ICarouselService.cs",
+              "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Interfaces\\Services\\ICarouselService.cs",
+              "RelativeDocumentMoniker": "Interfaces\\Services\\ICarouselService.cs",
+              "ToolTip": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Interfaces\\Services\\ICarouselService.cs",
+              "RelativeToolTip": "Interfaces\\Services\\ICarouselService.cs",
+              "ViewState": "AgIAAAEAAAAAAAAAAAAUwBAAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-27T13:33:25.88Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
               "Title": "ImageHelper.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Helpers\\ImageHelper.cs",
               "RelativeDocumentMoniker": "Helpers\\ImageHelper.cs",
@@ -286,7 +299,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 9,
               "Title": "BrandService.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Services\\BrandService.cs",
               "RelativeDocumentMoniker": "Services\\BrandService.cs",
@@ -299,7 +312,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 10,
               "Title": "CarouselImage.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Models\\CarouselImage.cs",
               "RelativeDocumentMoniker": "Models\\CarouselImage.cs",
@@ -312,7 +325,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 11,
               "Title": "AppDBContext.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Database\\AppDBContext.cs",
               "RelativeDocumentMoniker": "Database\\AppDBContext.cs",
@@ -325,7 +338,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 12,
               "Title": "CartMapper.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Mappers\\CartMapper.cs",
               "RelativeDocumentMoniker": "Mappers\\CartMapper.cs",
@@ -338,7 +351,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 13,
               "Title": "ProductLineMapper.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Mappers\\ProductLineMapper.cs",
               "RelativeDocumentMoniker": "Mappers\\ProductLineMapper.cs",
@@ -351,7 +364,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 15,
               "Title": "ProductImage.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Models\\ProductImage.cs",
               "RelativeDocumentMoniker": "Models\\ProductImage.cs",
@@ -364,7 +377,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 14,
               "Title": "ProductMapper.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Mappers\\ProductMapper.cs",
               "RelativeDocumentMoniker": "Mappers\\ProductMapper.cs",
@@ -377,7 +390,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 16,
               "Title": "CarouselRepository.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Repositories\\CarouselRepository.cs",
               "RelativeDocumentMoniker": "Repositories\\CarouselRepository.cs",
@@ -390,7 +403,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 17,
               "Title": "IProductService.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Interfaces\\Services\\IProductService.cs",
               "RelativeDocumentMoniker": "Interfaces\\Services\\IProductService.cs",
@@ -403,7 +416,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 18,
               "Title": "ProductController.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Controllers\\ProductController.cs",
               "RelativeDocumentMoniker": "Controllers\\ProductController.cs",
@@ -416,7 +429,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 19,
               "Title": "CartController.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Controllers\\CartController.cs",
               "RelativeDocumentMoniker": "Controllers\\CartController.cs",
@@ -429,7 +442,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 20,
               "Title": "ProductDTO.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Product\\ProductDTO.cs",
               "RelativeDocumentMoniker": "DTOs\\Product\\ProductDTO.cs",
@@ -442,7 +455,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 21,
               "Title": "ProductRepository.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Repositories\\ProductRepository.cs",
               "RelativeDocumentMoniker": "Repositories\\ProductRepository.cs",
@@ -455,7 +468,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 22,
               "Title": "ICartService.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Interfaces\\Services\\ICartService.cs",
               "RelativeDocumentMoniker": "Interfaces\\Services\\ICartService.cs",
@@ -468,7 +481,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 23,
               "Title": "IProductRepository.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\Interfaces\\Repositories\\IProductRepository.cs",
               "RelativeDocumentMoniker": "Interfaces\\Repositories\\IProductRepository.cs",
@@ -481,7 +494,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
+              "DocumentIndex": 24,
               "Title": "ProductImageDTO.cs",
               "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Product\\ProductImageDTO.cs",
               "RelativeDocumentMoniker": "DTOs\\Product\\ProductImageDTO.cs",
@@ -503,19 +516,6 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-04-27T13:10:05.188Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 24,
-              "Title": "CreateProductDTO.cs",
-              "DocumentMoniker": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Product\\CreateProductDTO.cs",
-              "RelativeDocumentMoniker": "DTOs\\Product\\CreateProductDTO.cs",
-              "ToolTip": "D:\\CNTT-DHBK\\PBL\\PBL3_SmartBuyMobile\\PBL3\\backend\\api\\DTOs\\Product\\CreateProductDTO.cs",
-              "RelativeToolTip": "DTOs\\Product\\CreateProductDTO.cs",
-              "ViewState": "AgIAAD4AAAAAAAAAAADwv0kAAABYAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-27T13:07:16.842Z",
               "EditorCaption": ""
             },
             {

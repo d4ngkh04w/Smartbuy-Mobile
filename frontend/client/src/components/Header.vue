@@ -139,7 +139,7 @@ onMounted(async () => {
 /* Bố cục chính */
 .header {
     background-color: var(--primary-color);
-    padding: 5px 200px;
+    padding: 5px 20px;
 }
 
 .header-container {
