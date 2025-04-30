@@ -7,7 +7,7 @@ namespace api.Controllers
 {
     [Route("api/v1/user/auth")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "user")]
     public class AuthUserController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -21,99 +21,124 @@ namespace api.Controllers
 
         [HttpPost("register")]
         [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] Register register)
+        public async Task<IActionResult> Register([FromBody] RegisterDTO register)
         {
             var result = await _authService.Register(register, "user");
-            if (result.Success)
+            if (!result.Success && result.ErrorMessage != null)
             {
-                Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+                return result.ErrorMessage switch
                 {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
-                });
-                Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
-                });
-                return Ok(new
-                {
-                    Message = "User registered successfully",
-                });
+                    string msg when msg.Contains("Already exists", StringComparison.OrdinalIgnoreCase) => Conflict(new { Message = "Phone number already exists" }),
+                    _ => StatusCode(500, new { Message = result.ErrorMessage })
+                };
             }
 
-            return BadRequest(new { Message = "User registration failed", Errors = result.ErrorMessage });
+            Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = DateTimeOffset.Now.AddMinutes(double.Parse(_config["JWT:Expire"]!)),
+            });
+
+            Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = DateTimeOffset.Now.AddDays(double.Parse(_config["JWT:RefreshTokenExpiry"]!)),
+            });
+
+            return Ok(new
+            {
+                Message = "User registered successfully",
+            });
         }
 
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] Login login)
+        public async Task<IActionResult> Login([FromBody] LoginDTO login)
         {
             var result = await _authService.Login(login, "user");
-            if (result.Success)
+            if (!result.Success && result.ErrorMessage != null)
             {
-                Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+                return result.ErrorMessage switch
                 {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
-                });
-                Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
-                });
-                return Ok(new
-                {
-                    Message = "Login successful",
-                });
+                    string msg when msg.Contains("Does not have access", StringComparison.OrdinalIgnoreCase) => Forbid(),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => Unauthorized(new { Message = result.ErrorMessage })
+                };
             }
 
-            return Unauthorized(new { Message = result.ErrorMessage });
+            Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = DateTimeOffset.Now.AddMinutes(double.Parse(_config["JWT:Expire"]!)),
+            });
+            Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = DateTimeOffset.Now.AddDays(double.Parse(_config["JWT:RefreshTokenExpiry"]!)),
+            });
+
+            return Ok(new
+            {
+                Message = "Login successful",
+            });
         }
 
         [HttpPost("google-login")]
         [AllowAnonymous]
-        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLogin dto)
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDTO dto)
         {
-            var (success, message, token) = await _authService.LoginWithGoogleAsync(dto, "user");
-            if (success)
+            var result = await _authService.LoginWithGoogleAsync(dto, "user");
+            if (!result.Success && result.ErrorMessage != null)
             {
-                Response.Cookies.Append("token", token!.Token, new CookieOptions
+                return result.ErrorMessage switch
                 {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
-                });
-                Response.Cookies.Append("refreshToken", token!.RefreshToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
-                });
-
-                return Ok(new
-                {
-                    Message = message,
-                });
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => Unauthorized(new { Message = result.ErrorMessage })
+                };
             }
 
-            return Unauthorized(new { Message = message });
+            Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = DateTimeOffset.Now.AddMinutes(double.Parse(_config["JWT:Expire"]!)),
+            });
+            Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = DateTimeOffset.Now.AddDays(double.Parse(_config["JWT:RefreshTokenExpiry"]!)),
+            });
+
+            return Ok(new
+            {
+                Message = "Login successful",
+            });
+        }
+
+        [HttpGet("verify")]
+        public IActionResult VerifyToken()
+        {
+            return Ok(new
+            {
+                Message = "Token is valid",
+            });
         }
     }
 }

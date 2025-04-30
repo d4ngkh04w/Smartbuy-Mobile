@@ -29,7 +29,8 @@ namespace api.Repositories
 
         public async Task DeleteBrandAsync(Brand brand)
         {
-            _db.Brands.Remove(brand);
+            brand.IsActive = false;
+            _db.Brands.Update(brand);
             await _db.SaveChangesAsync();
         }
 
@@ -37,19 +38,32 @@ namespace api.Repositories
         {
             var brandsQuery = _db.Brands.AsQueryable();
 
-            if (query.IsActive)
+            // Only apply IsActive filter if it has a value
+            if (query.IsActive.HasValue)
             {
-                brandsQuery = brandsQuery.Where(b => b.IsActive == query.IsActive);
+                brandsQuery = brandsQuery.Where(b => b.IsActive == query.IsActive.Value);
             }
+            // No else clause needed - when IsActive is null, we want all brands
 
-            if (query.IncludeCategories)
+            if (query.IncludeProductLines)
             {
-                brandsQuery = brandsQuery.Include(b => b.Categories);
+                brandsQuery = brandsQuery.Include(b => b.ProductLines);
             }
 
             if (query.IncludeProducts)
             {
-                brandsQuery = brandsQuery.Include(b => b.Categories).ThenInclude(c => c.Products);
+                brandsQuery = brandsQuery.Include(b => b.ProductLines)
+                    .ThenInclude(pl => pl.Products)
+                    .ThenInclude(p => p.Colors)
+                    .Include(b => b.ProductLines)
+                    .ThenInclude(pl => pl.Products)
+                    .ThenInclude(p => p.Images)
+                    .Include(b => b.ProductLines)
+                    .ThenInclude(pl => pl.Products)
+                    .ThenInclude(p => p.Detail)
+                    .Include(b => b.ProductLines)
+                    .ThenInclude(pl => pl.Products)
+                    .ThenInclude(p => p.Discounts);
             }
 
             brandsQuery = query.SortBy.ToLower() switch
@@ -76,17 +90,24 @@ namespace api.Repositories
 
             var brandQuery = _db.Brands.AsQueryable();
 
-            if (query.IncludeCategories)
+            if (query.IncludeProductLines)
             {
-                brandQuery = brandQuery.Include(b => b.Categories);
+                brandQuery = brandQuery.Include(b => b.ProductLines);
             }
 
             if (query.IncludeProducts)
             {
-                brandQuery = brandQuery.Include(b => b.Categories).ThenInclude(c => c.Products);
+                brandQuery = brandQuery.Include(b => b.ProductLines).ThenInclude(pl => pl.Products);
             }
 
-            return await brandQuery.FirstOrDefaultAsync(b => b.Id == id);
+            var baseQuery = brandQuery.Where(b => b.Id == id);
+            
+            if (query.IsActive.HasValue)
+            {
+                baseQuery = baseQuery.Where(b => b.IsActive == query.IsActive.Value);
+            }
+
+            return await baseQuery.FirstOrDefaultAsync();
         }
 
         public async Task<bool> UpdateBrandAsync(Brand brand)

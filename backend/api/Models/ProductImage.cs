@@ -15,7 +15,6 @@ namespace api.Models
         public bool IsMain { get; set; } = false;
         public int ProductId { get; set; }
 
-        [InverseProperty("Images")]
         [ForeignKey(nameof(ProductId))]
         public Product? Product { get; set; } = null;
     }

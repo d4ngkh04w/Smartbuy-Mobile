@@ -25,7 +25,7 @@ builder.Services.AddDbContext<AppDBContext>(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
-        policy => policy.WithOrigins("http://localhost:4000", "http://localhost:5000")
+        policy => policy.WithOrigins(["http://localhost:3000", "http://localhost:4000"])
                         .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .AllowAnyHeader()
                         .AllowCredentials());
@@ -73,20 +73,6 @@ builder.Services.AddAuthentication(
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsJsonAsync(new { Message = "Forbidden" });
             },
-            // Khi token không hợp lệ hoặc đã hết hạn
-            OnAuthenticationFailed = async context =>
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new { Message = "Authentication failed" });
-            },
-            // Khi cố gắng truy cập vào một endpoint yêu cầu xác thực nhưng không có token hoặc token không hợp lệ
-            OnChallenge = async context =>
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new { Message = "Unauthorized" });
-            },
         };
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -111,14 +97,25 @@ builder.Services.AddRateLimiter(options =>
         var path = httpContext.Request.Path.ToString().ToLower();
 
         // Áp dụng policy khác nhau dựa trên đường dẫn
-        if (path.Contains("/auth/"))
+        if (path.EndsWith("/verify"))
         {
             return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
             {
-                Window = TimeSpan.FromSeconds(20),
-                PermitLimit = 5,
+                Window = TimeSpan.FromSeconds(10),
+                PermitLimit = 35,
                 SegmentsPerWindow = 5,
-                QueueLimit = 0,
+                QueueLimit = 2,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            });
+        }
+        else if (path.Contains("/auth/"))
+        {
+            return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromSeconds(10),
+                PermitLimit = 10,
+                SegmentsPerWindow = 6,
+                QueueLimit = 2,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
             });
         }
@@ -127,7 +124,7 @@ builder.Services.AddRateLimiter(options =>
             return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
             {
                 Window = TimeSpan.FromSeconds(10),
-                PermitLimit = 10,
+                PermitLimit = 20,
                 SegmentsPerWindow = 5,
                 QueueLimit = 2,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
@@ -162,11 +159,15 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IBrandRepository, BrandRepository>();
 builder.Services.AddScoped<IBrandService, BrandService>();
-builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
-builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IProductLineRepository, ProductLineRepository>();
+builder.Services.AddScoped<IProductLineService, ProductLineService>();
+builder.Services.AddScoped<ITagRepository, TagRepository>();
+builder.Services.AddScoped<ITagService, TagService>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IProductService, ProductService>();
 
 var app = builder.Build();
 

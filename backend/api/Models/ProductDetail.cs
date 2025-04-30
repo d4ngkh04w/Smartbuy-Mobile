@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Runtime.InteropServices;
 
 namespace api.Models
 {
@@ -11,29 +10,31 @@ namespace api.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        [Column(TypeName = "varchar(30)")]
-        public string Warranty { get; set; } = string.Empty;
+        public int WarrantyMonths { get; set; } = 12;
 
-        [Column(TypeName = "varchar(10)")]
-        public string RAM { get; set; } = string.Empty;
+        public int RAMInGB { get; set; }
 
-        [Column(TypeName = "varchar(10)")]
-        public string Storage { get; set; } = string.Empty;
+        public int StorageInGB { get; set; }
 
         [Column(TypeName = "varchar(100)")]
         public string Processor { get; set; } = string.Empty;
 
-        [Column(TypeName = "varchar(10)")]
-        public string ScreenSize { get; set; } = string.Empty;
+        [Column(TypeName = "varchar(50)")]
+        public string OperatingSystem { get; set; } = string.Empty;
+
+        [Column(TypeName = "decimal(3, 1)")]
+        public decimal ScreenSizeInch { get; set; }
 
         [Column(TypeName = "varchar(20)")]
         public string ScreenResolution { get; set; } = string.Empty;
 
-        [Column(TypeName = "varchar(20)")]
-        public string Battery { get; set; } = string.Empty;
-        public int SimSlots { get; set; } = 0;
+        public int BatteryCapacityMAh { get; set; }
 
-        [InverseProperty("Detail")]
+        public int SimSlots { get; set; } = 1;
+
+        public int ProductId { get; set; }
+
+        [ForeignKey(nameof(ProductId))]
         public Product? Product { get; set; } = null;
     }
 }

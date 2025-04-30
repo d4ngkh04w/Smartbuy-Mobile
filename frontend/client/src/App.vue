@@ -17,14 +17,25 @@ import Notification from './components/Notification.vue'
 </template>
 
 <style scoped>
-.app-container {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
+    .app-container {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
 
-.main-content {
-    flex: 1; /* Đảm bảo phần nội dung có thể mở rộng */
-    padding: 0px;
-}
+    .main-content {
+        flex: 1; /* Đảm bảo phần nội dung có thể mở rộng */
+        padding: 20px;
+    }
+    header{
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+    }
+    main{
+        margin-top: 60px; /* Để tránh che khuất bởi header */
+        
+    }
 </style>

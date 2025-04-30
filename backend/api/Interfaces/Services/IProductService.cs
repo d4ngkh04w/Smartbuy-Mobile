@@ -1,14 +1,15 @@
-using api.DTOs.Category;
+using api.DTOs.Product;
 using api.Queries;
 
 namespace api.Interfaces.Services
 {
-    public interface IProductService
-    {
-        // Task<(bool Success, string? ErrorMessage, IEnumerable<CategoryDTO>? Categories)> GetCategoriesAsync(CategoryQuery query);
-        // Task<(bool Success, string? ErrorMessage, CategoryDTO? Category)> GetCategoryByIdAsync(int id, CategoryQuery query);
-        // Task<(bool Success, string? ErrorMessage, CategoryDTO? Category)> CreateCategoryAsync(CreateCategoryDTO categoryDTO);
-        // Task<(bool Success, string? ErrorMessage)> DeleteCategoryAsync(int id);
-        // Task<(bool Success, string? ErrorMessage)> UpdateCategoryAsync(int id, UpdateCategoryDTO categoryDTO);
-    }
+        public interface IProductService
+        {
+                Task<(bool Success, string? ErrorMessage, IEnumerable<ProductDTO>? Products)> GetProductsAsync();
+                Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> GetProductByIdAsync(int id);
+                Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> CreateProductAsync(CreateProductDTO productDTO);
+                Task<(bool Success, string? ErrorMessage)> DeleteProductAsync(int id);
+                Task<(bool Success, string? ErrorMessage, ProductPagiDTO? ProductPagi)> GetPagedProductsAsync(int page, int pageSize);
+                Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> UpdateProductAsync(int id, UpdateProductDTO productDTO);
+        }
 }

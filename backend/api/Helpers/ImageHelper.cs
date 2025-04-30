@@ -2,11 +2,7 @@ namespace api.Helpers
 {
     public static class ImageHelper
     {
-        private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-        private const string DEFAULT_ROOT_PATH = "wwwroot";
-        private const string DEFAULT_IMAGES_FOLDER = "uploads/images";
-
-        public static async Task<(bool Success, string? ErrorMessage, string? FilePath)> SaveImageAsync(IFormFile file, string folder, long maxSize)
+        public static async Task<(bool Success, string? ErrorMessage, string? FilePath)> SaveImageAsync(IFormFile file, string webRootPath, string folder, long maxSize)
         {
             if (file == null || file.Length == 0)
             {
@@ -24,7 +20,7 @@ namespace api.Helpers
             }
 
             string fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
-            string uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), DEFAULT_ROOT_PATH, DEFAULT_IMAGES_FOLDER, folder);
+            string uploadFolder = Path.Combine(webRootPath, "uploads", "images", folder);
 
             try
             {
@@ -39,8 +35,9 @@ namespace api.Helpers
                 {
                     await file.CopyToAsync(stream);
                 }
+                var relativePath = Path.Combine("uploads", "images", folder, fileName).Replace("\\", "/");
+                return (true, null, "/" + relativePath);
 
-                return (true, null, $"/{DEFAULT_IMAGES_FOLDER}/{folder}/{fileName}");
             }
             catch (Exception)
             {
@@ -60,8 +57,10 @@ namespace api.Helpers
                 if (File.Exists(filePath))
                 {
                     File.Delete(filePath);
+                    Console.WriteLine("[INF] File deleted successfully");
                     return true;
                 }
+                Console.WriteLine("[ERR] File not found");
                 return false;
             }
             catch (Exception)
