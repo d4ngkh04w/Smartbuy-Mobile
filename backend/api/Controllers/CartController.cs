@@ -75,8 +75,8 @@ namespace api.Controllers
             });
         }
 
-        [HttpPut("items/{itemId:int}")]
-        public async Task<IActionResult> UpdateCartItem([FromRoute] int itemId, [FromBody] UpdateCartItemDTO dto)
+        [HttpPut("items/{itemId:guid}")]
+        public async Task<IActionResult> UpdateCartItem([FromRoute] Guid itemId, [FromBody] UpdateCartItemDTO dto)
         {
             var userId = GetCurrentUserId();
 
@@ -109,8 +109,8 @@ namespace api.Controllers
             });
         }
 
-        [HttpDelete("items/{itemId:int}")]
-        public async Task<IActionResult> RemoveCartItem([FromRoute] int itemId)
+        [HttpDelete("items/{itemId:guid}")]
+        public async Task<IActionResult> RemoveCartItem([FromRoute] Guid itemId)
         {
             var userId = GetCurrentUserId();
             if (userId == Guid.Empty)

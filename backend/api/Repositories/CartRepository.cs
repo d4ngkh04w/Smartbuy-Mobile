@@ -51,7 +51,7 @@ namespace api.Repositories
             return true;
         }
 
-        public async Task<CartItem?> GetCartItemByIdAsync(int itemId)
+        public async Task<CartItem?> GetCartItemByIdAsync(Guid itemId)
         {
             return await _context.CartItems
                 .Include(ci => ci.Product!)

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers
 {
-    [Route("api/v1/comments")]
+    [Route("api/v1/comment")]
     [ApiController]
     [Authorize(Roles = "admin,user")]
     public class CommentController : ControllerBase

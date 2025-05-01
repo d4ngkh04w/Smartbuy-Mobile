@@ -25,7 +25,7 @@ namespace api.Models
         [Column(TypeName = "bit")]
         public bool IsActive { get; set; } = true;
 
-        [Column(TypeName = "datetime")]
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        [Column(TypeName = "timestamp")]
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
 }

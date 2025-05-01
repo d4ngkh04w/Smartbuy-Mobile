@@ -24,6 +24,8 @@ namespace api.Database
         public DbSet<CartItem> CartItems { get; set; } = null!;
         public DbSet<CarouselImage> CarouselImages { get; set; } = null!;
         public DbSet<Comment> Comments { get; set; } = null!;
+        public DbSet<Order> Orders { get; set; } = null!;
+        public DbSet<OrderItem> OrderItems { get; set; } = null!;
         protected override void OnModelCreating(ModelBuilder builder)
         {
             builder.Entity<User>()

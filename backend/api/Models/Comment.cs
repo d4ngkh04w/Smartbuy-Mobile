@@ -14,11 +14,11 @@ namespace api.Models
         public string Content { get; set; } = string.Empty;
         public Guid UserId { get; set; }
 
-        [ForeignKey("UserId")]
+        [ForeignKey(nameof(UserId))]
         public User User { get; set; } = null!;
         public int ProductId { get; set; }
 
-        [ForeignKey("ProductId")]
+        [ForeignKey(nameof(ProductId))]
         public Product Product { get; set; } = null!;
         public bool IsDeleted { get; set; } = false;
 
@@ -27,7 +27,7 @@ namespace api.Models
         public int? Rating { get; set; }
         public int? ParentId { get; set; } = null;
 
-        [ForeignKey("ParentId")]
+        [ForeignKey(nameof(ParentId))]
         public Comment? Parent { get; set; } = null;
         public int Likes { get; set; } = 0;
         public int Dislikes { get; set; } = 0;

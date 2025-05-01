@@ -25,19 +25,19 @@ builder.Services.AddDbContext<AppDBContext>(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
-        policy => policy.WithOrigins(["http://localhost:3000", "http://localhost:4000"])
+        policy => policy.WithOrigins("http://localhost:3000", "http://localhost:4000")
                         .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .AllowAnyHeader()
                         .AllowCredentials());
 });
 
-// Thiết lập response cho các lỗi 400 (Bad Request) với thông báo lỗi cụ thể
+// Thiết lập response cho các lỗi 400 (Bad Request) với thông báo
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
     {
         var errors = context.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-        return new BadRequestObjectResult(new { Message = "Invalid data", Error = errors.FirstOrDefault() });
+        return new BadRequestObjectResult(new { Message = "Invalid data", Error = errors });
     };
 });
 
@@ -167,6 +167,8 @@ builder.Services.AddScoped<ICarouselRepository, CarouselRepository>();
 builder.Services.AddScoped<ICarouselService, CarouselService>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 
 var app = builder.Build();
 

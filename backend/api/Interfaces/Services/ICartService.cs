@@ -6,8 +6,8 @@ namespace api.Interfaces.Services
     {
         Task<(bool Success, string? ErrorMessage, CartDTO? Cart)> GetCartAsync(Guid userId);
         Task<(bool Success, string? ErrorMessage, CartDTO? Cart)> AddToCartAsync(Guid userId, AddToCartDTO dto);
-        Task<(bool Success, string? ErrorMessage, CartDTO? Cart)> UpdateCartItemAsync(Guid userId, int itemId, UpdateCartItemDTO dto);
-        Task<(bool Success, string? ErrorMessage)> RemoveCartItemAsync(Guid userId, int itemId);
+        Task<(bool Success, string? ErrorMessage, CartDTO? Cart)> UpdateCartItemAsync(Guid userId, Guid itemId, UpdateCartItemDTO dto);
+        Task<(bool Success, string? ErrorMessage)> RemoveCartItemAsync(Guid userId, Guid itemId);
         Task<(bool Success, string? ErrorMessage)> ClearCartAsync(Guid userId);
     }
 }
