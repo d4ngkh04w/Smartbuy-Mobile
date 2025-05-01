@@ -7,7 +7,7 @@ const routes = [
         path: "/login",
         name: "login",
         component: () => import("../views/LoginPage.vue"),
-        meta: { requiresAuth: false},
+        meta: { requiresAuth: false },
     },
     {
         path: "/dashboard",
@@ -31,6 +31,12 @@ const routes = [
         path: "/categories",
         name: "categories",
         component: () => import("../views/CategoryPage.vue"),
+        meta: { requiresAuth: true },
+    },
+    {
+        path: "/products",
+        name: "products",
+        component: () => import("../views/ProductsPage.vue"),
         meta: { requiresAuth: true },
     },
     {
@@ -62,11 +68,10 @@ router.beforeEach(async (to, from, next) => {
 
     if (requiresAuth) {
         try {
-            await authService.verifyAdmin(); 
+            await authService.verifyAdmin();
             next();
-          
         } catch (error) {
-            if(error.response?.status != 401) {
+            if (error.response?.status != 401) {
                 console.error("Lỗi xác thực:", error);
                 next("/login");
             }
@@ -74,8 +79,6 @@ router.beforeEach(async (to, from, next) => {
     } else {
         next();
     }
-
-    
 });
 
 export default router;

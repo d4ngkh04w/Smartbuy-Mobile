@@ -43,8 +43,6 @@ namespace api.Models
 
         public ICollection<ProductColor> Colors { get; set; } = new HashSet<ProductColor>();
 
-        public ICollection<ProductImage> Images { get; set; } = new HashSet<ProductImage>();
-
         public ICollection<ProductDiscount> Discounts { get; set; } = new HashSet<ProductDiscount>();
 
         public ProductDetail? Detail { get; set; } = null;

@@ -20,7 +20,8 @@ namespace api.Repositories
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
-                        .ThenInclude(p => p!.Images)
+                        .ThenInclude(p => p!.Colors)
+                            .ThenInclude(c => c.Images)
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync();
         }
@@ -31,7 +32,8 @@ namespace api.Repositories
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
-                        .ThenInclude(p => p!.Images)
+                        .ThenInclude(p => p!.Colors)
+                            .ThenInclude(c => c.Images)
                 .Where(o => o.UserId == userId)
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync();
@@ -43,7 +45,8 @@ namespace api.Repositories
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
-                        .ThenInclude(p => p!.Images)
+                        .ThenInclude(p => p!.Colors)
+                            .ThenInclude(c => c.Images)
                 .FirstOrDefaultAsync(o => o.Id == id);
         }
 

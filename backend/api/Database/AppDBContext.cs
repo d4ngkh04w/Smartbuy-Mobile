@@ -57,11 +57,11 @@ namespace api.Database
                 .HasForeignKey(c => c.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Cấu hình mối quan hệ Product - ProductImage
-            builder.Entity<Product>()
-                .HasMany(p => p.Images)
-                .WithOne(i => i.Product)
-                .HasForeignKey(i => i.ProductId)
+            // Cấu hình mối quan hệ ProductColor - ProductImage
+            builder.Entity<ProductColor>()
+                .HasMany(c => c.Images)
+                .WithOne(i => i.Color)
+                .HasForeignKey(i => i.ColorId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Cấu hình mối quan hệ Product - ProductDiscount

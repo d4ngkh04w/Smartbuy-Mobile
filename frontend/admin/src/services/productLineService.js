@@ -5,6 +5,11 @@ export const getProductLines = async (params) => {
     return await instance.get("/product-line", { params });
 };
 
+// Get product lines filtered by brand ID
+export const getProductLinesByBrand = async (brandId, params = {}) => {
+    return await instance.get(`/product-line/by-brand/${brandId}`, { params });
+};
+
 // Get a product line by ID with optional query parameters
 export const getProductLineById = async (id, params) => {
     return await instance.get(`/product-line/${id}`, { params });
@@ -44,6 +49,7 @@ export const deleteProductLine = async (id) => {
 // All product line services
 export const productLineService = {
     getProductLines,
+    getProductLinesByBrand,
     getProductLineById,
     createProductLine,
     updateProductLine,

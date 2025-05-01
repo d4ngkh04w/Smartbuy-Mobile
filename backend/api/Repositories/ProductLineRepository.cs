@@ -52,6 +52,12 @@ namespace api.Repositories
                 productLinesQuery = productLinesQuery.Where(pl => pl.IsActive == query.IsActive.Value);
             }
 
+            // Filter by brand ID if specified
+            if (query.BrandId.HasValue)
+            {
+                productLinesQuery = productLinesQuery.Where(pl => pl.BrandId == query.BrandId.Value);
+            }
+
             if (query.IncludeProducts)
             {
                 productLinesQuery = productLinesQuery.Include(pl => pl.Products);

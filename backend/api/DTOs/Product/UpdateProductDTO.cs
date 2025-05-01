@@ -30,9 +30,28 @@ namespace api.DTOs.Product
         public string? Battery { get; set; }
         public int? SimSlots { get; set; }
         public string? OS { get; set; }
-        public ICollection<string>? Colors { get; set; }
-        public ICollection<IFormFile>? AddImages { get; set; }
-        public ICollection<int>? RemoveImagesIds { get; set; }
-        public int? IdMainImage { get; set; }
+        
+        // Updated to support color-image relationship
+        public List<UpdateColorDTO>? UpdateColorData { get; set; }
+        public List<int>? RemoveColorIds { get; set; }
+    }
+
+    public class UpdateColorDTO
+    {
+        public int? Id { get; set; }  // If null, creates a new color
+        
+        [StringLength(50, ErrorMessage = "Color name must be less than 50 characters")]
+        public string? Name { get; set; }
+        
+        // Images to add to this color
+        public List<IFormFile>? AddImages { get; set; }
+        
+        // Images to remove from this color
+        public List<int>? RemoveImageIds { get; set; }
+        
+        // Setting main image
+        public int? MainImageId { get; set; }  // ID of an existing image to set as main
+        public int MainImageIndex { get; set; } = 0; // Index in AddImages to set as main
+        public bool SetMainImage { get; set; } = false; // Whether to set a main image
     }
 }

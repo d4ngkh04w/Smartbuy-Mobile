@@ -4,7 +4,6 @@ import { useRouter } from "vue-router";
 import { logout } from "../services/authService.js";
 import emitter from "../utils/evenBus.js";
 
-
 const router = useRouter();
 
 /**
@@ -28,7 +27,7 @@ function clearBrowserHistory() {
 // Hook lifecycle
 onMounted(() => {
     // Thêm meta tags để ngăn cache trang
-   // addNoCacheMeta();
+    // addNoCacheMeta();
 });
 
 /**
@@ -41,11 +40,8 @@ const handleLogout = async () => {
 
         // Xóa lịch sử trình duyệt
         // clearBrowserHistory();
-               
-        router.replace("/login");      
-       
 
-
+        router.replace("/login");
 
         // Thông báo thành công
         emitter.emit("show-notification", {
@@ -100,6 +96,17 @@ const handleLogout = async () => {
                     </div>
                 </div>
 
+                <!-- Quản lý Danh mục -->
+                <div class="dashboard-card" @click="router.push('/categories')">
+                    <div class="card-icon">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Danh mục</h3>
+                        <p>Quản lý danh mục sản phẩm</p>
+                    </div>
+                </div>
+
                 <!-- Quản lý Đơn hàng -->
                 <div class="dashboard-card" @click="router.push('/orders')">
                     <div class="card-icon">
@@ -130,17 +137,6 @@ const handleLogout = async () => {
                     <div class="card-content">
                         <h3>Thanh toán & Doanh thu</h3>
                         <p>Quản lý thanh toán và doanh thu</p>
-                    </div>
-                </div>
-
-                <!-- Quản lý Danh mục -->
-                <div class="dashboard-card" @click="router.push('/categories')">
-                    <div class="card-icon">
-                        <i class="fas fa-tags"></i>
-                    </div>
-                    <div class="card-content">
-                        <h3>Danh mục</h3>
-                        <p>Quản lý danh mục sản phẩm</p>
                     </div>
                 </div>
 

@@ -17,5 +17,8 @@ namespace api.Models
 
         [ForeignKey(nameof(ProductId))]
         public Product? Product { get; set; } = null;
+        
+        // Collection of images for this color
+        public ICollection<ProductImage> Images { get; set; } = new HashSet<ProductImage>();
     }
 }

@@ -34,19 +34,17 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 const formatLogoUrl = (logoPath) => {
     if (!logoPath) return null;
 
-    // Nếu logo đã là URL đầy đủ (bắt đầu bằng http hoặc https)
-    if (logoPath.startsWith("http")) {
-        return logoPath;
-    }
+    // If logo is already a full URL (starts with http or https)
+    if (logoPath.startsWith("http")) return logoPath;
 
-    // Lấy base URL từ cấu hình API
+    // Get base URL from API config
     const apiUrl = import.meta.env.VITE_API_URL || "";
     const baseUrl = apiUrl.includes("/api") ? apiUrl.split("/api")[0] : "";
 
-    // Chuẩn hóa đường dẫn file (chuyển \ thành /)
+    // Normalize the path (convert \ to /)
     const normalizedPath = logoPath.replace(/\\/g, "/");
 
-    // Kiểm tra xem có prefix / hay không
+    // Check if path starts with /
     const path = normalizedPath.startsWith("/")
         ? normalizedPath
         : `/${normalizedPath}`;
@@ -1411,4 +1409,3 @@ input:checked ~ .toggle-status {
     }
 }
 </style>
-```

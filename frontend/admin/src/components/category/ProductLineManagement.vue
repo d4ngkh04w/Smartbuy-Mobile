@@ -40,9 +40,7 @@ const formatImageUrl = (imagePath) => {
     if (!imagePath) return null;
 
     // If image is already a full URL (starts with http or https)
-    if (imagePath.startsWith("http")) {
-        return imagePath;
-    }
+    if (imagePath.startsWith("http")) return imagePath;
 
     // Get base URL from API configuration
     const apiUrl = import.meta.env.VITE_API_URL || "";

@@ -5,5 +5,6 @@ namespace api.DTOs.Product
         public int Id { get; set; }
         public string ImagePath { get; set; } = string.Empty;
         public bool IsMain { get; set; }
+        public int ColorId { get; set; }
     }
 }

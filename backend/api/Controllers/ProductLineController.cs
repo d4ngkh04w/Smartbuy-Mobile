@@ -41,6 +41,32 @@ namespace api.Controllers
             });
         }
 
+        [HttpGet("by-brand/{brandId:int}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetProductLinesByBrand([FromRoute] int brandId, [FromQuery] ProductLineQuery query)
+        {
+            // Set brandId in the query
+            query.BrandId = brandId;
+            
+            var result = await _productLineService.GetProductLinesAsync(query);
+
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+
+            return Ok(new
+            {
+                Message = "Product lines for brand retrieved successfully",
+                result.ProductLines
+            });
+        }
+
         [HttpGet("{id:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetProductLineById([FromRoute] int id, [FromQuery] ProductLineQuery query)

@@ -19,10 +19,8 @@ namespace api.Repositories
             return await _context.Carts
                 .Include(c => c.Items!)
                     .ThenInclude(ci => ci.Product!)
-                        .ThenInclude(p => p.Images!)
-                .Include(c => c.Items!)
-                    .ThenInclude(ci => ci.Product!)
                         .ThenInclude(p => p.Colors!)
+                            .ThenInclude(c => c.Images!)
                 .FirstOrDefaultAsync(c => c.UserId.ToString() == userId.ToString());
         }
 
@@ -55,9 +53,8 @@ namespace api.Repositories
         {
             return await _context.CartItems
                 .Include(ci => ci.Product!)
-                    .ThenInclude(p => p.Images)
-                .Include(ci => ci.Product!)
-                    .ThenInclude(p => p.Colors)
+                    .ThenInclude(p => p.Colors!)
+                        .ThenInclude(c => c.Images!)
                 .FirstOrDefaultAsync(ci => ci.Id == itemId);
         }
 

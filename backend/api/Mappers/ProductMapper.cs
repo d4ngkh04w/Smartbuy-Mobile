@@ -11,6 +11,8 @@ namespace api.Mappers
             {
                 Id = productColor.Id,
                 Name = productColor.Name,
+                Images = productColor.Images?.Select(i => i.ToProductImageDTO()).ToHashSet() ?? new HashSet<ProductImageDTO>(),
+                HasMainImage = productColor.Images?.Any(i => i.IsMain) ?? false
             };
         }
 
@@ -21,6 +23,7 @@ namespace api.Mappers
                 Id = productImage.Id,
                 ImagePath = productImage.ImagePath,
                 IsMain = productImage.IsMain,
+                ColorId = productImage.ColorId
             };
         }
 
@@ -61,7 +64,6 @@ namespace api.Mappers
                 ProductLineName = product.ProductLine?.Name ?? string.Empty,
 
                 Colors = product.Colors.Select(c => c.ToProductColorDTO()).ToHashSet(),
-                Images = product.Images.Select(i => i.ToProductImageDTO()).ToHashSet(),
                 Detail = product.Detail?.ToProductDetailDTO(),
                 // Add tags when implementing tag functionality
                 // Tags = product.ProductTags.Select(pt => pt.Tag).ToHashSet()
@@ -92,24 +94,35 @@ namespace api.Mappers
             return new ProductDetail
             {
                 WarrantyMonths = productDTO.Warranty,
-                RAMInGB = productDTO.RAM,
-                StorageInGB = productDTO.Storage,
-                Processor = productDTO.Processor,
-                OperatingSystem = productDTO.OS,
-                ScreenSizeInch = productDTO.ScreenSize,
-                BatteryCapacityMAh = productDTO.Battery,
+                RAMInGB = productDTO.RAM ?? 0,
+                StorageInGB = productDTO.Storage ?? 0,
+                Processor = productDTO.Processor ?? string.Empty,
+                OperatingSystem = productDTO.OS ?? string.Empty,
+                ScreenSizeInch = productDTO.ScreenSize ?? 0,
+                BatteryCapacityMAh = productDTO.Battery ?? 0,
                 SimSlots = productDTO.SimSlots,
-                ScreenResolution = productDTO.ScreenResolution,
+                ScreenResolution = productDTO.ScreenResolution ?? string.Empty,
             };
         }
         public static ProductSummaryDTO ToSummaryDTO(this Product product)
         {
+            string mainImagePath = string.Empty;
+            foreach (var color in product.Colors)
+            {
+                var mainImage = color.Images.FirstOrDefault(i => i.IsMain);
+                if (mainImage != null)
+                {
+                    mainImagePath = mainImage.ImagePath;
+                    break;
+                }
+            }
+
             return new ProductSummaryDTO
             {
                 Id = product.Id,
                 Name = product.Name,
                 Price = product.SalePrice,
-                ImageUrl = product.Images.FirstOrDefault(i => i.IsMain)?.ImagePath ?? string.Empty,
+                ImageUrl = mainImagePath
             };
         }
 

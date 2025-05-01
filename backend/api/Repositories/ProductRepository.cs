@@ -19,7 +19,7 @@ namespace api.Repositories
             return await _db.Products
                 .Include(p => p.ProductLine)
                 .Include(p => p.Colors)
-                .Include(p => p.Images)
+                    .ThenInclude(c => c.Images)
                 .Include(p => p.Discounts)
                 .Include(p => p.Detail)
                 .Include(p => p.ProductTags)
@@ -33,7 +33,7 @@ namespace api.Repositories
             return await _db.Products
                 .Include(p => p.ProductLine)
                 .Include(p => p.Colors)
-                .Include(p => p.Images)
+                    .ThenInclude(c => c.Images)
                 .Include(p => p.Discounts)
                 .Include(p => p.Detail)
                 .Include(p => p.ProductTags)
@@ -77,7 +77,8 @@ namespace api.Repositories
             var totalItems = await _db.Products.CountAsync(p => p.IsActive);
 
             var items = await _db.Products
-                .Include(p => p.Images)
+                .Include(p => p.Colors)
+                    .ThenInclude(c => c.Images)
                 .Where(p => p.IsActive)
                 .OrderBy(p => p.Id)
                 .Skip((page - 1) * pageSize)
@@ -87,6 +88,5 @@ namespace api.Repositories
 
             return (items, totalItems);
         }
-
     }
 }
