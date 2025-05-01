@@ -1,15 +1,9 @@
 ﻿using api.DTOs.Carousel;
+using api.Helpers;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
 using api.Models;
-using api.Helpers;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace api.Services
 {
@@ -43,9 +37,9 @@ namespace api.Services
                 var created = await _carouselRepo.CreateAsync(entity);
                 return (true, null, created.ToCarouselDTO());
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error creating carousel: {ex.Message}", null);
+                return (false, $"Error creating carousel", null);
             }
         }
 
@@ -66,7 +60,7 @@ namespace api.Services
                     // Delete old image
                     if (!string.IsNullOrEmpty(existing.ImagePath))
                     {
-                        var fullPath = Path.Combine(_env.WebRootPath, existing.ImagePath);
+                        var fullPath = _env.WebRootPath + existing.ImagePath;
                         if (File.Exists(fullPath))
                         {
                             File.Delete(fullPath);
@@ -82,9 +76,9 @@ namespace api.Services
                 var updated = await _carouselRepo.UpdateAsync(existing);
                 return updated ? (true, null, existing.ToCarouselDTO()) : (false, "Update failed", null);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error updating carousel: {ex.Message}", null);
+                return (false, $"Error updating carousel", null);
             }
         }
 
@@ -98,9 +92,9 @@ namespace api.Services
 
                 return (true, null, entity.ToCarouselDTO());
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error fetching carousel: {ex.Message}", null);
+                return (false, $"Error retrieving carousel", null);
             }
         }
 
@@ -110,13 +104,13 @@ namespace api.Services
             {
                 var entities = await _carouselRepo.GetAllAsync();
                 if (entities == null || !entities.Any())
-                    return (false, "No carousels found", null);
+                    return (false, "Not found any carousels", null);
 
                 return (true, null, entities.Select(e => e.ToCarouselDTO()));
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error fetching carousels: {ex.Message}", null);
+                return (false, $"Error retrieving carousels", null);
             }
         }
 
@@ -130,14 +124,14 @@ namespace api.Services
                 // Delete associated image file
                 if (!string.IsNullOrEmpty(existing.ImagePath))
                 {
-                    ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, existing.ImagePath));
+                    ImageHelper.DeleteImage(_env.WebRootPath + existing.ImagePath);
                 }
                 var result = await _carouselRepo.DeleteAsync(id);
                 return result ? (true, null) : (false, "Delete failed");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error deleting carousel: {ex.Message}");
+                return (false, $"Error deleting carousel");
             }
         }
 
@@ -151,9 +145,9 @@ namespace api.Services
 
                 return (true, null, entities.Select(e => e.ToCarouselDTO()));
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error fetching active carousels: {ex.Message}", null);
+                return (false, $"Error fetching active carousels", null);
             }
         }
     }

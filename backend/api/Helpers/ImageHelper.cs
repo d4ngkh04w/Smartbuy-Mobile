@@ -20,7 +20,7 @@ namespace api.Helpers
             }
 
             string fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
-            string uploadFolder = Path.Combine(webRootPath, "uploads", "images", folder);
+            string uploadFolder = $"{webRootPath}/uploads/images/{folder}";
 
             try
             {
@@ -29,15 +29,13 @@ namespace api.Helpers
                     Directory.CreateDirectory(uploadFolder);
                 }
 
-                string filePath = Path.Combine(uploadFolder, fileName);
+                string filePath = $"{uploadFolder}/{fileName}";
 
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await file.CopyToAsync(stream);
                 }
-                var relativePath = Path.Combine("uploads", "images", folder, fileName).Replace("\\", "/");
-                return (true, null, "/" + relativePath);
-
+                return (true, null, $"/uploads/images/{folder}/{fileName}");
             }
             catch (Exception)
             {
@@ -53,7 +51,6 @@ namespace api.Helpers
                 {
                     return false;
                 }
-
                 if (File.Exists(filePath))
                 {
                     File.Delete(filePath);

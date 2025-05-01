@@ -61,14 +61,15 @@ namespace api.Services
                 if (brand == null)
                     return (false, "Brand not found");
 
-                if (!string.IsNullOrEmpty(brand.Logo))
-                {
-                    var deletedImg = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, brand.Logo));
-                    if (!deletedImg)
-                    {
-                        return (false, "Error deleting old avatar image");
-                    }
-                }
+                // if (!string.IsNullOrEmpty(brand.Logo))
+                // {
+                //     var deletedImg = ImageHelper.DeleteImage(_env.WebRootPath + brand.Logo);
+                //     if (!deletedImg)
+                //     {
+                //         return (false, "Error deleting old avatar image");
+                //     }
+                //     brand.Logo = string.Empty;
+                // }
 
                 await _repo.DeleteBrandAsync(brand);
 
@@ -102,9 +103,8 @@ namespace api.Services
             {
                 var brands = await _repo.GetBrandsAsync(query);
 
-                // Return empty list instead of error when no brands are found
-                if (brands == null)
-                    return (true, null, new List<BrandDTO>());
+                if (brands == null || !brands.Any())
+                    return (false, "Not found any brands", null);
 
                 var brandDTOs = brands.Select(b => b.ToDTO()).ToList();
 
@@ -138,7 +138,7 @@ namespace api.Services
 
                 if (brandDTO.Logo != null)
                 {
-                    var deleted = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, brand.Logo));
+                    var deleted = ImageHelper.DeleteImage(_env.WebRootPath + brand.Logo);
                     if (!deleted)
                         return (false, "Error deleting old logo", null);
 

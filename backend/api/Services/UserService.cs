@@ -1,4 +1,3 @@
-using api.DTOs.Auth;
 using api.DTOs.User;
 using api.Helpers;
 using api.Interfaces.Repositories;
@@ -31,7 +30,7 @@ namespace api.Services
                 // Xóa ảnh đại diện của người dùng nếu tồn tại
                 if (!string.IsNullOrEmpty(user.Avatar))
                 {
-                    var deletedImg = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, user.Avatar));
+                    var deletedImg = ImageHelper.DeleteImage(_env.WebRootPath + user.Avatar);
                     if (!deletedImg)
                     {
                         return (false, "Error deleting avatar image");
@@ -55,7 +54,7 @@ namespace api.Services
                 var users = await _userRepository.GetAllUsersAsync();
                 if (users == null || !users.Any())
                 {
-                    return (false, "Not found", null);
+                    return (false, "Not found any users", null);
                 }
 
                 var userDTOs = users.Select(u => u.ToDTO()).ToList();
@@ -175,8 +174,7 @@ namespace api.Services
                     // Xóa ảnh đại diện cũ nếu tồn tại
                     if (!string.IsNullOrEmpty(user.Avatar))
                     {
-                        string path = Path.Combine(_env.WebRootPath, user.Avatar);
-                        var deletedImg = ImageHelper.DeleteImage(path);
+                        var deletedImg = ImageHelper.DeleteImage(_env.WebRootPath + user.Avatar);
                         if (!deletedImg)
                         {
                             return (false, "Error deleting old avatar image", null);
