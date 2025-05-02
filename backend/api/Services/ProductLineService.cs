@@ -10,11 +10,15 @@ namespace api.Services
     public class ProductLineService : IProductLineService
     {
         private readonly IProductLineRepository _productLineRepository;
+        private readonly IBrandRepository _brandRepository;
+        private readonly IProductRepository _productRepository;
         private readonly IWebHostEnvironment _env;
 
-        public ProductLineService(IProductLineRepository productLineRepository, IWebHostEnvironment webEnvironment)
+        public ProductLineService(IProductLineRepository productLineRepository, IProductRepository productRepository, IBrandRepository brandRepository, IWebHostEnvironment webEnvironment)
         {
             _productLineRepository = productLineRepository;
+            _brandRepository = brandRepository;
+            _productRepository = productRepository;
             _env = webEnvironment;
         }
 
@@ -22,6 +26,11 @@ namespace api.Services
         {
             try
             {
+                var brand = await _brandRepository.GetBrandByIdAsync(productLineDTO.BrandId);
+                if (brand == null)
+                {
+                    return (false, "Brand not found", null);
+                }
                 bool exists = await _productLineRepository.ProductLineExistAsync(productLineDTO.Name.Trim());
                 if (exists)
                 {
@@ -56,15 +65,38 @@ namespace api.Services
                     return (false, "Product line not found");
                 }
 
-                // if (!string.IsNullOrEmpty(productLine.Image))
-                // {
-                //     var deleted = ImageHelper.DeleteImage(_env.WebRootPath + productLine.Image);
-                //     if (!deleted)
-                //     {
-                //         return (false, "Error deleting image");
-                //     }
-                //     productLine.Image = string.Empty;
-                // }
+                if (!string.IsNullOrEmpty(productLine.Image))
+                {
+                    var deleted = ImageHelper.DeleteImage(_env.WebRootPath + productLine.Image);
+                    if (!deleted)
+                    {
+                        return (false, "Error deleting image");
+                    }
+                    productLine.Image = string.Empty;
+                }
+
+                // Xoá hình ảnh của các sản phẩm trong dòng sản phẩm này
+                var products = await _productRepository.GetProductsByProductLineIdAsync(id);
+                if (products != null && products.Any())
+                {
+                    foreach (var product in products)
+                    {
+                        foreach (var color in product.Colors)
+                        {
+                            if (color.Images != null && color.Images.Any())
+                            {
+                                foreach (var image in color.Images)
+                                {
+                                    var deleted = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
+                                    if (!deleted)
+                                    {
+                                        return (false, "Error deleting product color image");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 await _productLineRepository.DeleteProductLineAsync(productLine);
                 return (true, null);

@@ -17,10 +17,6 @@ namespace api.Repositories
 
         public async Task<ProductLine> CreateProductLineAsync(ProductLine productLine)
         {
-            bool existsBrand = await _db.Brands.AnyAsync(b => b.Id == productLine.BrandId);
-            if (!existsBrand)
-                throw new Exception("Brand not found");
-
             _db.ProductLines.Add(productLine);
             await _db.SaveChangesAsync();
 
@@ -32,8 +28,7 @@ namespace api.Repositories
 
         public async Task DeleteProductLineAsync(ProductLine productLine)
         {
-            productLine.IsActive = false;
-            _db.ProductLines.Update(productLine);
+            _db.ProductLines.Remove(productLine);
             await _db.SaveChangesAsync();
         }
 
@@ -77,7 +72,7 @@ namespace api.Repositories
 
             // Thay vì chỉ Include Brand, cần giữ nguyên việc Include Products nếu đã được yêu cầu
             var query_with_brand = productLinesQuery.Include(pl => pl.Brand);
-            
+
             return await query_with_brand.ToListAsync();
         }
 
@@ -115,6 +110,14 @@ namespace api.Repositories
                 else
                     throw;
             }
+        }
+
+        public async Task<List<ProductLine>> GetProductLinesByBrandIdAsync(int brandId)
+        {
+            return await _db.ProductLines
+                .Include(pl => pl.Products)
+                .Where(pl => pl.BrandId == brandId && pl.IsActive)
+                .ToListAsync();
         }
     }
 }

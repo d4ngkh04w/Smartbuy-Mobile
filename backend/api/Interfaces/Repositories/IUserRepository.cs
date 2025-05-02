@@ -8,6 +8,7 @@ namespace api.Interfaces.Repositories
         Task<User?> GetUserByPhoneNumberAsync(string phoneNumber);
         Task<User?> GetUserByEmailAsync(string email);
         Task<IEnumerable<User>> GetAllUsersAsync();
+        Task<IEnumerable<User>> GetAllUsersWithAllRolesAsync();
         Task CreateUserAsync(User user);
         Task UpdateUserAsync(User user);
         Task DeleteUserAsync(User user);

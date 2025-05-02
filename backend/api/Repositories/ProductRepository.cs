@@ -88,5 +88,12 @@ namespace api.Repositories
 
             return (items, totalItems);
         }
+
+        public async Task<List<Product>> GetProductsByProductLineIdAsync(int productLineId)
+        {
+            return await _db.Products
+                .Where(p => p.ProductLineId == productLineId && p.IsActive)
+                .ToListAsync();
+        }
     }
 }

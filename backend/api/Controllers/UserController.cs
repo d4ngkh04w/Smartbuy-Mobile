@@ -43,6 +43,23 @@ namespace api.Controllers
             return Ok(new { Message = "Users retrieved successfully", result.Users });
         }
 
+        [HttpGet("{id:guid}")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> GetUserById([FromRoute] Guid id)
+        {
+            var result = await _userService.GetUserByIdAsync(id);
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "User not found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+            return Ok(new { Message = "User retrieved successfully", result.User });
+        }
+
         [HttpGet("me")]
         [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetCurrentUser()

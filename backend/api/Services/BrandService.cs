@@ -11,12 +11,16 @@ namespace api.Services
     public class BrandService : IBrandService
     {
         private readonly IBrandRepository _repo;
+        private readonly IProductRepository _productRepo;
+        private readonly IProductLineRepository _productLineRepo;
         private readonly IWebHostEnvironment _env;
 
-        public BrandService(IBrandRepository repo, IWebHostEnvironment webEnvironment)
+        public BrandService(IBrandRepository repo, IProductRepository productRepo, IProductLineRepository productLineRepo, IWebHostEnvironment webEnvironment)
         {
             _env = webEnvironment;
             _repo = repo;
+            _productRepo = productRepo;
+            _productLineRepo = productLineRepo;
         }
 
         public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> CreateBrandAsync(CreateBrandDTO brandDTO)
@@ -61,15 +65,52 @@ namespace api.Services
                 if (brand == null)
                     return (false, "Brand not found");
 
-                // if (!string.IsNullOrEmpty(brand.Logo))
-                // {
-                //     var deletedImg = ImageHelper.DeleteImage(_env.WebRootPath + brand.Logo);
-                //     if (!deletedImg)
-                //     {
-                //         return (false, "Error deleting old avatar image");
-                //     }
-                //     brand.Logo = string.Empty;
-                // }
+                if (!string.IsNullOrEmpty(brand.Logo))
+                {
+                    var deletedImg = ImageHelper.DeleteImage(_env.WebRootPath + brand.Logo);
+                    if (!deletedImg)
+                    {
+                        return (false, "Error deleting old avatar image");
+                    }
+                    brand.Logo = string.Empty;
+                }
+
+                var productLines = await _productLineRepo.GetProductLinesByBrandIdAsync(id);
+                if (productLines != null && productLines.Any())
+                {
+                    foreach (var productLine in productLines)
+                    {
+                        var products = await _productRepo.GetProductsByProductLineIdAsync(productLine.Id);
+                        if (products != null && products.Any())
+                        {
+                            foreach (var product in products)
+                            {
+                                foreach (var color in product.Colors)
+                                {
+                                    if (color.Images != null && color.Images.Any())
+                                    {
+                                        foreach (var image in color.Images)
+                                        {
+                                            var deleted = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
+                                            if (!deleted)
+                                            {
+                                                return (false, "Error deleting product color images");
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(productLine.Image))
+                        {
+                            var deleted = ImageHelper.DeleteImage(_env.WebRootPath + productLine.Image);
+                            if (!deleted)
+                            {
+                                return (false, "Error deleting product line image");
+                            }
+                        }
+                    }
+                }
 
                 await _repo.DeleteBrandAsync(brand);
 

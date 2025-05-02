@@ -29,8 +29,7 @@ namespace api.Repositories
 
         public async Task DeleteBrandAsync(Brand brand)
         {
-            brand.IsActive = false;
-            _db.Brands.Update(brand);
+            _db.Brands.Remove(brand);
             await _db.SaveChangesAsync();
         }
 
@@ -99,7 +98,7 @@ namespace api.Repositories
             }
 
             var baseQuery = brandQuery.Where(b => b.Id == id);
-            
+
             if (query.IsActive.HasValue)
             {
                 baseQuery = baseQuery.Where(b => b.IsActive == query.IsActive.Value);

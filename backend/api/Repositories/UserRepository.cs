@@ -16,7 +16,7 @@ namespace api.Repositories
         {
             user.CreatedAt = DateTime.Now;
             await db.Users.AddAsync(user);
-            
+
             await db.SaveChangesAsync();
         }
 
@@ -27,6 +27,11 @@ namespace api.Repositories
         }
 
         public async Task<IEnumerable<User>> GetAllUsersAsync()
+        {
+            return await db.Users.Where(u => u.Role == "user").ToListAsync();
+        }
+
+        public async Task<IEnumerable<User>> GetAllUsersWithAllRolesAsync()
         {
             return await db.Users.ToListAsync();
         }

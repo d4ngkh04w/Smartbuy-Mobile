@@ -38,7 +38,7 @@ namespace api.Services
                 audience: _config["JWT:Audience"],
                 issuer: _config["JWT:Issuer"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
+                expires: DateTime.Now.AddMinutes(double.Parse(_config["JWT:Expire"]!)),
                 signingCredentials: creds
             );
 
@@ -59,7 +59,7 @@ namespace api.Services
         {
             var refreshToken = GenerateRefreshToken();
             user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiry = DateTime.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!));
+            user.RefreshTokenExpiry = DateTime.Now.AddDays(double.Parse(_config["JWT:RefreshTokenExpiry"]!));
             await _userRepository.UpdateUserAsync(user);
             return refreshToken;
         }
@@ -114,7 +114,7 @@ namespace api.Services
 
         private async Task<User?> FindUserByRefreshToken(string refreshToken)
         {
-            var users = await _userRepository.GetAllUsersAsync();
+            var users = await _userRepository.GetAllUsersWithAllRolesAsync();
             return users.FirstOrDefault(u => u.RefreshToken == refreshToken);
         }
 
