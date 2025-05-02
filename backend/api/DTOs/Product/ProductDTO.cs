@@ -17,7 +17,6 @@ namespace api.DTOs.Product
         public int ProductLineId { get; set; }
         public string ProductLineName { get; set; } = string.Empty;
         public ICollection<ProductColorDTO> Colors { get; set; } = new HashSet<ProductColorDTO>();
-        public ICollection<ProductImageDTO> Images { get; set; } = new HashSet<ProductImageDTO>();
         public ICollection<ProductDiscountDTO> Discounts { get; set; } = new HashSet<ProductDiscountDTO>();
         public ProductDetailDTO? Detail { get; set; } = null;
         // Will add tags collection later when implementing tag functionality
