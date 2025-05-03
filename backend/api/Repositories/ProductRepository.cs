@@ -95,5 +95,19 @@ namespace api.Repositories
                 .Where(p => p.ProductLineId == productLineId && p.IsActive)
                 .ToListAsync();
         }
+
+        public async Task<ProductColor> AddColorAsync(ProductColor color)
+        {
+            await _db.Colors.AddAsync(color);
+            await _db.SaveChangesAsync();
+            return color;
+        }
+
+        public async Task<ProductImage> AddImageAsync(ProductImage image)
+        {
+            await _db.ProductImages.AddAsync(image);
+            await _db.SaveChangesAsync();
+            return image;
+        }
     }
 }

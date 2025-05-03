@@ -82,6 +82,7 @@ const productLinesCount = computed(() => {
 // Methods
 const getBrandProductLinesCount = (brandId) => {
     const brand = brands.value.find((b) => b.id === brandId);
+    console.log("Brand found:", brand);
     return brand?.productLines?.length || 0;
 };
 
@@ -1409,3 +1410,4 @@ input:checked ~ .toggle-status {
     }
 }
 </style>
+```
