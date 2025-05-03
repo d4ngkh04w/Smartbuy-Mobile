@@ -14,7 +14,7 @@ namespace api.Database
         public DbSet<ProductColor> Colors { get; set; } = null!;
         public DbSet<Product> Products { get; set; } = null!;
         public DbSet<User> Users { get; set; } = null!;
-        public DbSet<UserToken> UserTokens { get; set; } = null!; // Thêm DbSet cho UserToken
+        public DbSet<UserToken> UserTokens { get; set; } = null!;
         public DbSet<ProductImage> ProductImages { get; set; } = null!;
         public DbSet<ProductDiscount> ProductDiscounts { get; set; } = null!;
         public DbSet<Discount> Discounts { get; set; } = null!;

@@ -7,8 +7,7 @@ namespace api.Models
     public class Order
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         [Column(TypeName = "decimal(12, 2)")]
         public decimal TotalAmount { get; set; }

@@ -23,7 +23,6 @@ namespace api.Services
 
         public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Register(RegisterDTO registerDto, string role)
         {
-            // Validate unique phone number and email
             if (await _userRepository.UserExistsByPhoneNumberAsync(registerDto.PhoneNumber.Trim()))
                 return (false, "Phone number already exists", null);
 
@@ -39,17 +38,13 @@ namespace api.Services
                     Password = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
                     Role = role,
                     LastLogin = DateTime.Now,
-                    EmailConfirmed = false // Đặt trạng thái chưa xác thực email
+                    EmailConfirmed = false
                 };
 
                 await _userRepository.CreateUserAsync(user);
 
-                // Tạo access token và refresh token
                 var refreshToken = await _tokenService.GenerateRefreshToken(user);
                 var token = _tokenService.CreateToken(user, role);
-
-                // Không gửi email xác thực ngay lúc đăng ký nữa
-                // Chỉ trả về thông tin token để người dùng đăng nhập
 
                 return (true, null, new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
             }
@@ -204,7 +199,6 @@ namespace api.Services
 
                 if (!success || user == null)
                 {
-                    // Nếu token không hợp lệ hoặc hết hạn, trả về thông báo lỗi
                     return (false, message);
                 }
 

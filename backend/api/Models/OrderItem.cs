@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace api.Models
@@ -5,9 +6,14 @@ namespace api.Models
     [Table("order_items")]
     public class OrderItem
     {
-        public Guid Id { get; set; }
+        [Key]
+        public Guid Id { get; set; } = Guid.NewGuid();
         public int Quantity { get; set; }
+
+        [Column(TypeName = "decimal(15, 2)")]
         public decimal Price { get; set; }
+
+        [Column(TypeName = "decimal(10, 2)")]
         public decimal Discount { get; set; } = 0;
         public int ProductId { get; set; }
 

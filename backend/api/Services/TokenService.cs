@@ -72,6 +72,7 @@ namespace api.Services
         public async Task<string> GeneratePasswordResetToken(User user)
         {
             string token = TokenHelper.GenerateToken();
+            Console.WriteLine($"[INF] Password reset token: {token}");
             string tokenHash = TokenHelper.HashToken(token);
 
             DateTime expiryDate = DateTime.Now.AddMinutes(15);
@@ -93,6 +94,7 @@ namespace api.Services
         public async Task<string> GenerateEmailVerificationToken(User user)
         {
             string token = TokenHelper.GenerateToken();
+            Console.WriteLine($"[INF] Email verification token: {token}");
             string tokenHash = TokenHelper.HashToken(token);
 
             DateTime expiryDate = DateTime.Now.AddHours(24);
@@ -151,7 +153,6 @@ namespace api.Services
         {
             try
             {
-                // Tìm và thu hồi token trong database
                 string tokenHash = TokenHelper.HashToken(refreshToken);
                 var result = await _userTokenRepository.RevokeTokenAsync(tokenHash, "RefreshToken");
 

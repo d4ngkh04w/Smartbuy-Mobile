@@ -7,8 +7,7 @@ namespace api.Models
     public class Cart
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         public Guid UserId { get; set; }
 

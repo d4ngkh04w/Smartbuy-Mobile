@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using api.DTOs.Auth;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -21,7 +22,7 @@ namespace api.Controllers
 
         private string GetCurrentUserEmail()
         {
-            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
             if (emailClaim == null)
                 return string.Empty;
 
@@ -150,7 +151,6 @@ namespace api.Controllers
             });
         }
 
-        // Thêm endpoint yêu cầu gửi email xác thực
         [HttpPost("send-verification-email")]
         public async Task<IActionResult> SendVerificationEmail()
         {
@@ -169,17 +169,10 @@ namespace api.Controllers
             return Ok(new { Message = result.ErrorMessage });
         }
 
-        // Thêm endpoint xác thực email
-        [HttpGet("verify-email")]
+        [HttpPost("verify-email")]
         [AllowAnonymous]
-        public async Task<IActionResult> VerifyEmail([FromQuery] string email, [FromQuery] string token)
+        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDTO verifyDto)
         {
-            var verifyDto = new VerifyEmailDTO
-            {
-                Email = email,
-                Token = token
-            };
-
             var result = await _authService.VerifyEmailAsync(verifyDto);
 
             if (!result.Success)
