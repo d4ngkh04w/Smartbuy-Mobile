@@ -14,6 +14,7 @@ namespace api.Database
         public DbSet<ProductColor> Colors { get; set; } = null!;
         public DbSet<Product> Products { get; set; } = null!;
         public DbSet<User> Users { get; set; } = null!;
+        public DbSet<UserToken> UserTokens { get; set; } = null!; // Thêm DbSet cho UserToken
         public DbSet<ProductImage> ProductImages { get; set; } = null!;
         public DbSet<ProductDiscount> ProductDiscounts { get; set; } = null!;
         public DbSet<Discount> Discounts { get; set; } = null!;
@@ -31,6 +32,13 @@ namespace api.Database
             builder.Entity<User>()
                 .HasIndex(u => new { u.Email, u.PhoneNumber })
                 .IsUnique();
+
+            // Thiết lập mối quan hệ User - UserToken
+            builder.Entity<User>()
+                .HasMany(u => u.Tokens)
+                .WithOne(t => t.User)
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<ProductLine>()
                 .HasIndex(pl => new { pl.Name, pl.BrandId })

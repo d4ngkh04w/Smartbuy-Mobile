@@ -19,6 +19,15 @@ namespace api.Controllers
             _config = config;
         }
 
+        private string GetCurrentUserEmail()
+        {
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+            if (emailClaim == null)
+                return string.Empty;
+
+            return emailClaim;
+        }
+
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterDTO register)
@@ -139,6 +148,46 @@ namespace api.Controllers
             {
                 Message = "Token is valid",
             });
+        }
+
+        // Thêm endpoint yêu cầu gửi email xác thực
+        [HttpPost("send-verification-email")]
+        public async Task<IActionResult> SendVerificationEmail()
+        {
+            var email = GetCurrentUserEmail();
+            var result = await _authService.SendEmailVerificationAsync(email);
+
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+
+            return Ok(new { Message = result.ErrorMessage });
+        }
+
+        // Thêm endpoint xác thực email
+        [HttpGet("verify-email")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyEmail([FromQuery] string email, [FromQuery] string token)
+        {
+            var verifyDto = new VerifyEmailDTO
+            {
+                Email = email,
+                Token = token
+            };
+
+            var result = await _authService.VerifyEmailAsync(verifyDto);
+
+            if (!result.Success)
+            {
+                return BadRequest(new { Message = result.ErrorMessage ?? "Email verification failed" });
+            }
+
+            return Ok(new { Message = "Email verified successfully" });
         }
     }
 }

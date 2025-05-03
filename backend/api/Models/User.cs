@@ -59,15 +59,9 @@ namespace api.Models
 
         [Column(TypeName = "timestamp")]
         public DateTime? LastLogin { get; set; }
-        public string? RefreshToken { get; set; } = null;
 
-        [Column(TypeName = "timestamp")]
-        public DateTime? RefreshTokenExpiry { get; set; } = null;
-
-        public string? PasswordResetToken { get; set; } = null;
-
-        [Column(TypeName = "timestamp")]
-        public DateTime? PasswordResetTokenExpiry { get; set; } = null;
         public Cart? Cart { get; set; }
+
+        public ICollection<UserToken>? Tokens { get; set; }
     }
 }

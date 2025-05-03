@@ -38,7 +38,8 @@ namespace api.Services
                     Email = registerDto.Email,
                     Password = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
                     Role = role,
-                    LastLogin = DateTime.Now
+                    LastLogin = DateTime.Now,
+                    EmailConfirmed = false // Đặt trạng thái chưa xác thực email
                 };
 
                 await _userRepository.CreateUserAsync(user);
@@ -47,10 +48,14 @@ namespace api.Services
                 var refreshToken = await _tokenService.GenerateRefreshToken(user);
                 var token = _tokenService.CreateToken(user, role);
 
+                // Không gửi email xác thực ngay lúc đăng ký nữa
+                // Chỉ trả về thông tin token để người dùng đăng nhập
+
                 return (true, null, new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"[ERROR] Error during registration: {ex.Message}");
                 return (false, $"Error during registration", null);
             }
         }
@@ -91,8 +96,9 @@ namespace api.Services
 
                 return (true, "Login successful", new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"[ERROR] Error during login: {ex.Message}");
                 return (false, $"Error during login", null);
             }
         }
@@ -116,7 +122,7 @@ namespace api.Services
                 var user = await _userRepository.GetUserByEmailAsync(payload.Email);
                 if (user == null)
                 {
-                    // Tao người dùng mới nếu chưa tồn tại
+                    // Tạo người dùng mới nếu chưa tồn tại
                     user = new User
                     {
                         PhoneNumber = string.Empty,
@@ -151,8 +157,9 @@ namespace api.Services
 
                 return (true, "Login with Google successful", new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"[ERROR] Error during Google login: {ex.Message}");
                 return (false, $"Error during Google login", null);
             }
         }
@@ -168,11 +175,9 @@ namespace api.Services
                     return (true, null);
                 }
 
-                // Xác thực token reset mật khẩu và thiết lập thời gian hết hạn
-                var resetToken = _tokenService.GeneratePasswordResetToken();
+                // Tạo token đặt lại mật khẩu
+                var resetToken = await _tokenService.GeneratePasswordResetToken(user);
                 Console.WriteLine($"[INF] Password reset token: {resetToken}"); // For debugging
-                user.PasswordResetToken = resetToken;
-                user.PasswordResetTokenExpiry = DateTime.Now.AddMinutes(15);
 
                 // Gửi email reset mật khẩu với token
                 var emailSent = await _emailService.SendPasswordResetEmailAsync(user.Email, resetToken);
@@ -181,12 +186,11 @@ namespace api.Services
                     return (false, "Failed to send password reset email");
                 }
 
-                await _userRepository.UpdateUserAsync(user);
-
                 return (true, null);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"[ERROR] Error processing password reset request: {ex.Message}");
                 return (false, $"Error processing password reset request");
             }
         }
@@ -195,37 +199,24 @@ namespace api.Services
         {
             try
             {
-                var user = await _userRepository.GetUserByEmailAsync(resetPasswordDto.Email);
-                if (user == null)
+                // Xác thực token và lấy thông tin người dùng
+                var (success, message, user) = await _tokenService.ValidatePasswordResetToken(resetPasswordDto.Email, resetPasswordDto.Token);
+
+                if (!success || user == null)
                 {
-                    Console.WriteLine($"[INF] User not found for email: {resetPasswordDto.Email}");
-                    return (true, null);
+                    // Nếu token không hợp lệ hoặc hết hạn, trả về thông báo lỗi
+                    return (false, message);
                 }
 
-                // Xác thực token reset mật khẩu và thiết lập thời gian hết hạn
-                if (user.PasswordResetToken != resetPasswordDto.Token)
-                {
-                    Console.WriteLine($"[INF] Invalid reset token for email: {resetPasswordDto.Email}");
-                    return (true, null);
-                }
-
-                // Kiểm tra thời gian hết hạn của token
-                if (user.PasswordResetTokenExpiry == null ||
-                    !_tokenService.ValidatePasswordResetToken(resetPasswordDto.Token, user.PasswordResetTokenExpiry.Value))
-                {
-                    return (false, "Password reset token has expired");
-                }
-
-                // Cập nhật mật khẩu của người dùng và xóa token reset
+                // Cập nhật mật khẩu mới
                 user.Password = BCrypt.Net.BCrypt.HashPassword(resetPasswordDto.Password);
-                user.PasswordResetToken = null;
-                user.PasswordResetTokenExpiry = null;
                 await _userRepository.UpdateUserAsync(user);
 
-                return (true, null);
+                return (true, "Password has been reset successfully");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"[ERROR] Error resetting password: {ex.Message}");
                 return (false, $"Error resetting password");
             }
         }
@@ -255,6 +246,65 @@ namespace api.Services
             catch (Exception)
             {
                 return (false, $"Error changing password");
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> SendEmailVerificationAsync(string email)
+        {
+            try
+            {
+                var user = await _userRepository.GetUserByEmailAsync(email);
+                if (user == null)
+                {
+                    return (false, "User not found");
+                }
+
+                if (user.EmailConfirmed)
+                {
+                    return (true, "Email already verified");
+                }
+
+                // Tạo token xác thực email
+                var verificationToken = await _tokenService.GenerateEmailVerificationToken(user);
+
+                // Gửi email xác thực với token
+                var emailSent = await _emailService.SendEmailVerificationAsync(user.Email, verificationToken);
+                if (!emailSent)
+                {
+                    return (false, "Failed to send verification email");
+                }
+
+                return (true, "Verification email sent successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Error sending email verification: {ex.Message}");
+                return (false, "Error sending verification email");
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> VerifyEmailAsync(VerifyEmailDTO verifyEmailDto)
+        {
+            try
+            {
+                // Xác thực token và lấy thông tin người dùng
+                var (success, message, user) = await _tokenService.ValidateEmailVerificationToken(verifyEmailDto.Email, verifyEmailDto.Token);
+
+                if (!success || user == null)
+                {
+                    return (false, message);
+                }
+
+                // Xác nhận email
+                user.EmailConfirmed = true;
+                await _userRepository.UpdateUserAsync(user);
+
+                return (true, "Email verified successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Error verifying email: {ex.Message}");
+                return (false, "Error verifying email");
             }
         }
     }

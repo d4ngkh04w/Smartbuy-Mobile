@@ -10,5 +10,7 @@ namespace api.Interfaces.Services
         public Task<(bool Success, string? ErrorMessage)> ForgotPasswordAsync(ForgotPasswordDTO forgotPasswordDto);
         public Task<(bool Success, string? ErrorMessage)> ResetPasswordAsync(ResetPasswordDTO resetPasswordDto);
         public Task<(bool Success, string? ErrorMessage)> ChangePasswordAsync(ChangePasswordDTO changePasswordDto, Guid userId);
+        public Task<(bool Success, string? ErrorMessage)> SendEmailVerificationAsync(string email);
+        public Task<(bool Success, string? ErrorMessage)> VerifyEmailAsync(VerifyEmailDTO verifyEmailDto);
     }
 }

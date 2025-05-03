@@ -11,17 +11,14 @@ namespace api.Services
     {
         private readonly IProductRepository _productRepository;
         private readonly IProductLineRepository _productLineRepository;
-        private readonly IBrandRepository _brandRepository;
         private readonly IWebHostEnvironment _env;
 
         public ProductService(IProductRepository productRepository,
                               IProductLineRepository productLineRepository,
-                              IBrandRepository brandRepository,
                               IWebHostEnvironment webHostEnvironment)
         {
             _productRepository = productRepository;
             _productLineRepository = productLineRepository;
-            _brandRepository = brandRepository;
             _env = webHostEnvironment;
         }
 
