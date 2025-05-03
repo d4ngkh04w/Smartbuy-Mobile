@@ -2,16 +2,15 @@ namespace api.DTOs.Product
 {
     public class ProductDetailDTO
     {
-        public int Id { get; set; }
-        public string Warranty { get; set; } = string.Empty;
-        public string RAM { get; set; } = string.Empty;
-        public string Storage { get; set; } = string.Empty;
-        public string Processor { get; set; } = string.Empty;
-        public string OperatingSystem { get; set; } = string.Empty;
-        public string ScreenSize { get; set; } = string.Empty;
-        public string ScreenResolution { get; set; } = string.Empty;
-        public string Battery { get; set; } = string.Empty;
-        public int SimSlots { get; set; } = 0;
-       
+        public int? Id { get; set; }
+        public string? Warranty { get; set; }
+        public string? RAM { get; set; }
+        public string? Storage { get; set; }
+        public string? Processor { get; set; }
+        public string? OperatingSystem { get; set; }
+        public string? ScreenSize { get; set; }
+        public string? ScreenResolution { get; set; }
+        public string? Battery { get; set; }
+        public int? SimSlots { get; set; }
     }
 }

@@ -1,5 +1,4 @@
 using api.DTOs.Product;
-using api.Queries;
 
 namespace api.Interfaces.Services
 {
@@ -11,5 +10,6 @@ namespace api.Interfaces.Services
                 Task<(bool Success, string? ErrorMessage)> DeleteProductAsync(int id);
                 Task<(bool Success, string? ErrorMessage, ProductPagiDTO? ProductPagi)> GetPagedProductsAsync(int page, int pageSize);
                 Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> UpdateProductAsync(int id, UpdateProductDTO productDTO);
+                Task<(bool Success, string? ErrorMessage, ProductColorDTO? ProductColor)> CreateProductColorAsync(int productId, CreateColorDTO productColorDTO);
         }
 }

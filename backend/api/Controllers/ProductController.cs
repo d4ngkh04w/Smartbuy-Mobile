@@ -141,5 +141,28 @@ namespace api.Controllers
                 Products = result.ProductPagi
             });
         }
+
+        [HttpPost("{productId:int}/color")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> CreateProductColor([FromRoute] int productId, [FromForm] CreateColorDTO productColorDTO)
+        {
+            var result = await _productService.CreateProductColorAsync(productId, productColorDTO);
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+            return CreatedAtAction(nameof(GetProductById),
+                                new { id = productId },
+                                new
+                                {
+                                    Message = "Product color created successfully",
+                                    Color = result.ProductColor
+                                });
+        }
     }
 }

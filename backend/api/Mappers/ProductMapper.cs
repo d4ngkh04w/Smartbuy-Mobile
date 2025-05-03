@@ -12,7 +12,7 @@ namespace api.Mappers
                 Id = productColor.Id,
                 Name = productColor.Name,
                 Images = productColor.Images?.Select(i => i.ToProductImageDTO()).ToHashSet() ?? new HashSet<ProductImageDTO>(),
-                HasMainImage = productColor.Images?.Any(i => i.IsMain) ?? false
+                // HasMainImage = productColor.Images?.Any(i => i.IsMain) ?? false
             };
         }
 
@@ -94,14 +94,14 @@ namespace api.Mappers
             return new ProductDetail
             {
                 WarrantyMonths = productDTO.Warranty,
-                RAMInGB = productDTO.RAM ?? 0,
-                StorageInGB = productDTO.Storage ?? 0,
-                Processor = productDTO.Processor ?? string.Empty,
-                OperatingSystem = productDTO.OS ?? string.Empty,
-                ScreenSizeInch = productDTO.ScreenSize ?? 0,
-                BatteryCapacityMAh = productDTO.Battery ?? 0,
+                RAMInGB = productDTO.RAM,
+                StorageInGB = productDTO.Storage,
+                Processor = productDTO.Processor,
+                OperatingSystem = productDTO.OS,
+                ScreenSizeInch = productDTO.ScreenSize,
+                BatteryCapacityMAh = productDTO.Battery,
                 SimSlots = productDTO.SimSlots,
-                ScreenResolution = productDTO.ScreenResolution ?? string.Empty,
+                ScreenResolution = productDTO.ScreenResolution,
             };
         }
         public static ProductSummaryDTO ToSummaryDTO(this Product product)
