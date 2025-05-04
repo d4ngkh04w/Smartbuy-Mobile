@@ -56,11 +56,10 @@ namespace api.Repositories
 
         public async Task<bool> DeleteAsync(Product product)
         {
-            // Ensure the product exists and is not already deactivated
             if (product == null)
                 return false;
 
-            product.IsActive = false;
+            product.ManuallyDeactivated = true;
             product.UpdatedAt = DateTime.Now;
 
             _db.Products.Update(product);

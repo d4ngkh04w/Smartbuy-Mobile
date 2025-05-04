@@ -12,6 +12,7 @@ namespace api.DTOs.Product
         public int RatingCount { get; set; }
         public int Sold { get; set; }
         public bool IsActive { get; set; } = true;
+        public bool ManuallyDeactivated { get; set; } = false;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
         public int ProductLineId { get; set; }

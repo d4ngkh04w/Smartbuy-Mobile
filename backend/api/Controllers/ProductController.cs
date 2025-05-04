@@ -164,5 +164,47 @@ namespace api.Controllers
                                     Color = result.ProductColor
                                 });
         }
+
+        [HttpPut("{id:int}/activate")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> ActivateProduct([FromRoute] int id)
+        {
+            var result = await _productService.ActivateProductAsync(id);
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Product not found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+            return Ok(new
+            {
+                Message = "Product activated successfully",
+                result.Product
+            });
+        }
+
+        [HttpPut("{id:int}/deactivate")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> DeactivateProduct([FromRoute] int id)
+        {
+            var result = await _productService.DeactivateProductAsync(id);
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Product not found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+            return Ok(new
+            {
+                Message = "Product deactivated successfully",
+                result.Product
+            });
+        }
     }
 }

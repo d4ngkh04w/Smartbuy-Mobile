@@ -12,8 +12,8 @@ namespace api.Mappers
                 Id = comment.Id,
                 Content = comment.IsDeleted ? "[This comment has been deleted]" : comment.Content,
                 UserId = comment.UserId,
-                UserName = comment.User?.Name ?? "Anonymous",
-                UserAvatar = comment.User?.Avatar,
+                UserName = comment.User?.Name ?? "",
+                UserAvatar = comment.User?.Avatar ?? null,
                 ProductId = comment.ProductId,
                 Rating = comment.Rating,
                 ParentId = comment.ParentId,
@@ -37,8 +37,8 @@ namespace api.Mappers
                 ProductId = dto.ProductId,
                 Rating = dto.Rating,
                 ParentId = dto.ParentId,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                CreatedAt = DateTime.Parse(DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")),
+                UpdatedAt = DateTime.Parse(DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss"))
             };
         }
     }

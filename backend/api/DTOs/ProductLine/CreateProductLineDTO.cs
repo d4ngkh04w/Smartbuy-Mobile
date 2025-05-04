@@ -11,11 +11,10 @@ namespace api.DTOs.ProductLine
         public string Name { get; set; } = string.Empty;
 
         [StringLength(2000, ErrorMessage = "Description must be less than 2000 characters")]
-        public string Description { get; set; } = string.Empty;
+        public string? Description { get; set; }
 
-        [Required(ErrorMessage = "Image is required")]
         [AllowFileExtension([".jpg", ".jpeg", ".png"], ErrorMessage = "Invalid image format. Only .jpg, .jpeg, and .png are allowed.")]
-        public IFormFile Image { get; set; } = null!;
+        public IFormFile? Image { get; set; } = null;
 
         [Required(ErrorMessage = "Brand ID is required")]
         [RegularExpression(@"^\d+$", ErrorMessage = "Brand ID must be a positive integer")]

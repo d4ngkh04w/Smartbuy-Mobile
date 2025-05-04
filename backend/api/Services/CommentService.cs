@@ -121,6 +121,8 @@ namespace api.Services
                 comment.Content = comment.Content.Trim();
                 var createdComment = await _commentRepository.CreateCommentAsync(comment);
 
+                Console.WriteLine($"{createdComment.User.Avatar}, {createdComment.User.Name}");
+
                 var commentDto = createdComment.ToCommentDTO();
 
                 return (true, null, commentDto);

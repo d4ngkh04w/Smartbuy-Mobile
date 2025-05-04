@@ -10,5 +10,7 @@ namespace api.Interfaces.Services
         Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> CreateBrandAsync(CreateBrandDTO brandDTO);
         Task<(bool Success, string? ErrorMessage)> DeleteBrandAsync(int id);
         Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> UpdateBrandAsync(int id, UpdateBrandDTO brandDTO);
+        Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> ActivateBrandAsync(int id);
+        Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> DeactivateBrandAsync(int id);
     }
 }

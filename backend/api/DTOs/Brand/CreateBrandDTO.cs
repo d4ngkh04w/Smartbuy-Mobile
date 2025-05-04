@@ -9,14 +9,13 @@ namespace api.DTOs.Brand
         [RegularExpression(@"^[a-zA-Z\s]{4,100}$", ErrorMessage = "Brand name must be between 4 and 100 characters and can only contain letters and spaces")]
         public string Name { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Brand logo is required")]
         [DataType(DataType.Upload)]
         [AllowFileExtension(extensions: [".jpg", ".jpeg", ".png"], ErrorMessage = "Logo must be a valid image (jpg, jpeg, png)")]
-        public IFormFile Logo { get; set; } = null!;
+        public IFormFile? Logo { get; set; } = null;
 
         [StringLength(2000, ErrorMessage = "Description cannot exceed 2000 characters")]
         public string? Description { get; set; }
-        
-        public bool IsActive { get; set; } = true;
+
+        public bool? IsActive { get; set; } = true;
     }
 }

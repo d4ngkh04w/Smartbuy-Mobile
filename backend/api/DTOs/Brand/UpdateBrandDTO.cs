@@ -15,7 +15,5 @@ namespace api.DTOs.Brand
 
         [StringLength(2000, ErrorMessage = "Description cannot exceed 2000 characters")]
         public string? Description { get; set; }
-
-        public bool? IsActive { get; set; }
     }
 }

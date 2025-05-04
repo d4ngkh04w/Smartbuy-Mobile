@@ -17,7 +17,7 @@ namespace api.Models
         public string Name { get; set; } = string.Empty;
 
         [Column(TypeName = "varchar(255)")]
-        public string Logo { get; set; } = string.Empty;
+        public string? Logo { get; set; }
 
         [Column(TypeName = "varchar(2000)")]
         public string? Description { get; set; }

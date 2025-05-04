@@ -29,6 +29,7 @@ namespace api.Models
         public int RatingCount { get; set; }
         public int Sold { get; set; }
         public bool IsActive { get; set; } = true;
+        public bool ManuallyDeactivated { get; set; } = false;
 
         [Column(TypeName = "timestamp")]
         public DateTime CreatedAt { get; set; } = DateTime.Now;

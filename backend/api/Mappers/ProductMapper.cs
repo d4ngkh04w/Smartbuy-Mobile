@@ -22,8 +22,7 @@ namespace api.Mappers
             {
                 Id = productImage.Id,
                 ImagePath = productImage.ImagePath,
-                IsMain = productImage.IsMain,
-                ColorId = productImage.ColorId
+                IsMain = productImage.IsMain
             };
         }
 
@@ -58,8 +57,9 @@ namespace api.Mappers
                 RatingCount = product.RatingCount,
                 Sold = product.Sold,
                 IsActive = product.IsActive,
-                CreatedAt = product.CreatedAt,
-                UpdatedAt = product.UpdatedAt ?? DateTime.Now,
+                ManuallyDeactivated = product.ManuallyDeactivated,
+                CreatedAt = DateTime.Parse(product.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ss")),
+                UpdatedAt = product.UpdatedAt.HasValue ? DateTime.Parse(product.UpdatedAt.Value.ToString("yyyy-MM-ddTHH:mm:ss")) : DateTime.Now,
                 ProductLineId = product.ProductLineId,
                 ProductLineName = product.ProductLine?.Name ?? string.Empty,
 

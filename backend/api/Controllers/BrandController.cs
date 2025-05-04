@@ -122,5 +122,47 @@ namespace api.Controllers.Brand
                 result.Brand
             });
         }
+
+        [HttpPut("{id:int}/activate")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> ActivateBrand([FromRoute] int id)
+        {
+            var result = await _brandService.ActivateBrandAsync(id);
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Brand not found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+            return Ok(new
+            {
+                Message = "Brand activated successfully",
+                result.Brand
+            });
+        }
+
+        [HttpPut("{id:int}/deactivate")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> DeactivateBrand([FromRoute] int id)
+        {
+            var result = await _brandService.DeactivateBrandAsync(id);
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Brand not found" }),
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+            return Ok(new
+            {
+                Message = "Brand deactivated successfully",
+                result.Brand
+            });
+        }
     }
 }
