@@ -39,35 +39,64 @@
 </script>
 
 <style scoped>
-  .pagination-container {
-    display: flex;
-    justify-content: center;
-    margin-top: 20px;
-  }
-  button {
-    margin: 0 5px;
-    padding: 10px 15px;
-    border: none;
-    background-color: #f0f0f0;
-    cursor: pointer;
-  }
-  .prev-button, .next-button {
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    cursor: pointer;
-  }
-  button.active {
-    font-weight: bold;
-    background-color: var(--secondary-color);
-  }
-  button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-  }
-  button:hover:not(:disabled) {
-    background-color: #e0e0e0;
-  }
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  gap: 10px; /* Tăng khoảng cách giữa các nút */
+}
 
+button {
+  margin: 0;
+  padding: 10px 15px;
+  border: 1px solid #ddd; /* Viền nhẹ */
+  background-color: #fff; /* Màu nền trắng */
+  color: #333; /* Màu chữ */
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 5px; /* Bo góc */
+  cursor: pointer;
+  transition: all 0.3s ease; /* Hiệu ứng hover mượt */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Hiệu ứng đổ bóng nhẹ */
+}
+
+button:hover:not(:disabled) {
+  background-color: #f0f0f0; /* Màu nền khi hover */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Tăng đổ bóng khi hover */
+}
+
+
+button.active {
+  font-weight: bold;
+  background-color: var(--primary-color); /* Màu chính */
+  color: white; /* Màu chữ trắng */
+  border: none;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Đổ bóng nổi bật */
+}
+
+button:disabled {
+  background-color: #fedefb !important; /* Màu nền khi bị vô hiệu hóa */
+  color: #999; /* Màu chữ nhạt */
+  cursor: not-allowed;
+  box-shadow: none; /* Không có đổ bóng */
+}
+
+button.prev-button,
+button.next-button {
+  background-color: var(--primary-color); /* Màu chính */
+  color: white; /* Màu chữ trắng */
+  border: none;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 5px; /* Bo góc */
+  transition: all 0.3s ease; /* Hiệu ứng hover mượt */
+}
+
+button.prev-button:hover:not(:disabled),
+button.next-button:hover:not(:disabled) {
+  background-color: var(--secondary-color); /* Màu phụ khi hover */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Tăng đổ bóng khi hover */
+}
 </style>

@@ -66,7 +66,6 @@ const handleLogin = async () => {
         router.push("/");
     } catch (err) {
         console.error(err);
-
         emitter.emit("show-notification", {
             status: "error",
             message: "Đăng nhập thất bại.",

@@ -2,7 +2,7 @@ import axiosInstance from "./axiosConfig";
 
 export const getProducts = async (page, limit) => {
     try{
-        const response = await axiosInstance.get(`/products/page?page=${page}&limit=${limit}`);
+        const response = await axiosInstance.get(`/product/page?page=${page}&pageSize=${limit}`);
         if(response){
             return response.data;
         }
