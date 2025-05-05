@@ -67,8 +67,7 @@ const fetchUserData = async () => {
     loading.value = true;
     try {
         // Fetch admin data from API
-        const response = await meService.getMe();
-        const data = response.data;
+        const data = await meService.getMe();        
         console.log("Response data:", data);
         // Format date if needed
         if (data.createdAt) {
@@ -173,11 +172,10 @@ const saveProfile = async () => {
         }
 
         // Gọi API cập nhật thông tin với FormData
-        const response = await meService.updateUserProfile(formData);
+        const data = await meService.updateUserProfile(formData);
 
-        if (response && response.data) {
+        if (data) {
             // Lấy dữ liệu từ response
-            const data = response.data.user;
             console.log("Response data:", data);
 
             // Format date if needed

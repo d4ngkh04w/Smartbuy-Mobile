@@ -1,0 +1,45 @@
+using api.DTOs.Comment;
+using api.Models;
+
+namespace api.Mappers
+{
+    public static class CommentMapper
+    {
+        public static CommentDTO ToCommentDTO(this Comment comment, bool includeReplies = false)
+        {
+            var dto = new CommentDTO
+            {
+                Id = comment.Id,
+                Content = comment.IsDeleted ? "[This comment has been deleted]" : comment.Content,
+                UserId = comment.UserId,
+                UserName = comment.User?.Name ?? "Anonymous",
+                UserAvatar = comment.User?.Avatar ?? "",
+                ProductId = comment.ProductId,
+                Rating = comment.Rating,
+                ParentId = comment.ParentId,
+                Likes = comment.Likes,
+                Dislikes = comment.Dislikes,
+                CreatedAt = comment.CreatedAt,
+                UpdatedAt = comment.UpdatedAt,
+                IsDeleted = comment.IsDeleted,
+                Replies = null
+            };
+
+            return dto;
+        }
+
+        public static Comment ToCommentModel(this CreateCommentDTO dto, Guid userId)
+        {
+            return new Comment
+            {
+                Content = dto.Content.Trim(),
+                UserId = userId,
+                ProductId = dto.ProductId,
+                Rating = dto.Rating,
+                ParentId = dto.ParentId,
+                CreatedAt = DateTime.Parse(DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")),
+                UpdatedAt = DateTime.Parse(DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss"))
+            };
+        }
+    }
+}

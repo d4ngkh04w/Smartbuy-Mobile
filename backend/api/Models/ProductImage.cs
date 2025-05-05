@@ -12,10 +12,13 @@ namespace api.Models
 
         [Column(TypeName = "varchar(255)")]
         public string ImagePath { get; set; } = string.Empty;
+        
         public bool IsMain { get; set; } = false;
-        public int ProductId { get; set; }
+        
+        // Change relationship from Product to ProductColor
+        public int ColorId { get; set; }
 
-        [ForeignKey(nameof(ProductId))]
-        public Product? Product { get; set; } = null;
+        [ForeignKey(nameof(ColorId))]
+        public ProductColor? Color { get; set; } = null;
     }
 }

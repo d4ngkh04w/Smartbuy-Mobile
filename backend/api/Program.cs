@@ -25,19 +25,19 @@ builder.Services.AddDbContext<AppDBContext>(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
-        policy => policy.WithOrigins(["http://localhost:3000", "http://localhost:4000"])
+        policy => policy.WithOrigins("http://localhost:3000", "http://localhost:4000")
                         .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .AllowAnyHeader()
                         .AllowCredentials());
 });
 
-// Thiết lập response cho các lỗi 400 (Bad Request) với thông báo lỗi cụ thể
+// Thiết lập response cho các lỗi 400 (Bad Request) với thông báo
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
     {
         var errors = context.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-        return new BadRequestObjectResult(new { Message = "Invalid data", Error = errors.FirstOrDefault() });
+        return new BadRequestObjectResult(new { Message = "Invalid data", Error = errors });
     };
 });
 
@@ -65,13 +65,6 @@ builder.Services.AddAuthentication(
                     context.Token = token;
                 }
                 return Task.CompletedTask;
-            },
-            // Khi xác thực thành công nhưng không có quyền truy cập
-            OnForbidden = async context =>
-            {
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new { Message = "Forbidden" });
             },
         };
         options.TokenValidationParameters = new TokenValidationParameters
@@ -161,6 +154,7 @@ builder.Services.AddScoped<IBrandRepository, BrandRepository>();
 builder.Services.AddScoped<IBrandService, BrandService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IUserTokenRepository, UserTokenRepository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IProductLineRepository, ProductLineRepository>();
 builder.Services.AddScoped<IProductLineService, ProductLineService>();
@@ -168,6 +162,14 @@ builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ICartRepository, CartRepository>();
+builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<ICarouselRepository, CarouselRepository>();
+builder.Services.AddScoped<ICarouselService, CarouselService>();
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 
 var app = builder.Build();
 

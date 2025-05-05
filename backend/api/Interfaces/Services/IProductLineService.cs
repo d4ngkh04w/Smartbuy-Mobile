@@ -10,5 +10,7 @@ namespace api.Interfaces.Services
         Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> CreateProductLineAsync(CreateProductLineDTO productLineDTO);
         Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> UpdateProductLineAsync(int id, UpdateProductLineDTO productLineDTO);
         Task<(bool Success, string? ErrorMessage)> DeleteProductLineAsync(int id);
+        Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> ActivateProductLineAsync(int id);
+        Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> DeactivateProductLineAsync(int id);
     }
 }

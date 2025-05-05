@@ -12,8 +12,8 @@ namespace api.Mappers
             {
                 Id = brand.Id,
                 Name = brand.Name,
-                Logo = brand.Logo,
-                Description = brand.Description,
+                Logo = brand.Logo ?? string.Empty,
+                Description = brand.Description ?? string.Empty,
                 IsActive = brand.IsActive,
                 ProductLines = brand.ProductLines?.Select(pl => pl.ToDTO()).ToList()
             };

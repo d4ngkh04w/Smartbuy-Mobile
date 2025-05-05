@@ -10,11 +10,15 @@ namespace api.Services
     public class ProductService : IProductService
     {
         private readonly IProductRepository _productRepository;
+        private readonly IProductLineRepository _productLineRepository;
         private readonly IWebHostEnvironment _env;
 
-        public ProductService(IProductRepository productRepository, IWebHostEnvironment webHostEnvironment)
+        public ProductService(IProductRepository productRepository,
+                              IProductLineRepository productLineRepository,
+                              IWebHostEnvironment webHostEnvironment)
         {
             _productRepository = productRepository;
+            _productLineRepository = productLineRepository;
             _env = webHostEnvironment;
         }
 
@@ -25,7 +29,7 @@ namespace api.Services
                 var products = await _productRepository.GetAllAsync();
 
                 if (!products.Any())
-                    return (false, "Products not found", null);
+                    return (false, "Not found any products", null);
 
                 var productDTOs = products.Select(p => p.ToProductDTO()).ToList();
                 return (true, null, productDTOs);
@@ -58,48 +62,36 @@ namespace api.Services
         {
             try
             {
-                // Check if product with same name already exists
                 if (await _productRepository.ExistsByNameAsync(productDTO.Name.Trim()))
                     return (false, "Product with this name already exists", null);
                 else
                     productDTO.Name = productDTO.Name.Trim();
 
-                // Create new product model from DTO
-                var product = productDTO.ToProductModel();
+                // Validate that brand exists
+                // var brand = await _brandRepository.GetBrandByIdAsync(productDTO.BrandId);
+                // if (brand == null)
+                //     return (false, $"Brand with ID {productDTO.BrandId} not found", null);
 
-                // Add product details
+                // if (!brand.IsActive)
+                //     return (false, $"Brand with ID {productDTO.BrandId} is inactive", null);
+
+                // Validate that product line exists
+                var productLine = await _productLineRepository.GetProductLineByIdAsync(productDTO.ProductLineId);
+                if (productLine == null)
+                    return (false, $"Product line with ID {productDTO.ProductLineId} not found", null);
+
+                if (!productLine.IsActive)
+                    return (false, $"Product line with ID {productDTO.ProductLineId} is inactive", null);
+
+                // Validate that product line belongs to the selected brand
+                // if (productLine.BrandId != productDTO.BrandId)
+                //     return (false, $"Product line with ID {productDTO.ProductLineId} does not belong to brand with ID {productDTO.BrandId}", null);
+
+                var product = productDTO.ToProductModel();
                 product.Detail = productDTO.ToProductDetailModel();
 
-                // Add colors
-                if (productDTO.Colors != null && productDTO.Colors.Any())
-                {
-                    foreach (var color in productDTO.Colors)
-                    {
-                        product.Colors.Add(new ProductColor { Name = color });
-                    }
-                }
-
-                // Create product first to get the ID
                 var createdProduct = await _productRepository.CreateAsync(product);
-
-                // Add images
-                if (productDTO.Images != null && productDTO.Images.Any())
-                {
-                    foreach (var image in productDTO.Images)
-                    {
-                        var res = await ImageHelper.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024); // 5 MB max size
-                        if (!res.Success)
-                            return (false, res.ErrorMessage, null);
-
-                        product.Images.Add(new ProductImage { ImagePath = res.FilePath!, IsMain = product.Images.Count == 0 });
-                    }
-
-                    // Update product with images
-                    await _productRepository.UpdateAsync(product);
-                }
-
-                var result = await _productRepository.GetByIdAsync(createdProduct.Id);
-                return (true, null, result!.ToProductDTO());
+                return (true, null, createdProduct.ToProductDTO());
             }
             catch (Exception)
             {
@@ -131,9 +123,6 @@ namespace api.Services
 
                 if (!string.IsNullOrEmpty(productDTO.Description?.Trim()))
                     product.Description = productDTO.Description.Trim();
-
-                if (productDTO.IsActive.HasValue)
-                    product.IsActive = productDTO.IsActive.Value;
 
                 if (productDTO.ProductLineId.HasValue)
                     product.ProductLineId = productDTO.ProductLineId.Value;
@@ -169,64 +158,169 @@ namespace api.Services
                         product.Detail.SimSlots = productDTO.SimSlots.Value;
                 }
 
-                // Update colors
-                if (productDTO.Colors != null && productDTO.Colors.Any())
-                {
-                    product.Colors.Clear();
-                    foreach (var colorName in productDTO.Colors)
-                    {
-                        product.Colors.Add(new ProductColor { Name = colorName.Trim(), ProductId = product.Id });
-                    }
-                }
+                // Save basic product changes first
+                await _productRepository.UpdateAsync(product);
 
-                // Add new images
-                if (productDTO.AddImages != null && productDTO.AddImages.Any())
+                // Handle color updates
+                if (productDTO.UpdateColorData != null && productDTO.UpdateColorData.Any())
                 {
-                    foreach (var image in productDTO.AddImages)
+                    foreach (var colorData in productDTO.UpdateColorData)
                     {
-                        var res = await ImageHelper.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024); // 5 MB max size
-                        if (!res.Success)
-                            return (false, res.ErrorMessage, null);
+                        ProductColor? color = null;
 
-                        product.Images.Add(new ProductImage { ImagePath = res.FilePath!, IsMain = false });
-                    }
-                }
-
-                // Remove images
-                if (productDTO.RemoveImagesIds != null && productDTO.RemoveImagesIds.Any())
-                {
-                    foreach (var imageId in productDTO.RemoveImagesIds)
-                    {
-                        var image = product.Images.FirstOrDefault(i => i.Id == imageId);
-                        if (image != null)
+                        // If color has an ID, find and update the existing color
+                        if (colorData.Id.HasValue && colorData.Id.Value > 0)
                         {
-                            var deletedImg = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, image.ImagePath));
-                            if (!deletedImg)
+                            color = product.Colors.FirstOrDefault(c => c.Id == colorData.Id.Value);
+
+                            if (color != null && !string.IsNullOrEmpty(colorData.Name?.Trim()))
                             {
-                                return (false, "Error deleting old image", null);
+                                color.Name = colorData.Name.Trim();
+                                await _productRepository.UpdateAsync(product); // Update color name
                             }
-                            product.Images.Remove(image);
+                        }
+                        // Otherwise create a new color
+                        else if (!string.IsNullOrEmpty(colorData.Name?.Trim()))
+                        {
+                            color = new ProductColor
+                            {
+                                Name = colorData.Name.Trim(),
+                                ProductId = product.Id
+                            };
+
+                            // Save the new color to get valid ID
+                            color = await _productRepository.AddColorAsync(color);
+                        }
+
+                        if (color != null)
+                        {
+                            // Process added images for this color
+                            if (colorData.AddImages != null && colorData.AddImages.Any())
+                            {
+                                for (int i = 0; i < colorData.AddImages.Count; i++)
+                                {
+                                    var image = colorData.AddImages[i];
+                                    var res = await ImageHelper.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024);
+                                    if (!res.Success)
+                                        return (false, res.ErrorMessage, null);
+
+                                    var newImage = new ProductImage
+                                    {
+                                        ImagePath = res.FilePath!,
+                                        IsMain = i == colorData.MainImageIndex && colorData.SetMainImage,
+                                        ColorId = color.Id
+                                    };
+
+                                    // Add image directly to database
+                                    await _productRepository.AddImageAsync(newImage);
+                                }
+                            }
+
+                            // Process main image setting
+                            if (colorData.MainImageId.HasValue && colorData.SetMainImage)
+                            {
+                                // Get all images for this color from DB to ensure they're up to date
+                                var dbProduct = await _productRepository.GetByIdAsync(id);
+                                if (dbProduct != null)
+                                {
+                                    var dbColor = dbProduct.Colors.FirstOrDefault(c => c.Id == color.Id);
+
+                                    if (dbColor != null && dbColor.Images.Any())
+                                    {
+                                        foreach (var image in dbColor.Images)
+                                        {
+                                            // Update IsMain status
+                                            image.IsMain = image.Id == colorData.MainImageId.Value;
+                                        }
+
+                                        // Save changes
+                                        await _productRepository.UpdateAsync(dbProduct);
+                                    }
+                                }
+                            }
+
+                            // Process image deletion
+                            if (colorData.RemoveImageIds != null && colorData.RemoveImageIds.Any())
+                            {
+                                // Get fresh data from DB
+                                var dbProduct = await _productRepository.GetByIdAsync(id);
+
+                                if (dbProduct != null)
+                                {
+                                    var dbColor = dbProduct.Colors.FirstOrDefault(c => c.Id == color.Id);
+
+                                    if (dbColor != null)
+                                    {
+                                        foreach (var imageId in colorData.RemoveImageIds)
+                                        {
+                                            var image = dbColor.Images.FirstOrDefault(i => i.Id == imageId);
+                                            if (image != null)
+                                            {
+                                                var deletedImg = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
+                                                if (!deletedImg)
+                                                {
+                                                    // Just log warning but continue
+                                                    Console.WriteLine($"Warning: Failed to delete image file: {image.ImagePath}");
+                                                }
+                                                dbColor.Images.Remove(image);
+                                            }
+                                        }
+
+                                        // Save changes
+                                        await _productRepository.UpdateAsync(dbProduct);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
 
-                // Set main image
-                if (productDTO.IdMainImage.HasValue)
+                // Handle color deletion
+                if (productDTO.RemoveColorIds != null && productDTO.RemoveColorIds.Any())
                 {
-                    foreach (var image in product.Images)
+                    // Get fresh product data
+                    var dbProduct = await _productRepository.GetByIdAsync(id);
+
+                    if (dbProduct != null)
                     {
-                        image.IsMain = image.Id == productDTO.IdMainImage.Value;
+                        foreach (var colorId in productDTO.RemoveColorIds)
+                        {
+                            var color = dbProduct.Colors.FirstOrDefault(c => c.Id == colorId);
+                            if (color != null)
+                            {
+                                // Delete all images associated with this color
+                                foreach (var image in color.Images.ToList())
+                                {
+                                    if (!string.IsNullOrEmpty(image.ImagePath))
+                                    {
+                                        var deletedImg = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
+                                        if (!deletedImg)
+                                        {
+                                            Console.WriteLine($"Warning: Failed to delete image file: {image.ImagePath}");
+                                        }
+                                    }
+                                    color.Images.Remove(image);
+                                }
+
+                                // Remove the color
+                                dbProduct.Colors.Remove(color);
+                            }
+                        }
+
+                        // Save changes
+                        await _productRepository.UpdateAsync(dbProduct);
                     }
                 }
 
-                product.UpdatedAt = DateTime.Now;
-
-                var result = await _productRepository.UpdateAsync(product);
-                return result ? (true, null, product.ToProductDTO()) : (false, "Error updating product", null);
+                // Get the final updated product
+                var updatedProduct = await _productRepository.GetByIdAsync(id);
+                return updatedProduct != null
+                    ? (true, null, updatedProduct.ToProductDTO())
+                    : (false, "Error retrieving updated product", null);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return (false, $"Error updating product", null);
+                return (false, $"Error updating product: {ex.Message}", null);
             }
         }
 
@@ -240,32 +334,13 @@ namespace api.Services
                 if (product == null)
                     return (false, "Product not found");
 
-                // Delete associated images
-                if (product.Images != null && product.Images.Any())
-                {
-                    foreach (var image in product.Images.ToList())
-                    {
-                        if (!string.IsNullOrEmpty(image.ImagePath))
-                        {
-                            bool success = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, image.ImagePath));
-                            if (!success)
-                            {
-                                // Log the error but continue with product deletion
-                                Console.WriteLine($"[WARN]: Failed to delete image file: {image.ImagePath}");
-                            }
-                        }
-                    }
-                }
-
                 // Proceed with product deletion
                 var result = await _productRepository.DeleteAsync(product);
                 return result ? (true, null) : (false, "Error deleting product from database");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // Log the actual exception for debugging
-                Console.WriteLine($"Error in DeleteProductAsync: {ex.Message}");
-                return (false, $"Error deleting product: {ex.Message}");
+                return (false, $"Error deleting product");
             }
         }
         public async Task<(bool Success, string? ErrorMessage, ProductPagiDTO? ProductPagi)> GetPagedProductsAsync(int page, int pageSize)
@@ -276,7 +351,7 @@ namespace api.Services
 
                 if (items == null || !items.Any())
                 {
-                    return (false, "Not found", null);
+                    return (false, "Not found any products", null);
                 }
                 var productSummaries = items.Select(ProductMapper.ToSummaryDTO).ToList();
                 var result = new ProductPagiDTO
@@ -287,11 +362,116 @@ namespace api.Services
 
                 return (true, null, result);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Error retrieving paged products: {ex.Message}", null);
+                return (false, $"Error retrieving paged products", null);
             }
         }
 
+        public async Task<(bool Success, string? ErrorMessage, ProductColorDTO? ProductColor)> CreateProductColorAsync(int productId, CreateColorDTO productColorDTO)
+        {
+            try
+            {
+                var product = await _productRepository.GetByIdAsync(productId);
+
+                if (product == null)
+                    return (false, "Product not found", null);
+
+                var productColor = new ProductColor
+                {
+                    Name = productColorDTO.Name.Trim(),
+                    ProductId = product.Id
+                };
+
+                var savedColor = await _productRepository.AddColorAsync(productColor);
+
+                if (productColorDTO.Images != null && productColorDTO.Images.Any())
+                {
+                    for (int i = 0; i < productColorDTO.Images.Count; i++)
+                    {
+                        var image = productColorDTO.Images[i];
+                        var res = await ImageHelper.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024); // 5 MB max size
+                        if (!res.Success)
+                            return (false, res.ErrorMessage, null);
+
+                        var productImage = new ProductImage
+                        {
+                            ImagePath = res.FilePath!,
+                            IsMain = i == productColorDTO.MainImageIndex,
+                            ColorId = savedColor.Id
+                        };
+
+                        await _productRepository.AddImageAsync(productImage);
+                    }
+                }
+
+                return (true, null, savedColor.ToProductColorDTO());
+            }
+            catch (Exception)
+            {
+                return (false, $"Error creating product color", null);
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> ActivateProductAsync(int id)
+        {
+            try
+            {
+                var product = await _productRepository.GetByIdAsync(id);
+                if (product == null)
+                    return (false, "Product not found", null);
+
+                var productLine = await _productLineRepository.GetProductLineByIdAsync(product.ProductLineId);
+                if (productLine == null)
+                    return (false, "Product line not found", null);
+
+                if (!productLine.IsActive)
+                    return (false, "Cannot activate product because parent product line is inactive", null);
+
+                if (product.IsActive)
+                    return (true, null, product.ToProductDTO());
+
+                product.IsActive = true;
+                product.ManuallyDeactivated = false;
+                product.UpdatedAt = DateTime.Now;
+
+                var success = await _productRepository.UpdateAsync(product);
+                if (!success)
+                    return (false, "Failed to activate product", null);
+
+                return (true, null, product.ToProductDTO());
+            }
+            catch (Exception)
+            {
+                return (false, "Error activating product", null);
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, ProductDTO? Product)> DeactivateProductAsync(int id)
+        {
+            try
+            {
+                var product = await _productRepository.GetByIdAsync(id);
+                if (product == null)
+                    return (false, "Product not found", null);
+
+                if (!product.IsActive)
+                    return (true, null, product.ToProductDTO());
+
+                product.IsActive = false;
+                product.ManuallyDeactivated = true;
+                product.UpdatedAt = DateTime.Now;
+
+                var success = await _productRepository.UpdateAsync(product);
+                if (!success)
+                    return (false, "Failed to deactivate product", null);
+
+                return (true, null, product.ToProductDTO());
+            }
+            catch (Exception)
+            {
+                return (false, "Error deactivating product", null);
+            }
+        }
     }
 }

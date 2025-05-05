@@ -29,6 +29,7 @@ namespace api.Models
         public int RatingCount { get; set; }
         public int Sold { get; set; }
         public bool IsActive { get; set; } = true;
+        public bool ManuallyDeactivated { get; set; } = false;
 
         [Column(TypeName = "timestamp")]
         public DateTime CreatedAt { get; set; } = DateTime.Now;
@@ -42,8 +43,6 @@ namespace api.Models
         public ProductLine? ProductLine { get; set; } = null;
 
         public ICollection<ProductColor> Colors { get; set; } = new HashSet<ProductColor>();
-
-        public ICollection<ProductImage> Images { get; set; } = new HashSet<ProductImage>();
 
         public ICollection<ProductDiscount> Discounts { get; set; } = new HashSet<ProductDiscount>();
 

@@ -106,7 +106,7 @@ namespace api.Services
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage, CartDTO? Cart)> UpdateCartItemAsync(Guid userId, int itemId, UpdateCartItemDTO dto)
+        public async Task<(bool Success, string? ErrorMessage, CartDTO? Cart)> UpdateCartItemAsync(Guid userId, Guid itemId, UpdateCartItemDTO dto)
         {
             try
             {
@@ -154,7 +154,7 @@ namespace api.Services
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage)> RemoveCartItemAsync(Guid userId, int itemId)
+        public async Task<(bool Success, string? ErrorMessage)> RemoveCartItemAsync(Guid userId, Guid itemId)
         {
             try
             {

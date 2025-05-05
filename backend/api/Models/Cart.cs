@@ -7,13 +7,11 @@ namespace api.Models
     public class Cart
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        // public int Id { get; set; }
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         public Guid UserId { get; set; }
 
-        [ForeignKey("UserId")]
+        [ForeignKey(nameof(UserId))]
         public User? User { get; set; }
 
         public ICollection<CartItem> Items { get; set; } = new HashSet<CartItem>();

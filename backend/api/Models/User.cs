@@ -9,8 +9,7 @@ namespace api.Models
     public class User
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         [Column(TypeName = "varchar(100)")]
         public string Name { get; set; } = string.Empty;
@@ -59,15 +58,9 @@ namespace api.Models
 
         [Column(TypeName = "timestamp")]
         public DateTime? LastLogin { get; set; }
-        public string? RefreshToken { get; set; } = null;
 
-        [Column(TypeName = "timestamp")]
-        public DateTime? RefreshTokenExpiry { get; set; } = null;
-
-        public string? PasswordResetToken { get; set; } = null;
-
-        [Column(TypeName = "timestamp")]
-        public DateTime? PasswordResetTokenExpiry { get; set; } = null;
         public Cart? Cart { get; set; }
+
+        public ICollection<UserToken>? Tokens { get; set; }
     }
 }

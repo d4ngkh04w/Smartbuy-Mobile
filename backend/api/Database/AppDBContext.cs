@@ -14,6 +14,7 @@ namespace api.Database
         public DbSet<ProductColor> Colors { get; set; } = null!;
         public DbSet<Product> Products { get; set; } = null!;
         public DbSet<User> Users { get; set; } = null!;
+        public DbSet<UserToken> UserTokens { get; set; } = null!;
         public DbSet<ProductImage> ProductImages { get; set; } = null!;
         public DbSet<ProductDiscount> ProductDiscounts { get; set; } = null!;
         public DbSet<Discount> Discounts { get; set; } = null!;
@@ -23,13 +24,21 @@ namespace api.Database
         public DbSet<Cart> Carts { get; set; } = null!;
         public DbSet<CartItem> CartItems { get; set; } = null!;
         public DbSet<CarouselImage> CarouselImages { get; set; } = null!;
-
-
+        public DbSet<Comment> Comments { get; set; } = null!;
+        public DbSet<Order> Orders { get; set; } = null!;
+        public DbSet<OrderItem> OrderItems { get; set; } = null!;
         protected override void OnModelCreating(ModelBuilder builder)
         {
             builder.Entity<User>()
                 .HasIndex(u => new { u.Email, u.PhoneNumber })
                 .IsUnique();
+
+            // Thiết lập mối quan hệ User - UserToken
+            builder.Entity<User>()
+                .HasMany(u => u.Tokens)
+                .WithOne(t => t.User)
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<ProductLine>()
                 .HasIndex(pl => new { pl.Name, pl.BrandId })
@@ -56,11 +65,11 @@ namespace api.Database
                 .HasForeignKey(c => c.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Cấu hình mối quan hệ Product - ProductImage
-            builder.Entity<Product>()
-                .HasMany(p => p.Images)
-                .WithOne(i => i.Product)
-                .HasForeignKey(i => i.ProductId)
+            // Cấu hình mối quan hệ ProductColor - ProductImage
+            builder.Entity<ProductColor>()
+                .HasMany(c => c.Images)
+                .WithOne(i => i.Color)
+                .HasForeignKey(i => i.ColorId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Cấu hình mối quan hệ Product - ProductDiscount
@@ -119,6 +128,11 @@ namespace api.Database
             builder.Entity<CarouselImage>()
                 .HasKey(c => c.Id);
 
+            builder.Entity<Comment>()
+                .HasOne(c => c.Parent)
+                .WithMany()
+                .HasForeignKey(c => c.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(builder);
         }

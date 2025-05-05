@@ -1,3 +1,387 @@
+<script setup>
+import { ref, onMounted, computed, watch } from "vue";
+import {
+    getProductLines,
+    createProductLine,
+    updateProductLine,
+    activateProductLine,
+    deactivateProductLine,
+} from "@/services/productLineService.js";
+import { getBrands } from "@/services/brandService.js";
+import emitter from "../../utils/evenBus.js";
+
+// State
+const productLines = ref([]);
+const allBrands = ref([]);
+const loading = ref(false);
+const showModal = ref(false);
+const showStatusModal = ref(false);
+const isEditing = ref(false);
+const formData = ref({
+    name: "",
+    brandId: null,
+    description: "",
+    imageFile: null,
+});
+const productLineToToggle = ref(null);
+const hasProducts = ref(false);
+const imagePreview = ref("");
+const fileInput = ref(null);
+const searchQuery = ref("");
+const statusFilter = ref("all");
+
+// Function to format image URL
+const formatImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+
+    // If image is already a full URL (starts with http or https)
+    if (imagePath.startsWith("http")) return imagePath;
+
+    // Get base URL from API configuration
+    const apiUrl = import.meta.env.VITE_API_URL || "";
+    const baseUrl = apiUrl.includes("/api") ? apiUrl.split("/api")[0] : "";
+
+    // Normalize the path (convert \ to /)
+    const normalizedPath = imagePath.replace(/\\/g, "/");
+
+    // Check if path starts with /
+    const path = normalizedPath.startsWith("/")
+        ? normalizedPath
+        : `/${normalizedPath}`;
+
+    return `${baseUrl}${path}`;
+};
+
+// Computed properties
+const filteredProductLines = computed(() => {
+    // Chỉ lọc theo từ khóa tìm kiếm - việc lọc theo trạng thái sẽ được xử lý ở backend
+    if (!searchQuery.value) return productLines.value;
+
+    const query = searchQuery.value.toLowerCase().trim();
+    return productLines.value.filter(
+        (pl) =>
+            pl.name.toLowerCase().includes(query) ||
+            (pl.description && pl.description.toLowerCase().includes(query)) ||
+            (pl.brandName && pl.brandName.toLowerCase().includes(query))
+    );
+});
+
+// Extract unique brands from product lines
+const brandsFromProductLines = computed(() => {
+    const uniqueBrands = new Map();
+
+    productLines.value.forEach((pl) => {
+        if (pl.brandName && pl.brandId) {
+            uniqueBrands.set(pl.brandId, {
+                id: pl.brandId,
+                name: pl.brandName,
+                logo: pl.brandLogo || null,
+            });
+        }
+    });
+
+    return Array.from(uniqueBrands.values());
+});
+
+// Fetch brands from API directly
+const fetchBrands = async () => {
+    try {
+        const response = await getBrands();
+        if (response.data && response.data.brands) {
+            allBrands.value = response.data.brands;
+        } else if (Array.isArray(response.data)) {
+            allBrands.value = response.data;
+        }
+        console.log("Fetched brands from API:", allBrands.value);
+    } catch (error) {
+        console.error("Error fetching brands:", error);
+    }
+};
+
+// Combine available brands from all sources for dropdowns
+const availableBrands = computed(() => {
+    // If we have brands from API, use those. Otherwise use extracted brands from product lines.
+    return allBrands.value.length > 0
+        ? allBrands.value
+        : brandsFromProductLines.value;
+});
+
+const uniqueBrandCount = computed(
+    () => new Set(productLines.value.map((pl) => pl.brandId)).size
+);
+
+const activeCount = computed(() => {
+    return productLines.value.filter((pl) => pl.isActive).length;
+});
+
+// Methods
+const getProductLineProductsCount = (productLineId) => {
+    const productLine = productLines.value.find(
+        (pl) => pl.id === productLineId
+    );
+    return productLine?.products?.length || 0;
+};
+
+// Fetch all product lines
+const fetchProductLines = async () => {
+    loading.value = true;
+    try {
+        // Thêm tham số isActive theo bộ lọc đã chọn
+        const params = { includeProducts: true };
+        if (statusFilter.value !== "all") {
+            params.isActive = statusFilter.value === "active";
+        }
+
+        const response = await getProductLines(params);
+        console.log("API Response:", response);
+
+        // Lấy productLines từ response.data.productLines
+        if (response.data && response.data.productLines) {
+            productLines.value = response.data.productLines;
+            console.log("Loaded product lines:", productLines.value);
+        } else if (Array.isArray(response.data)) {
+            // Nếu response.data là một mảng (trường hợp API trả về dạng mảng trực tiếp)
+            productLines.value = response.data;
+            console.log("Loaded product lines from array:", productLines.value);
+        } else {
+            console.error("Định dạng dữ liệu không hợp lệ:", response.data);
+            productLines.value = [];
+        }
+    } catch (error) {
+        console.error("Error fetching product lines:", error);
+        productLines.value = [];
+    } finally {
+        loading.value = false;
+    }
+};
+
+// Open modal to add new product line
+const openAddProductLineModal = async () => {
+    loading.value = true;
+    try {
+        // Fetch brands first to ensure we have the complete list
+        await fetchBrands();
+
+        isEditing.value = false;
+        formData.value = {
+            name: "",
+            brandId: null,
+            description: "",
+            imageFile: null,
+        };
+        imagePreview.value = "";
+        showModal.value = true;
+    } catch (error) {
+        console.error("Error preparing form:", error);
+        alert("Có lỗi xảy ra khi chuẩn bị form thêm mới. Vui lòng thử lại.");
+    } finally {
+        loading.value = false;
+    }
+};
+
+// Update editProductLine to match brand by name
+const editProductLine = async (productLine) => {
+    loading.value = true;
+    try {
+        console.log("Editing product line:", productLine);
+
+        // Fetch brands first to ensure we have the complete list
+        await fetchBrands();
+
+        // Find the matching brand ID by name
+        const matchingBrand = allBrands.value.find(
+            (b) => b.name.toLowerCase() === productLine.brandName?.toLowerCase()
+        );
+
+        console.log("Found matching brand:", matchingBrand);
+
+        // Use the matched brand ID or fallback to the product line's brandId
+        const brandId = matchingBrand ? matchingBrand.id : productLine.brandId;
+
+        isEditing.value = true;
+        formData.value = {
+            id: productLine.id,
+            name: productLine.name,
+            brandId: brandId,
+            description: productLine.description || "",
+            imageFile: null,
+        };
+
+        console.log("Form data after setup:", formData.value);
+
+        imagePreview.value = productLine.image || "";
+        showModal.value = true;
+    } catch (error) {
+        console.error("Error preparing form:", error);
+        alert("Có lỗi xảy ra khi chuẩn bị form chỉnh sửa. Vui lòng thử lại.");
+    } finally {
+        loading.value = false;
+    }
+};
+
+// Handle file upload
+const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        if (file.size > 1024 * 1024) {
+            alert("Kích thước tệp quá lớn. Vui lòng chọn tệp dưới 1MB.");
+            return;
+        }
+
+        formData.value.imageFile = file;
+        // Create preview
+        imagePreview.value = URL.createObjectURL(file);
+    }
+};
+
+// Clear image
+const clearImage = () => {
+    formData.value.imageFile = null;
+    imagePreview.value = "";
+    if (fileInput.value) {
+        fileInput.value.value = "";
+    }
+};
+
+// Submit form (create or update)
+const submitForm = async () => {
+    loading.value = true;
+
+    try {
+        const data = new FormData();
+
+        // Thêm dữ liệu cho form data
+        data.append("Name", formData.value.name);
+
+        // Đảm bảo brandId là số nguyên và không phải null
+        if (formData.value.brandId) {
+            data.append("BrandId", parseInt(formData.value.brandId));
+        } else {
+            console.error("Không thể thêm dòng sản phẩm với brandId null");
+            alert("Vui lòng chọn thương hiệu cho dòng sản phẩm");
+            loading.value = false;
+            return; // Dừng quá trình submit nếu không có brandId
+        }
+
+        if (formData.value.imageFile) {
+            data.append("Image", formData.value.imageFile);
+        }
+        if (formData.value.description) {
+            data.append("Description", formData.value.description || "");
+        }
+
+        console.log("Sending form data with brandId:", formData.value.brandId);
+
+        let response;
+        if (isEditing.value) {
+            // Sử dụng hàm từ service thay vì axios trực tiếp
+            response = await updateProductLine(formData.value.id, data);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Thêm mới dòng sản phẩm thành công",
+            });
+        } else {
+            // Sử dụng hàm từ service thay vì axios trực tiếp
+            response = await createProductLine(data);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Cập nhật dòng sản phẩm thành công",
+            });
+        }
+
+        console.log("API response:", response);
+
+        // Make sure to refresh the product lines list with a fresh API call
+        await fetchProductLines();
+
+        // Close the modal only after successful data refresh
+        closeModal();
+    } catch (error) {
+        console.error("Error submitting form:", error);
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Có lỗi xảy ra khi thêm mới dòng sản phẩm",
+        });
+    } finally {
+        loading.value = false;
+    }
+};
+
+// Close modal
+const closeModal = () => {
+    showModal.value = false;
+    formData.value = {
+        name: "",
+        brandId: null,
+        description: "",
+        imageFile: null,
+    };
+    imagePreview.value = "";
+    if (fileInput.value) {
+        fileInput.value.value = "";
+    }
+};
+
+// Confirm status toggle
+const confirmToggleStatus = async (productLine) => {
+    productLineToToggle.value = productLine;
+    hasProducts.value = getProductLineProductsCount(productLine.id) > 0;
+    showStatusModal.value = true;
+};
+
+// Cancel status toggle
+const cancelToggleStatus = () => {
+    showStatusModal.value = false;
+    productLineToToggle.value = null;
+    hasProducts.value = false;
+};
+
+// Toggle product line status
+const toggleProductLineStatus = async () => {
+    if (!productLineToToggle.value) return;
+
+    loading.value = true;
+    try {
+        if (productLineToToggle.value.isActive) {
+            // Deactivate
+            await deactivateProductLine(productLineToToggle.value.id);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Hủy kích hoạt dòng sản phẩm thành công",
+            });
+        } else {
+            // Activate
+            await activateProductLine(productLineToToggle.value.id);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Kích hoạt dòng sản phẩm thành công",
+            });
+        }
+
+        await fetchProductLines();
+        showStatusModal.value = false;
+        productLineToToggle.value = null;
+    } catch (error) {
+        console.error("Error toggling product line status:", error);
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Có lỗi xảy ra khi thay đổi trạng thái dòng sản phẩm",
+        });
+    } finally {
+        loading.value = false;
+    }
+};
+
+// Watch for statusFilter changes and reload data
+watch(statusFilter, async () => {
+    await fetchProductLines();
+});
+
+// Load data when component mounts
+onMounted(async () => {
+    await fetchProductLines();
+});
+</script>
 <template>
     <div class="product-line-management">
         <div class="section-header">
@@ -15,6 +399,17 @@
                         placeholder="Tìm kiếm dòng sản phẩm..."
                     />
                 </div>
+
+                <!-- Status Filter -->
+                <div class="status-filter">
+                    <i class="fas fa-filter"></i>
+                    <select v-model="statusFilter">
+                        <option value="all">Tất cả trạng thái</option>
+                        <option value="active">Đang kích hoạt</option>
+                        <option value="inactive">Chưa kích hoạt</option>
+                    </select>
+                </div>
+
                 <button @click="openAddProductLineModal" class="add-button">
                     <i class="fas fa-plus"></i> Thêm dòng sản phẩm
                 </button>
@@ -54,33 +449,6 @@
             </div>
         </div>
 
-        <!-- Brand filter pills -->
-        <div class="brand-filter">
-            <h3 class="filter-title">Lọc theo thương hiệu:</h3>
-            <div class="filter-pills">
-                <button
-                    @click="selectedBrandId = null"
-                    :class="['pill', !selectedBrandId ? 'active' : '']"
-                >
-                    Tất cả
-                </button>
-                <button
-                    v-for="brand in brands"
-                    :key="brand.id"
-                    @click="selectedBrandId = brand.id"
-                    :class="[
-                        'pill',
-                        selectedBrandId === brand.id ? 'active' : '',
-                    ]"
-                >
-                    <span v-if="brand.logo" class="brand-logo">
-                        <img :src="brand.logo" :alt="brand.name" />
-                    </span>
-                    {{ brand.name }}
-                </button>
-            </div>
-        </div>
-
         <!-- Product Lines hierarchical view -->
         <div class="data-card">
             <div v-if="loading" class="loading-state">
@@ -95,120 +463,107 @@
                 <p v-if="searchQuery">
                     Không tìm thấy dòng sản phẩm phù hợp với tìm kiếm
                 </p>
-                <p v-else-if="selectedBrandId">
-                    Không có dòng sản phẩm nào cho thương hiệu này
-                </p>
                 <p v-else>Không có dòng sản phẩm nào</p>
                 <button @click="openAddProductLineModal" class="action-button">
                     <i class="fas fa-plus"></i> Thêm dòng sản phẩm mới
                 </button>
             </div>
-
-            <div v-else class="product-line-list">
-                <div
-                    v-for="brandGroup in organizedProductLines"
-                    :key="brandGroup.id"
-                    class="brand-group"
-                >
-                    <div class="brand-header">
-                        <div class="brand-info">
-                            <div class="brand-logo-wrapper">
+            <table v-else class="data-table">
+                <thead>
+                    <tr>
+                        <th>Dòng sản phẩm</th>
+                        <th>Ảnh</th>
+                        <th>Mô tả</th>
+                        <th>Thương hiệu</th>
+                        <th>Trạng thái</th>
+                        <th>Số SP</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr
+                        v-for="productLine in filteredProductLines"
+                        :key="productLine.id"
+                        class="data-row"
+                    >
+                        <td class="name-cell">{{ productLine.name }}</td>
+                        <td class="logo-cell">
+                            <div class="logo-wrapper">
                                 <img
-                                    v-if="brandGroup.logo"
-                                    :src="brandGroup.logo"
-                                    :alt="brandGroup.name"
-                                    class="brand-logo"
+                                    v-if="productLine.image"
+                                    :src="formatImageUrl(productLine.image)"
+                                    :alt="productLine.name"
                                 />
-                                <span v-else class="no-logo">
-                                    <i class="fas fa-trademark"></i>
-                                </span>
+                                <div v-else class="no-logo">
+                                    <i class="fas fa-mobile-alt"></i>
+                                </div>
                             </div>
-                            <h3 class="brand-name">{{ brandGroup.name }}</h3>
-                        </div>
-                        <div class="brand-count">
-                            <span class="count-badge"
-                                >{{ brandGroup.productLines.length }} dòng sản
-                                phẩm</span
+                        </td>
+                        <td class="description-cell">
+                            {{ productLine.description || "Không có mô tả" }}
+                        </td>
+                        <td class="brand-cell">
+                            {{
+                                productLine.brandName ||
+                                availableBrands.find(
+                                    (b) => b.id === productLine.brandId
+                                )?.name ||
+                                "N/A"
+                            }}
+                        </td>
+                        <td class="status-cell">
+                            <span
+                                :class="[
+                                    'status-badge',
+                                    productLine.isActive
+                                        ? 'active'
+                                        : 'inactive',
+                                ]"
                             >
-                        </div>
-                    </div>
-
-                    <div class="product-lines">
-                        <div
-                            v-for="productLine in brandGroup.productLines"
-                            :key="productLine.id"
-                            class="product-line-item"
-                        >
-                            <div class="product-line-content">
-                                <div class="product-line-image">
-                                    <img
-                                        v-if="productLine.image"
-                                        :src="productLine.image"
-                                        :alt="productLine.name"
-                                    />
-                                    <div v-else class="no-image">
-                                        <i class="fas fa-mobile-alt"></i>
-                                    </div>
-                                </div>
-
-                                <div class="product-line-details">
-                                    <h4 class="product-line-name">
-                                        {{ productLine.name }}
-                                    </h4>
-                                    <p class="product-line-description">
-                                        {{
-                                            productLine.description ||
-                                            "Không có mô tả"
-                                        }}
-                                    </p>
-                                    <div class="product-line-meta">
-                                        <span
-                                            :class="[
-                                                'status-badge',
-                                                productLine.isActive
-                                                    ? 'active'
-                                                    : 'inactive',
-                                            ]"
-                                        >
-                                            {{
-                                                productLine.isActive
-                                                    ? "Đang kích hoạt"
-                                                    : "Không kích hoạt"
-                                            }}
-                                        </span>
-                                        <span class="product-count">
-                                            <i class="fas fa-cube"></i>
-                                            {{
-                                                getProductLineProductsCount(
-                                                    productLine.id
-                                                )
-                                            }}
-                                            sản phẩm
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="product-line-actions">
-                                <button
-                                    @click="editProductLine(productLine)"
-                                    class="edit-button"
-                                    title="Chỉnh sửa"
-                                >
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button
-                                    @click="confirmDelete(productLine)"
-                                    class="delete-button"
-                                    title="Xóa"
-                                >
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                                {{
+                                    productLine.isActive
+                                        ? "Đang kích hoạt"
+                                        : "Không kích hoạt"
+                                }}
+                            </span>
+                        </td>
+                        <td class="count-cell">
+                            {{ getProductLineProductsCount(productLine.id) }}
+                        </td>
+                        <td class="actions-cell">
+                            <button
+                                @click="editProductLine(productLine)"
+                                class="edit-button"
+                                title="Chỉnh sửa"
+                            >
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button
+                                @click="confirmToggleStatus(productLine)"
+                                :class="[
+                                    productLine.isActive
+                                        ? 'deactivate-button'
+                                        : 'activate-button',
+                                ]"
+                                :title="
+                                    productLine.isActive
+                                        ? 'Hủy kích hoạt'
+                                        : 'Kích hoạt'
+                                "
+                            >
+                                <i
+                                    class="fas"
+                                    :class="
+                                        productLine.isActive
+                                            ? 'fa-toggle-off'
+                                            : 'fa-toggle-on'
+                                    "
+                                ></i>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <!-- Add/Edit Product Line Modal -->
@@ -238,11 +593,11 @@
                                 class="form-select"
                                 required
                             >
-                                <option :value="null" disabled>
+                                <option value="" disabled selected>
                                     Chọn thương hiệu
                                 </option>
                                 <option
-                                    v-for="brand in brands"
+                                    v-for="brand in availableBrands"
                                     :key="brand.id"
                                     :value="brand.id"
                                 >
@@ -274,7 +629,12 @@
                         >
                             <img
                                 v-if="imagePreview"
-                                :src="imagePreview"
+                                :src="
+                                    imagePreview.startsWith('data:') ||
+                                    imagePreview.startsWith('blob:')
+                                        ? imagePreview
+                                        : formatImageUrl(imagePreview)
+                                "
                                 alt="Preview"
                                 class="image-preview"
                             />
@@ -310,16 +670,6 @@
                         ></textarea>
                     </div>
 
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input
-                                type="checkbox"
-                                v-model="formData.isActive"
-                            />
-                            <span>Kích hoạt dòng sản phẩm</span>
-                        </label>
-                    </div>
-
                     <div class="form-actions">
                         <button
                             type="button"
@@ -346,336 +696,122 @@
             </div>
         </div>
 
-        <!-- Delete Confirmation Modal -->
-        <div v-if="showDeleteModal" class="modal-backdrop">
+        <!-- Status Toggle Confirmation Modal -->
+        <div v-if="showStatusModal" class="modal-backdrop">
             <div class="modal-container warning-modal">
-                <div class="modal-header warning">
-                    <h3>Xác nhận xóa dòng sản phẩm</h3>
-                    <button @click="cancelDelete" class="close-button">
+                <div
+                    class="modal-header"
+                    :class="{ warning: productLineToToggle?.isActive }"
+                >
+                    <h3>
+                        {{
+                            productLineToToggle?.isActive
+                                ? "Xác nhận hủy kích hoạt dòng sản phẩm"
+                                : "Xác nhận kích hoạt dòng sản phẩm"
+                        }}
+                    </h3>
+                    <button @click="cancelToggleStatus" class="close-button">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
 
                 <div class="modal-body text-center">
-                    <div class="warning-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
+                    <div
+                        class="warning-icon"
+                        :class="{
+                            'activate-icon': !productLineToToggle?.isActive,
+                        }"
+                    >
+                        <i
+                            class="fas"
+                            :class="
+                                productLineToToggle?.isActive
+                                    ? 'fa-toggle-off'
+                                    : 'fa-toggle-on'
+                            "
+                        ></i>
                     </div>
                     <p class="warning-message">
-                        Bạn có chắc chắn muốn xóa dòng sản phẩm
-                        <strong>"{{ productLineToDelete?.name }}"</strong>?
+                        Bạn có chắc chắn muốn
+                        {{
+                            productLineToToggle?.isActive
+                                ? "vô hiệu hóa"
+                                : "kích hoạt"
+                        }}
+                        dòng sản phẩm
+                        <strong>"{{ productLineToToggle?.name }}"</strong>?
                     </p>
-                    <div v-if="hasProducts" class="warning-details">
+
+                    <!-- Status change impact details -->
+                    <div
+                        class="warning-details"
+                        :class="{
+                            'activate-details': !productLineToToggle?.isActive,
+                        }"
+                    >
                         <i class="fas fa-info-circle"></i>
-                        <span
-                            >Dòng sản phẩm này đang có
-                            {{
-                                getProductLineProductsCount(
-                                    productLineToDelete?.id
-                                )
-                            }}
-                            sản phẩm. Việc xóa có thể ảnh hưởng đến dữ liệu liên
-                            quan.</span
-                        >
+                        <div class="warning-text">
+                            <p v-if="hasProducts" class="warning-count">
+                                <span>Dòng sản phẩm này có</span>
+                                <strong>{{
+                                    getProductLineProductsCount(
+                                        productLineToToggle?.id
+                                    )
+                                }}</strong>
+                                <span>sản phẩm.</span>
+                            </p>
+                            <p
+                                v-if="productLineToToggle?.isActive"
+                                class="warning-impact"
+                            >
+                                <strong>Lưu ý:</strong> Vô hiệu hóa dòng sản
+                                phẩm sẽ ẩn tất cả sản phẩm thuộc dòng sản phẩm
+                                này khỏi trang người dùng.
+                            </p>
+                            <p v-else class="warning-impact">
+                                <strong>Lưu ý:</strong> Kích hoạt dòng sản phẩm
+                                sẽ hiển thị tất cả sản phẩm thuộc dòng sản phẩm
+                                này (trừ những sản phẩm đã bị ngừng bán thủ
+                                công).
+                            </p>
+                        </div>
                     </div>
                 </div>
 
                 <div class="modal-actions">
-                    <button @click="cancelDelete" class="cancel-button">
+                    <button @click="cancelToggleStatus" class="cancel-button">
                         <i class="fas fa-arrow-left"></i> Quay lại
                     </button>
                     <button
-                        @click="deleteProductLine"
-                        class="delete-confirm-button"
+                        @click="toggleProductLineStatus"
+                        :class="
+                            productLineToToggle?.isActive
+                                ? 'deactivate-confirm-button'
+                                : 'activate-confirm-button'
+                        "
                         :disabled="loading"
                     >
                         <span v-if="loading" class="spinner small"></span>
-                        <i v-else class="fas fa-trash-alt"></i> Xóa
+                        <i
+                            v-else
+                            class="fas"
+                            :class="
+                                productLineToToggle?.isActive
+                                    ? 'fa-toggle-off'
+                                    : 'fa-toggle-on'
+                            "
+                        ></i>
+                        {{
+                            productLineToToggle?.isActive
+                                ? "Vô hiệu hóa"
+                                : "Kích hoạt"
+                        }}
                     </button>
                 </div>
             </div>
         </div>
     </div>
 </template>
-
-<script setup>
-import { ref, onMounted, computed, watch } from "vue";
-import axios from "axios";
-
-// State
-const productLines = ref([]);
-const brands = ref([]);
-const products = ref([]);
-const loading = ref(false);
-const showModal = ref(false);
-const showDeleteModal = ref(false);
-const isEditing = ref(false);
-const formData = ref({
-    name: "",
-    brandId: null,
-    description: "",
-    imageFile: null,
-    isActive: true,
-});
-const productLineToDelete = ref(null);
-const hasProducts = ref(false);
-const imagePreview = ref("");
-const fileInput = ref(null);
-const searchQuery = ref("");
-const selectedBrandId = ref(null);
-
-// API base URL
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-
-// Computed properties
-const filteredProductLines = computed(() => {
-    let filtered = productLines.value;
-
-    // Filter by brand if selected
-    if (selectedBrandId.value !== null) {
-        filtered = filtered.filter(
-            (pl) => pl.brandId === selectedBrandId.value
-        );
-    }
-
-    // Filter by search query
-    if (searchQuery.value) {
-        const query = searchQuery.value.toLowerCase().trim();
-        filtered = filtered.filter(
-            (pl) =>
-                pl.name.toLowerCase().includes(query) ||
-                (pl.description && pl.description.toLowerCase().includes(query))
-        );
-    }
-
-    return filtered;
-});
-
-// Organize product lines by brand
-const organizedProductLines = computed(() => {
-    const brandMap = {};
-
-    // Create brand map for organizing
-    brands.value.forEach((brand) => {
-        brandMap[brand.id] = {
-            id: brand.id,
-            name: brand.name,
-            logo: brand.logo,
-            productLines: [],
-        };
-    });
-
-    // Assign product lines to brands
-    filteredProductLines.value.forEach((pl) => {
-        if (brandMap[pl.brandId]) {
-            brandMap[pl.brandId].productLines.push(pl);
-        }
-    });
-
-    // Convert to array and filter out empty brands
-    return Object.values(brandMap).filter((b) => b.productLines.length > 0);
-});
-
-const uniqueBrandCount = computed(() => {
-    return new Set(productLines.value.map((pl) => pl.brandId)).size;
-});
-
-const activeCount = computed(() => {
-    return productLines.value.filter((pl) => pl.isActive).length;
-});
-
-// Methods
-const getProductLineProductsCount = (productLineId) => {
-    return products.value.filter((p) => p.productLineId === productLineId)
-        .length;
-};
-
-// Fetch all brands
-const fetchBrands = async () => {
-    try {
-        const response = await axios.get(`${API_URL}/brand`);
-        brands.value = response.data.brands;
-    } catch (error) {
-        console.error("Error fetching brands:", error);
-    }
-};
-
-// Fetch all product lines
-const fetchProductLines = async () => {
-    loading.value = true;
-    try {
-        const response = await axios.get(`${API_URL}/product-line`);
-        productLines.value = response.data.productLines;
-    } catch (error) {
-        console.error("Error fetching product lines:", error);
-    } finally {
-        loading.value = false;
-    }
-};
-
-// Fetch products for counts
-const fetchProducts = async () => {
-    try {
-        const response = await axios.get(`${API_URL}/product?limit=1000`);
-        products.value = response.data.products;
-    } catch (error) {
-        console.error("Error fetching products:", error);
-    }
-};
-
-// Open modal to add new product line
-const openAddProductLineModal = () => {
-    isEditing.value = false;
-    formData.value = {
-        name: "",
-        brandId: selectedBrandId.value || null,
-        description: "",
-        imageFile: null,
-        isActive: true,
-    };
-    imagePreview.value = "";
-    showModal.value = true;
-};
-
-// Open modal to edit product line
-const editProductLine = (productLine) => {
-    isEditing.value = true;
-    formData.value = {
-        id: productLine.id,
-        name: productLine.name,
-        brandId: productLine.brandId,
-        description: productLine.description || "",
-        imageFile: null,
-        isActive:
-            productLine.isActive !== undefined ? productLine.isActive : true,
-    };
-    imagePreview.value = productLine.image || "";
-    showModal.value = true;
-};
-
-// Handle file upload
-const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        if (file.size > 1024 * 1024) {
-            alert("Kích thước tệp quá lớn. Vui lòng chọn tệp dưới 1MB.");
-            return;
-        }
-
-        formData.value.imageFile = file;
-        // Create preview
-        imagePreview.value = URL.createObjectURL(file);
-    }
-};
-
-// Clear image
-const clearImage = () => {
-    formData.value.imageFile = null;
-    imagePreview.value = "";
-    if (fileInput.value) {
-        fileInput.value.value = "";
-    }
-};
-
-// Submit form (create or update)
-const submitForm = async () => {
-    loading.value = true;
-
-    try {
-        const data = new FormData();
-        data.append("Name", formData.value.name);
-        data.append("BrandId", formData.value.brandId);
-        if (formData.value.imageFile) {
-            data.append("Image", formData.value.imageFile);
-        }
-        if (formData.value.description) {
-            data.append("Description", formData.value.description);
-        }
-        data.append("IsActive", formData.value.isActive);
-
-        if (isEditing.value) {
-            await axios.put(
-                `${API_URL}/product-line/${formData.value.id}`,
-                data
-            );
-        } else {
-            await axios.post(`${API_URL}/product-line`, data);
-        }
-
-        closeModal();
-        fetchProductLines();
-    } catch (error) {
-        console.error("Error submitting form:", error);
-        // Handle error (show notification, etc.)
-    } finally {
-        loading.value = false;
-    }
-};
-
-// Close modal
-const closeModal = () => {
-    showModal.value = false;
-    formData.value = {
-        name: "",
-        brandId: null,
-        description: "",
-        imageFile: null,
-        isActive: true,
-    };
-    imagePreview.value = "";
-    if (fileInput.value) {
-        fileInput.value.value = "";
-    }
-};
-
-// Confirm delete
-const confirmDelete = async (productLine) => {
-    productLineToDelete.value = productLine;
-    hasProducts.value = getProductLineProductsCount(productLine.id) > 0;
-    showDeleteModal.value = true;
-};
-
-// Cancel delete
-const cancelDelete = () => {
-    showDeleteModal.value = false;
-    productLineToDelete.value = null;
-    hasProducts.value = false;
-};
-
-// Delete product line
-const deleteProductLine = async () => {
-    if (!productLineToDelete.value) return;
-
-    loading.value = true;
-    try {
-        await axios.delete(
-            `${API_URL}/product-line/${productLineToDelete.value.id}`
-        );
-        fetchProductLines();
-        showDeleteModal.value = false;
-        productLineToDelete.value = null;
-    } catch (error) {
-        console.error("Error deleting product line:", error);
-        // Handle error (show notification, etc.)
-    } finally {
-        loading.value = false;
-    }
-};
-
-// Watch for selectedBrandId changes to keep UI in sync
-watch(selectedBrandId, (newValue) => {
-    // If a user is adding a new product line and has a brand selected, pre-select it in the form
-    if (newValue && !showModal.value) {
-        formData.value.brandId = newValue;
-    }
-});
-
-// Load data when component mounts
-onMounted(async () => {
-    await fetchBrands();
-    await fetchProductLines();
-    await fetchProducts();
-});
-</script>
 
 <style scoped>
 .product-line-management {
@@ -802,66 +938,6 @@ onMounted(async () => {
     font-size: 0.85rem;
 }
 
-.brand-filter {
-    background-color: white;
-    border-radius: 12px;
-    padding: 1.25rem;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.filter-title {
-    font-size: 0.9rem;
-    color: #666;
-    margin: 0 0 0.75rem 0;
-    font-weight: 500;
-}
-
-.filter-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.pill {
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    background-color: #f1f5f9;
-    color: #64748b;
-    border: none;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.pill:hover {
-    background-color: #e2e8f0;
-}
-
-.pill.active {
-    background-color: var(--primary-color);
-    color: white;
-}
-
-.brand-logo {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.brand-logo img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
 .data-card {
     background-color: white;
     border-radius: 12px;
@@ -929,51 +1005,6 @@ onMounted(async () => {
     gap: 0.5rem;
 }
 
-.product-line-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.brand-group {
-    border: 1px solid #eee;
-    border-radius: 12px;
-    overflow: hidden;
-}
-
-.brand-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #eee;
-}
-
-.brand-info {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.brand-logo-wrapper {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    overflow: hidden;
-    background-color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #eee;
-}
-
-.brand-logo {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
 .no-logo {
     width: 100%;
     height: 100%;
@@ -989,97 +1020,95 @@ onMounted(async () => {
     color: #333;
 }
 
-.count-badge {
-    background-color: #f1f5f9;
-    color: #64748b;
-    padding: 0.25rem 0.5rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
+/* Data Table Styles */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
 }
 
-.product-lines {
-    display: flex;
-    flex-direction: column;
+.data-table th {
+    text-align: left;
+    padding: 1rem;
+    color: #666;
+    border-bottom: 1px solid #eee;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
 }
 
-.product-line-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.25rem 1.5rem;
+.data-table th:nth-child(1) {
+    width: 15%;
+} /* DÒNG SẢN PHẨM */
+.data-table th:nth-child(2) {
+    width: 10%;
+} /* ẢNH */
+.data-table th:nth-child(3) {
+    width: 35%;
+} /* MÔ TẢ */
+.data-table th:nth-child(4) {
+    width: 15%;
+} /* THƯƠNG HIỆU */
+.data-table th:nth-child(5) {
+    width: 12%;
+} /* TRẠNG THÁI */
+.data-table th:nth-child(6) {
+    width: 5%;
+} /* SỐ SP */
+.data-table th:nth-child(7) {
+    width: 8%;
+} /* HÀNH ĐỘNG */
+
+.data-row {
     border-bottom: 1px solid #eee;
     transition: background-color 0.2s;
 }
 
-.product-line-item:last-child {
-    border-bottom: none;
-}
-
-.product-line-item:hover {
+.data-row:hover {
     background-color: #f9f9f9;
 }
 
-.product-line-content {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex: 1;
+.data-row td {
+    padding: 1rem;
+    color: #333;
+    vertical-align: middle;
 }
 
-.product-line-image {
-    width: 48px;
-    height: 48px;
+.name-cell {
+    font-weight: 500;
+}
+
+.logo-cell {
+    width: 10%;
+}
+
+.logo-wrapper {
+    width: 40px;
+    height: 40px;
     border-radius: 8px;
     overflow: hidden;
     background-color: #f9f9f9;
-    border: 1px solid #eee;
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 1px solid #eee;
 }
 
-.product-line-image img {
+.logo-wrapper img {
     width: 100%;
     height: 100%;
     object-fit: contain;
 }
 
-.no-image {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ccc;
-}
-
-.product-line-details {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-}
-
-.product-line-name {
-    margin: 0 0 0.25rem 0;
-    font-size: 1rem;
-    color: #333;
-}
-
-.product-line-description {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.9rem;
-    color: #666;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+.description-cell {
+    max-width: 250px;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.product-line-meta {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+.brand-cell {
+    font-weight: 500;
 }
 
 .status-badge {
@@ -1099,21 +1128,19 @@ onMounted(async () => {
     color: #ef4444;
 }
 
-.product-count {
-    font-size: 0.8rem;
-    color: #64748b;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+.count-cell {
+    text-align: center;
+    font-weight: 500;
 }
 
-.product-line-actions {
+.actions-cell {
     display: flex;
     gap: 0.5rem;
 }
 
 .edit-button,
-.delete-button {
+.activate-button,
+.deactivate-button {
     width: 32px;
     height: 32px;
     border-radius: 8px;
@@ -1135,12 +1162,22 @@ onMounted(async () => {
     color: white;
 }
 
-.delete-button {
+.activate-button {
+    background-color: #e6f7ea;
+    color: #22c55e;
+}
+
+.activate-button:hover {
+    background-color: #22c55e;
+    color: white;
+}
+
+.deactivate-button {
     background-color: #fee2e2;
     color: #ef4444;
 }
 
-.delete-button:hover {
+.deactivate-button:hover {
     background-color: #ef4444;
     color: white;
 }
@@ -1320,18 +1357,6 @@ onMounted(async () => {
     display: none;
 }
 
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-}
-
-.checkbox-label input {
-    width: 16px;
-    height: 16px;
-}
-
 .form-actions {
     display: flex;
     justify-content: flex-end;
@@ -1341,7 +1366,8 @@ onMounted(async () => {
 
 .cancel-button,
 .submit-button,
-.delete-confirm-button {
+.activate-confirm-button,
+.deactivate-confirm-button {
     padding: 0.75rem 1.25rem;
     border-radius: 8px;
     font-weight: 500;
@@ -1398,6 +1424,11 @@ onMounted(async () => {
     margin: 0 auto 1.5rem auto;
 }
 
+.warning-icon.activate-icon {
+    background-color: #e6f7ea;
+    color: #22c55e;
+}
+
 .warning-message {
     font-size: 1.1rem;
     color: #333;
@@ -1407,13 +1438,45 @@ onMounted(async () => {
 .warning-details {
     display: flex;
     align-items: flex-start;
-    gap: 0.5rem;
-    padding: 1rem;
-    background-color: #fee2e2;
+    gap: 0.8rem;
+    padding: 1.25rem;
+    background-color: #ffeeee;
+    border: 1px solid #ffcccc;
     border-radius: 8px;
-    color: #ef4444;
+    color: #d32f2f;
     text-align: left;
-    font-size: 0.9rem;
+    font-size: 1rem;
+    margin-top: 1.5rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.warning-details.activate-details {
+    background-color: #e8f5e9;
+    border: 1px solid #c8e6c9;
+    color: #2e7d32;
+}
+
+.warning-text {
+    flex: 1;
+}
+
+.warning-count {
+    margin: 0 0 0.75rem 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.warning-impact {
+    margin-top: 0.75rem;
+    font-size: 1rem;
+}
+
+.warning-impact p {
+    margin: 0;
+    font-weight: 500;
+    line-height: 1.5;
 }
 
 .modal-actions {
@@ -1424,21 +1487,63 @@ onMounted(async () => {
     gap: 1rem;
 }
 
-.delete-confirm-button {
+.activate-confirm-button {
+    background-color: #22c55e;
+    border: none;
+    color: white;
+    min-width: 140px;
+}
+
+.activate-confirm-button:hover {
+    background-color: #16a34a;
+}
+
+.deactivate-confirm-button {
     background-color: #ef4444;
     border: none;
     color: white;
+    min-width: 140px;
 }
 
-.delete-confirm-button:hover {
+.deactivate-confirm-button:hover {
     background-color: #dc2626;
 }
 
-.delete-confirm-button:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
+.status-filter {
+    position: relative;
+    width: 200px;
 }
 
+.status-filter i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    pointer-events: none;
+}
+
+.status-filter select {
+    width: 100%;
+    padding: 0.6rem 0.6rem 0.6rem 2rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
+    transition: all 0.3s;
+}
+
+.status-filter select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(248, 110, 211, 0.1);
+    outline: none;
+}
+
+/* Responsive tweaks */
 @media (max-width: 768px) {
     .section-header {
         flex-direction: column;
@@ -1462,6 +1567,11 @@ onMounted(async () => {
 
     .status-cards {
         grid-template-columns: 1fr;
+    }
+
+    .data-table {
+        display: block;
+        overflow-x: auto;
     }
 }
 </style>

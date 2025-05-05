@@ -10,11 +10,15 @@ namespace api.Services
     public class ProductLineService : IProductLineService
     {
         private readonly IProductLineRepository _productLineRepository;
+        private readonly IBrandRepository _brandRepository;
+        private readonly IProductRepository _productRepository;
         private readonly IWebHostEnvironment _env;
 
-        public ProductLineService(IProductLineRepository productLineRepository, IWebHostEnvironment webEnvironment)
+        public ProductLineService(IProductLineRepository productLineRepository, IProductRepository productRepository, IBrandRepository brandRepository, IWebHostEnvironment webEnvironment)
         {
             _productLineRepository = productLineRepository;
+            _brandRepository = brandRepository;
+            _productRepository = productRepository;
             _env = webEnvironment;
         }
 
@@ -22,20 +26,28 @@ namespace api.Services
         {
             try
             {
+                var brand = await _brandRepository.GetBrandByIdAsync(productLineDTO.BrandId);
+                if (brand == null)
+                {
+                    return (false, "Brand not found", null);
+                }
                 bool exists = await _productLineRepository.ProductLineExistAsync(productLineDTO.Name.Trim());
                 if (exists)
                 {
                     return (false, "Product line already exists", null);
                 }
 
-                var result = await ImageHelper.SaveImageAsync(productLineDTO.Image, _env.WebRootPath, "product-lines", 5 * 1024 * 1024);
-                if (!result.Success)
+                var productLine = productLineDTO.ToModel();
+                if (productLineDTO.Image != null)
                 {
-                    return (false, result.ErrorMessage, null);
+                    var result = await ImageHelper.SaveImageAsync(productLineDTO.Image, _env.WebRootPath, "product-lines", 5 * 1024 * 1024);
+                    if (!result.Success)
+                    {
+                        return (false, result.ErrorMessage, null);
+                    }
+                    productLine.Image = result.FilePath!;
                 }
 
-                var productLine = productLineDTO.ToModel();
-                productLine.Image = result.FilePath!;
                 var createdProductLine = await _productLineRepository.CreateProductLineAsync(productLine);
 
                 return (true, null, createdProductLine.ToDTO());
@@ -58,10 +70,36 @@ namespace api.Services
 
                 if (!string.IsNullOrEmpty(productLine.Image))
                 {
-                    var deleted = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, productLine.Image));
+                    var deleted = ImageHelper.DeleteImage(_env.WebRootPath + productLine.Image);
                     if (!deleted)
                     {
                         return (false, "Error deleting image");
+                    }
+                    productLine.Image = string.Empty;
+                }
+
+                var products = await _productRepository.GetProductsByProductLineIdAsync(id);
+                if (products != null && products.Any())
+                {
+                    foreach (var product in products)
+                    {
+                        foreach (var color in product.Colors)
+                        {
+                            if (color.Images != null && color.Images.Any())
+                            {
+                                foreach (var image in color.Images)
+                                {
+                                    if (!string.IsNullOrEmpty(image.ImagePath))
+                                    {
+                                        var deleted = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
+                                        if (!deleted)
+                                        {
+                                            return (false, "Error deleting product color image");
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -99,7 +137,7 @@ namespace api.Services
                 var productLines = await _productLineRepository.GetProductLinesAsync(query);
                 if (productLines == null || !productLines.Any())
                 {
-                    return (false, "No product lines found", null);
+                    return (false, "Not found any product lines", null);
                 }
 
                 return (true, null, productLines.Select(pl => pl.ToDTO()));
@@ -132,11 +170,6 @@ namespace api.Services
                     productLine.Description = productLineDTO.Description.Trim();
                 }
 
-                if (productLineDTO.IsActive.HasValue)
-                {
-                    productLine.IsActive = productLineDTO.IsActive.Value;
-                }
-
                 if (productLineDTO.BrandId.HasValue)
                 {
                     productLine.BrandId = productLineDTO.BrandId.Value;
@@ -144,11 +177,13 @@ namespace api.Services
 
                 if (productLineDTO.Image != null)
                 {
-                    // Xoá hình cũ
-                    var deleted = ImageHelper.DeleteImage(Path.Combine(_env.WebRootPath, productLine.Image));
-                    if (!deleted)
+                    if (!string.IsNullOrEmpty(productLine.Image))
                     {
-                        return (false, "Error deleting old image", null);
+                        var deleted = ImageHelper.DeleteImage(_env.WebRootPath + productLine.Image);
+                        if (!deleted)
+                        {
+                            return (false, "Error deleting old image", null);
+                        }
                     }
                     var res = await ImageHelper.SaveImageAsync(productLineDTO.Image, _env.WebRootPath, "product-lines", 5 * 1024 * 1024);
                     if (!res.Success)
@@ -172,6 +207,95 @@ namespace api.Services
             catch (Exception)
             {
                 return (false, $"Error updating product line", null);
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> ActivateProductLineAsync(int id)
+        {
+            try
+            {
+                var productLine = await _productLineRepository.GetProductLineByIdAsync(id);
+                if (productLine == null)
+                    return (false, "Product line not found", null);
+
+                var brand = await _brandRepository.GetBrandByIdAsync(productLine.BrandId);
+                if (brand == null)
+                    return (false, "Parent brand not found", null);
+
+                if (!brand.IsActive)
+                    return (false, "Cannot activate product line because parent brand is inactive", null);
+
+                if (productLine.IsActive)
+                    return (true, null, productLine.ToDTO());
+
+                productLine.IsActive = true;
+                productLine.ManuallyDeactivated = false;
+                productLine.UpdatedAt = DateTime.Now;
+
+                var success = await _productLineRepository.UpdateProductLineAsync(productLine);
+                if (!success)
+                    return (false, "Failed to activate product line", null);
+
+                var products = await _productRepository.GetProductsByProductLineIdAsync(id);
+                if (products != null && products.Any())
+                {
+                    foreach (var product in products)
+                    {
+                        if (!product.IsActive && !product.ManuallyDeactivated)
+                        {
+                            product.IsActive = true;
+                            product.UpdatedAt = DateTime.Now;
+                            await _productRepository.UpdateAsync(product);
+                        }
+                    }
+                }
+
+                return (true, null, productLine.ToDTO());
+            }
+            catch (Exception)
+            {
+                return (false, "Error activating product line", null);
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> DeactivateProductLineAsync(int id)
+        {
+            try
+            {
+                var productLine = await _productLineRepository.GetProductLineByIdAsync(id);
+                if (productLine == null)
+                    return (false, "Product line not found", null);
+
+                if (!productLine.IsActive)
+                    return (true, null, productLine.ToDTO());
+
+                productLine.IsActive = false;
+                productLine.ManuallyDeactivated = true;
+                productLine.UpdatedAt = DateTime.Now;
+
+                var success = await _productLineRepository.UpdateProductLineAsync(productLine);
+                if (!success)
+                    return (false, "Failed to deactivate product line", null);
+
+                var products = await _productRepository.GetProductsByProductLineIdAsync(id);
+                if (products != null && products.Any())
+                {
+                    foreach (var product in products)
+                    {
+                        if (product.IsActive)
+                        {
+                            product.IsActive = false;
+                            product.UpdatedAt = DateTime.Now;
+                            await _productRepository.UpdateAsync(product);
+                        }
+                    }
+                }
+
+                return (true, null, productLine.ToDTO());
+            }
+            catch (Exception)
+            {
+                return (false, "Error deactivating product line", null);
             }
         }
     }

@@ -17,10 +17,6 @@ namespace api.Repositories
 
         public async Task<ProductLine> CreateProductLineAsync(ProductLine productLine)
         {
-            bool existsBrand = await _db.Brands.AnyAsync(b => b.Id == productLine.BrandId);
-            if (!existsBrand)
-                throw new Exception("Brand not found");
-
             _db.ProductLines.Add(productLine);
             await _db.SaveChangesAsync();
 
@@ -32,8 +28,7 @@ namespace api.Repositories
 
         public async Task DeleteProductLineAsync(ProductLine productLine)
         {
-            productLine.IsActive = false;
-            _db.ProductLines.Update(productLine);
+            _db.ProductLines.Remove(productLine);
             await _db.SaveChangesAsync();
         }
 
@@ -45,6 +40,18 @@ namespace api.Repositories
         public async Task<IEnumerable<ProductLine>> GetProductLinesAsync(ProductLineQuery query)
         {
             var productLinesQuery = _db.ProductLines.AsQueryable();
+
+            // Lọc theo trạng thái IsActive nếu có
+            if (query.IsActive.HasValue)
+            {
+                productLinesQuery = productLinesQuery.Where(pl => pl.IsActive == query.IsActive.Value);
+            }
+
+            // Filter by brand ID if specified
+            if (query.BrandId.HasValue)
+            {
+                productLinesQuery = productLinesQuery.Where(pl => pl.BrandId == query.BrandId.Value);
+            }
 
             if (query.IncludeProducts)
             {
@@ -63,7 +70,10 @@ namespace api.Repositories
                 productLinesQuery = productLinesQuery.Reverse();
             }
 
-            return await productLinesQuery.Include(pl => pl.Brand).ToListAsync();
+            // Thay vì chỉ Include Brand, cần giữ nguyên việc Include Products nếu đã được yêu cầu
+            var query_with_brand = productLinesQuery.Include(pl => pl.Brand);
+
+            return await query_with_brand.ToListAsync();
         }
 
         public async Task<ProductLine?> GetProductLineByIdAsync(int id, ProductLineQuery? query = null)
@@ -100,6 +110,14 @@ namespace api.Repositories
                 else
                     throw;
             }
+        }
+
+        public async Task<List<ProductLine>> GetProductLinesByBrandIdAsync(int brandId)
+        {
+            return await _db.ProductLines
+                .Include(pl => pl.Products)
+                .Where(pl => pl.BrandId == brandId)
+                .ToListAsync();
         }
     }
 }

@@ -16,8 +16,6 @@ namespace api.DTOs.ProductLine
         [AllowFileExtension(extensions: [".jpg", ".jpeg", ".png"], ErrorMessage = "Image must be a valid image (jpg, jpeg, png)")]
         public IFormFile? Image { get; set; } = null;
 
-        public bool? IsActive { get; set; }
-
         [Range(1, int.MaxValue, ErrorMessage = "Brand ID must be a positive integer")]
         [RegularExpression(@"^\d+$", ErrorMessage = "Brand ID must be a positive integer")]
         public int? BrandId { get; set; }

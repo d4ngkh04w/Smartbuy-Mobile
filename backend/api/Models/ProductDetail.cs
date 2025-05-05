@@ -8,31 +8,31 @@ namespace api.Models
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int Id { get; set; }
+        public int? Id { get; set; }
 
-        public int WarrantyMonths { get; set; } = 12;
+        public int? WarrantyMonths { get; set; }
 
-        public int RAMInGB { get; set; }
+        public int? RAMInGB { get; set; }
 
-        public int StorageInGB { get; set; }
+        public int? StorageInGB { get; set; }
 
         [Column(TypeName = "varchar(100)")]
-        public string Processor { get; set; } = string.Empty;
+        public string? Processor { get; set; } = string.Empty;
 
         [Column(TypeName = "varchar(50)")]
-        public string OperatingSystem { get; set; } = string.Empty;
+        public string? OperatingSystem { get; set; } = string.Empty;
 
         [Column(TypeName = "decimal(3, 1)")]
-        public decimal ScreenSizeInch { get; set; }
+        public decimal? ScreenSizeInch { get; set; }
 
         [Column(TypeName = "varchar(20)")]
-        public string ScreenResolution { get; set; } = string.Empty;
+        public string? ScreenResolution { get; set; } = string.Empty;
 
-        public int BatteryCapacityMAh { get; set; }
+        public int? BatteryCapacityMAh { get; set; }
 
-        public int SimSlots { get; set; } = 1;
+        public int? SimSlots { get; set; } = 1;
 
-        public int ProductId { get; set; }
+        public int? ProductId { get; set; }
 
         [ForeignKey(nameof(ProductId))]
         public Product? Product { get; set; } = null;

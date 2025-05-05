@@ -11,6 +11,8 @@ namespace api.Mappers
             {
                 Id = productColor.Id,
                 Name = productColor.Name,
+                Images = productColor.Images?.Select(i => i.ToProductImageDTO()).ToHashSet() ?? new HashSet<ProductImageDTO>(),
+                // HasMainImage = productColor.Images?.Any(i => i.IsMain) ?? false
             };
         }
 
@@ -20,7 +22,7 @@ namespace api.Mappers
             {
                 Id = productImage.Id,
                 ImagePath = productImage.ImagePath,
-                IsMain = productImage.IsMain,
+                IsMain = productImage.IsMain
             };
         }
 
@@ -55,13 +57,13 @@ namespace api.Mappers
                 RatingCount = product.RatingCount,
                 Sold = product.Sold,
                 IsActive = product.IsActive,
-                CreatedAt = product.CreatedAt,
-                UpdatedAt = product.UpdatedAt ?? DateTime.Now,
+                ManuallyDeactivated = product.ManuallyDeactivated,
+                CreatedAt = DateTime.Parse(product.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ss")),
+                UpdatedAt = product.UpdatedAt.HasValue ? DateTime.Parse(product.UpdatedAt.Value.ToString("yyyy-MM-ddTHH:mm:ss")) : DateTime.Now,
                 ProductLineId = product.ProductLineId,
                 ProductLineName = product.ProductLine?.Name ?? string.Empty,
 
                 Colors = product.Colors.Select(c => c.ToProductColorDTO()).ToHashSet(),
-                Images = product.Images.Select(i => i.ToProductImageDTO()).ToHashSet(),
                 Detail = product.Detail?.ToProductDetailDTO(),
                 // Add tags when implementing tag functionality
                 // Tags = product.ProductTags.Select(pt => pt.Tag).ToHashSet()
@@ -104,12 +106,23 @@ namespace api.Mappers
         }
         public static ProductSummaryDTO ToSummaryDTO(this Product product)
         {
+            string mainImagePath = string.Empty;
+            foreach (var color in product.Colors)
+            {
+                var mainImage = color.Images.FirstOrDefault(i => i.IsMain);
+                if (mainImage != null)
+                {
+                    mainImagePath = mainImage.ImagePath;
+                    break;
+                }
+            }
+
             return new ProductSummaryDTO
             {
                 Id = product.Id,
                 Name = product.Name,
                 Price = product.SalePrice,
-                ImageUrl = product.Images.FirstOrDefault(i => i.IsMain)?.ImagePath ?? string.Empty,
+                ImageUrl = mainImagePath
             };
         }
 

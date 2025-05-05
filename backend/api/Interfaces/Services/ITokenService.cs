@@ -5,13 +5,13 @@ namespace api.Interfaces.Services
 {
     public interface ITokenService
     {
-        Task<string> GenerateRefreshToken(User user);
         string CreateToken(User user, string role);
+        Task<string> GenerateRefreshToken(User user);
+        Task<string> GeneratePasswordResetToken(User user);
+        Task<string> GenerateEmailVerificationToken(User user);
         Task<(bool Success, string? ErrorMessage, TokenResponseDTO? Token)> ValidateRefreshToken(string refreshToken);
         Task<(bool Success, string? ErrorMessage)> RevokeRefreshToken(string refreshToken);
-        string GeneratePasswordResetToken();
-        bool ValidatePasswordResetToken(string token, DateTime tokenCreationTime);
-        string GenerateAccountUnlockToken();
-        bool ValidateAccountUnlockToken(string token, DateTime tokenExpiryTime);
+        Task<(bool Success, string? ErrorMessage, User? User)> ValidatePasswordResetToken(string email, string token);
+        Task<(bool Success, string? ErrorMessage, User? User)> ValidateEmailVerificationToken(string email, string token);
     }
 }

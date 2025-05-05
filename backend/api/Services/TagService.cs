@@ -62,7 +62,7 @@ namespace api.Services
                 var tags = await _tagRepository.GetAllTagsAsync();
                 if (tags == null || !tags.Any())
                 {
-                    return (false, "No tags found", null);
+                    return (false, "Not found any tags", null);
                 }
 
                 return (true, null, tags.Select(t => t.ToDTO()));

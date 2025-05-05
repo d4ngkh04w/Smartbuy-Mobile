@@ -11,5 +11,6 @@ namespace api.Interfaces.Repositories
         Task<bool> UpdateProductLineAsync(ProductLine productLine);
         Task DeleteProductLineAsync(ProductLine productLine);
         Task<bool> ProductLineExistAsync(string name);
+        Task<List<ProductLine>> GetProductLinesByBrandIdAsync(int brandId);
     }
 }

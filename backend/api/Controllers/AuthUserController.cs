@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using api.DTOs.Auth;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -17,6 +18,15 @@ namespace api.Controllers
         {
             _authService = authService;
             _config = config;
+        }
+
+        private string GetCurrentUserEmail()
+        {
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+            if (emailClaim == null)
+                return string.Empty;
+
+            return emailClaim;
         }
 
         [HttpPost("register")]
@@ -139,6 +149,38 @@ namespace api.Controllers
             {
                 Message = "Token is valid",
             });
+        }
+
+        [HttpPost("send-verification-email")]
+        public async Task<IActionResult> SendVerificationEmail()
+        {
+            var email = GetCurrentUserEmail();
+            var result = await _authService.SendEmailVerificationAsync(email);
+
+            if (!result.Success && result.ErrorMessage != null)
+            {
+                return result.ErrorMessage switch
+                {
+                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
+                    _ => BadRequest(new { Message = result.ErrorMessage })
+                };
+            }
+
+            return Ok(new { Message = result.ErrorMessage });
+        }
+
+        [HttpPost("verify-email")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDTO verifyDto)
+        {
+            var result = await _authService.VerifyEmailAsync(verifyDto);
+
+            if (!result.Success)
+            {
+                return BadRequest(new { Message = result.ErrorMessage ?? "Email verification failed" });
+            }
+
+            return Ok(new { Message = "Email verified successfully" });
         }
     }
 }

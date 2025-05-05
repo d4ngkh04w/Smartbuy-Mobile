@@ -27,7 +27,7 @@ namespace api.Controllers
             {
                 return result.ErrorMessage switch
                 {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Tags not found" }),
+                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
                     string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
                     _ => BadRequest(new { Message = result.ErrorMessage })
                 };

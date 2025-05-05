@@ -17,7 +17,7 @@ namespace api.Mappers
                 Address = user.Address,
                 DateOfBirth = user.DateOfBirth,
                 CreatedAt = user.CreatedAt,
-                UpdatedAt = user.UpdatedAt,
+                UpdatedAt = user.UpdatedAt.HasValue ? DateTime.Parse(user.UpdatedAt.Value.ToString("yyyy-MM-ddTHH:mm:ss")) : null,
                 IsLocked = user.IsLocked,
                 LockedBy = user.LockedBy ?? string.Empty,
                 LockReason = user.LockReason ?? string.Empty,
