@@ -1,39 +1,34 @@
 <script setup>
 import { ref, onMounted, computed, watch } from "vue";
-import axios from "axios";
 import {
     getProductLines,
-    getProductLineById,
     createProductLine,
     updateProductLine,
-    deleteProductLine as deleteProductLineAPI,
+    activateProductLine,
+    deactivateProductLine,
 } from "@/services/productLineService.js";
-import { getBrands } from "@/services/brandService.js"; // Thêm import getBrands
+import { getBrands } from "@/services/brandService.js";
+import emitter from "../../utils/evenBus.js";
 
 // State
 const productLines = ref([]);
-const brands = ref([]);
-const products = ref([]);
+const allBrands = ref([]);
 const loading = ref(false);
 const showModal = ref(false);
-const showDeleteModal = ref(false);
+const showStatusModal = ref(false);
 const isEditing = ref(false);
 const formData = ref({
     name: "",
     brandId: null,
     description: "",
     imageFile: null,
-    isActive: true,
 });
-const productLineToDelete = ref(null);
+const productLineToToggle = ref(null);
 const hasProducts = ref(false);
 const imagePreview = ref("");
 const fileInput = ref(null);
 const searchQuery = ref("");
-const statusFilter = ref("all"); // Thêm bộ lọc trạng thái: "all", "active", "inactive"
-
-// API base URL
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+const statusFilter = ref("all");
 
 // Function to format image URL
 const formatImageUrl = (imagePath) => {
@@ -71,45 +66,49 @@ const filteredProductLines = computed(() => {
     );
 });
 
-// Organize product lines by brand
-const organizedProductLines = computed(() => {
-    const brandMap = {};
-
-    // Create brand map for organizing
-    brands.value.forEach((brand) => {
-        brandMap[brand.id] = {
-            id: brand.id,
-            name: brand.name,
-            logo: brand.logo,
-            productLines: [],
-        };
-    });
-
-    // Assign product lines to brands
-    filteredProductLines.value.forEach((pl) => {
-        if (brandMap[pl.brandId]) {
-            brandMap[pl.brandId].productLines.push(pl);
-        }
-    });
-
-    // Convert to array and filter out empty brands
-    return Object.values(brandMap).filter((b) => b.productLines.length > 0);
-});
-
-const uniqueBrandCount = computed(() => {
-    // Ưu tiên sử dụng brandName nếu có, nếu không thì sử dụng brandId
-    const uniqueBrands = new Set();
+// Extract unique brands from product lines
+const brandsFromProductLines = computed(() => {
+    const uniqueBrands = new Map();
 
     productLines.value.forEach((pl) => {
-        if (pl.brandName) {
-            uniqueBrands.add(pl.brandName);
-        } else if (pl.brandId) {
-            uniqueBrands.add(pl.brandId);
+        if (pl.brandName && pl.brandId) {
+            uniqueBrands.set(pl.brandId, {
+                id: pl.brandId,
+                name: pl.brandName,
+                logo: pl.brandLogo || null,
+            });
         }
     });
 
-    return uniqueBrands.size;
+    return Array.from(uniqueBrands.values());
 });
+
+// Fetch brands from API directly
+const fetchBrands = async () => {
+    try {
+        const response = await getBrands();
+        if (response.data && response.data.brands) {
+            allBrands.value = response.data.brands;
+        } else if (Array.isArray(response.data)) {
+            allBrands.value = response.data;
+        }
+        console.log("Fetched brands from API:", allBrands.value);
+    } catch (error) {
+        console.error("Error fetching brands:", error);
+    }
+};
+
+// Combine available brands from all sources for dropdowns
+const availableBrands = computed(() => {
+    // If we have brands from API, use those. Otherwise use extracted brands from product lines.
+    return allBrands.value.length > 0
+        ? allBrands.value
+        : brandsFromProductLines.value;
+});
+
+const uniqueBrandCount = computed(
+    () => new Set(productLines.value.map((pl) => pl.brandId)).size
+);
 
 const activeCount = computed(() => {
     return productLines.value.filter((pl) => pl.isActive).length;
@@ -121,36 +120,6 @@ const getProductLineProductsCount = (productLineId) => {
         (pl) => pl.id === productLineId
     );
     return productLine?.products?.length || 0;
-};
-
-// Phương thức lấy danh sách brands từ productLines thay vì gọi API
-const extractBrandsFromProductLines = () => {
-    // Tạo một Set để lưu trữ các brandName duy nhất
-    const uniqueBrands = new Set();
-
-    // Tạo một map để lưu trữ thông tin brand
-    const brandMap = {};
-
-    // Lặp qua tất cả productLines để thu thập thông tin brand
-    productLines.value.forEach((productLine) => {
-        if (productLine.brandName) {
-            const key = productLine.brandId || productLine.brandName;
-            // Nếu productLine có brandName, tạo hoặc cập nhật thông tin brand
-            if (!brandMap[key]) {
-                brandMap[key] = {
-                    id: productLine.brandId,
-                    name: productLine.brandName,
-                    logo: productLine.brandLogo || null,
-                };
-                uniqueBrands.add(key);
-            }
-        }
-    });
-
-    // Chuyển đổi map thành mảng brands
-    const extractedBrands = Array.from(uniqueBrands).map((id) => brandMap[id]);
-    console.log("Extracted brands from product lines:", extractedBrands);
-    return extractedBrands;
 };
 
 // Fetch all product lines
@@ -178,31 +147,11 @@ const fetchProductLines = async () => {
             console.error("Định dạng dữ liệu không hợp lệ:", response.data);
             productLines.value = [];
         }
-
-        // Sau khi có danh sách productLines, trích xuất brands từ productLines
-        brands.value = extractBrandsFromProductLines();
-        console.log("Extracted brands from product lines:", brands.value);
     } catch (error) {
         console.error("Error fetching product lines:", error);
         productLines.value = [];
-        brands.value = [];
     } finally {
         loading.value = false;
-    }
-};
-
-// Fetch brands from API directly
-const fetchBrands = async () => {
-    try {
-        const response = await getBrands();
-        if (response.data && response.data.brands) {
-            brands.value = response.data.brands;
-        } else if (Array.isArray(response.data)) {
-            brands.value = response.data;
-        }
-        console.log("Fetched brands from API:", brands.value);
-    } catch (error) {
-        console.error("Error fetching brands:", error);
     }
 };
 
@@ -219,7 +168,6 @@ const openAddProductLineModal = async () => {
             brandId: null,
             description: "",
             imageFile: null,
-            isActive: true,
         };
         imagePreview.value = "";
         showModal.value = true;
@@ -231,47 +179,32 @@ const openAddProductLineModal = async () => {
     }
 };
 
-// Update editProductLine to match brand by name instead of ID
+// Update editProductLine to match brand by name
 const editProductLine = async (productLine) => {
     loading.value = true;
     try {
         console.log("Editing product line:", productLine);
 
-        // Lưu tên thương hiệu hiện tại trước khi tải danh sách thương hiệu
-        const currentBrandName = productLine.brandName;
-        console.log("Current brand name:", currentBrandName);
-
         // Fetch brands first to ensure we have the complete list
         await fetchBrands();
 
-        // Tìm brand trong danh sách brands dựa trên tên thương hiệu
-        const matchedBrand = brands.value.find(
-            (brand) =>
-                brand.name.toLowerCase() === currentBrandName?.toLowerCase()
+        // Find the matching brand ID by name
+        const matchingBrand = allBrands.value.find(
+            (b) => b.name.toLowerCase() === productLine.brandName?.toLowerCase()
         );
 
-        console.log("Matched brand by name:", matchedBrand);
-        console.log(
-            "Available brands:",
-            brands.value.map((b) => ({ id: b.id, name: b.name }))
-        );
+        console.log("Found matching brand:", matchingBrand);
 
-        // Sử dụng brandId từ brand đã tìm thấy (nếu có), nếu không thì giữ nguyên brandId hiện tại
-        const brandIdToUse = matchedBrand
-            ? matchedBrand.id
-            : productLine.brandId;
+        // Use the matched brand ID or fallback to the product line's brandId
+        const brandId = matchingBrand ? matchingBrand.id : productLine.brandId;
 
         isEditing.value = true;
         formData.value = {
             id: productLine.id,
             name: productLine.name,
-            brandId: brandIdToUse,
+            brandId: brandId,
             description: productLine.description || "",
             imageFile: null,
-            isActive:
-                productLine.isActive !== undefined
-                    ? productLine.isActive
-                    : true,
         };
 
         console.log("Form data after setup:", formData.value);
@@ -336,7 +269,6 @@ const submitForm = async () => {
         if (formData.value.description) {
             data.append("Description", formData.value.description || "");
         }
-        data.append("IsActive", formData.value.isActive.toString());
 
         console.log("Sending form data with brandId:", formData.value.brandId);
 
@@ -344,9 +276,17 @@ const submitForm = async () => {
         if (isEditing.value) {
             // Sử dụng hàm từ service thay vì axios trực tiếp
             response = await updateProductLine(formData.value.id, data);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Thêm mới dòng sản phẩm thành công",
+            });
         } else {
             // Sử dụng hàm từ service thay vì axios trực tiếp
             response = await createProductLine(data);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Cập nhật dòng sản phẩm thành công",
+            });
         }
 
         console.log("API response:", response);
@@ -358,9 +298,10 @@ const submitForm = async () => {
         closeModal();
     } catch (error) {
         console.error("Error submitting form:", error);
-        alert(
-            "Có lỗi xảy ra khi lưu dòng sản phẩm. Vui lòng kiểm tra và thử lại."
-        );
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Có lỗi xảy ra khi thêm mới dòng sản phẩm",
+        });
     } finally {
         loading.value = false;
     }
@@ -374,7 +315,6 @@ const closeModal = () => {
         brandId: null,
         description: "",
         imageFile: null,
-        isActive: true,
     };
     imagePreview.value = "";
     if (fileInput.value) {
@@ -382,37 +322,51 @@ const closeModal = () => {
     }
 };
 
-// Confirm delete
-const confirmDelete = async (productLine) => {
-    productLineToDelete.value = productLine;
+// Confirm status toggle
+const confirmToggleStatus = async (productLine) => {
+    productLineToToggle.value = productLine;
     hasProducts.value = getProductLineProductsCount(productLine.id) > 0;
-    showDeleteModal.value = true;
+    showStatusModal.value = true;
 };
 
-// Cancel delete
-const cancelDelete = () => {
-    showDeleteModal.value = false;
-    productLineToDelete.value = null;
+// Cancel status toggle
+const cancelToggleStatus = () => {
+    showStatusModal.value = false;
+    productLineToToggle.value = null;
     hasProducts.value = false;
 };
 
-// Delete product line
-const deleteProductLine = async () => {
-    if (!productLineToDelete.value) return;
+// Toggle product line status
+const toggleProductLineStatus = async () => {
+    if (!productLineToToggle.value) return;
 
     loading.value = true;
     try {
-        await deleteProductLineAPI(productLineToDelete.value.id);
+        if (productLineToToggle.value.isActive) {
+            // Deactivate
+            await deactivateProductLine(productLineToToggle.value.id);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Hủy kích hoạt dòng sản phẩm thành công",
+            });
+        } else {
+            // Activate
+            await activateProductLine(productLineToToggle.value.id);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Kích hoạt dòng sản phẩm thành công",
+            });
+        }
 
-        // Làm mới danh sách sau khi xóa
         await fetchProductLines();
-
-        // Đóng hộp thoại xác nhận
-        showDeleteModal.value = false;
-        productLineToDelete.value = null;
+        showStatusModal.value = false;
+        productLineToToggle.value = null;
     } catch (error) {
-        console.error("Error deleting product line:", error);
-        // Handle error (show notification, etc.)
+        console.error("Error toggling product line status:", error);
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Có lỗi xảy ra khi thay đổi trạng thái dòng sản phẩm",
+        });
     } finally {
         loading.value = false;
     }
@@ -551,8 +505,9 @@ onMounted(async () => {
                         <td class="brand-cell">
                             {{
                                 productLine.brandName ||
-                                brands.find((b) => b.id === productLine.brandId)
-                                    ?.name ||
+                                availableBrands.find(
+                                    (b) => b.id === productLine.brandId
+                                )?.name ||
                                 "N/A"
                             }}
                         </td>
@@ -584,11 +539,26 @@ onMounted(async () => {
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button
-                                @click="confirmDelete(productLine)"
-                                class="delete-button"
-                                title="Xóa"
+                                @click="confirmToggleStatus(productLine)"
+                                :class="[
+                                    productLine.isActive
+                                        ? 'deactivate-button'
+                                        : 'activate-button',
+                                ]"
+                                :title="
+                                    productLine.isActive
+                                        ? 'Hủy kích hoạt'
+                                        : 'Kích hoạt'
+                                "
                             >
-                                <i class="fas fa-trash-alt"></i>
+                                <i
+                                    class="fas"
+                                    :class="
+                                        productLine.isActive
+                                            ? 'fa-toggle-off'
+                                            : 'fa-toggle-on'
+                                    "
+                                ></i>
                             </button>
                         </td>
                     </tr>
@@ -623,11 +593,11 @@ onMounted(async () => {
                                 class="form-select"
                                 required
                             >
-                                <option :value="null" disabled>
+                                <option value="" disabled selected>
                                     Chọn thương hiệu
                                 </option>
                                 <option
-                                    v-for="brand in brands"
+                                    v-for="brand in availableBrands"
                                     :key="brand.id"
                                     :value="brand.id"
                                 >
@@ -692,35 +662,6 @@ onMounted(async () => {
                     </div>
 
                     <div class="form-group">
-                        <label>Trạng thái dòng sản phẩm</label>
-                        <div class="toggle-switch-wrapper">
-                            <div class="toggle-switch-container">
-                                <label class="toggle-switch">
-                                    <input
-                                        type="checkbox"
-                                        v-model="formData.isActive"
-                                    />
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <span class="toggle-status">
-                                    {{
-                                        formData.isActive
-                                            ? "Đang kích hoạt"
-                                            : "Không kích hoạt"
-                                    }}
-                                </span>
-                            </div>
-                            <div class="toggle-description">
-                                {{
-                                    formData.isActive
-                                        ? "Dòng sản phẩm sẽ hiển thị cho khách hàng trên trang web."
-                                        : "Dòng sản phẩm sẽ bị ẩn khỏi trang web."
-                                }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
                         <label>Mô tả</label>
                         <textarea
                             v-model="formData.description"
@@ -755,50 +696,116 @@ onMounted(async () => {
             </div>
         </div>
 
-        <!-- Delete Confirmation Modal -->
-        <div v-if="showDeleteModal" class="modal-backdrop">
+        <!-- Status Toggle Confirmation Modal -->
+        <div v-if="showStatusModal" class="modal-backdrop">
             <div class="modal-container warning-modal">
-                <div class="modal-header warning">
-                    <h3>Xác nhận xóa dòng sản phẩm</h3>
-                    <button @click="cancelDelete" class="close-button">
+                <div
+                    class="modal-header"
+                    :class="{ warning: productLineToToggle?.isActive }"
+                >
+                    <h3>
+                        {{
+                            productLineToToggle?.isActive
+                                ? "Xác nhận hủy kích hoạt dòng sản phẩm"
+                                : "Xác nhận kích hoạt dòng sản phẩm"
+                        }}
+                    </h3>
+                    <button @click="cancelToggleStatus" class="close-button">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
 
                 <div class="modal-body text-center">
-                    <div class="warning-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
+                    <div
+                        class="warning-icon"
+                        :class="{
+                            'activate-icon': !productLineToToggle?.isActive,
+                        }"
+                    >
+                        <i
+                            class="fas"
+                            :class="
+                                productLineToToggle?.isActive
+                                    ? 'fa-toggle-off'
+                                    : 'fa-toggle-on'
+                            "
+                        ></i>
                     </div>
                     <p class="warning-message">
-                        Bạn có chắc chắn muốn xóa dòng sản phẩm
-                        <strong>"{{ productLineToDelete?.name }}"</strong>?
+                        Bạn có chắc chắn muốn
+                        {{
+                            productLineToToggle?.isActive
+                                ? "vô hiệu hóa"
+                                : "kích hoạt"
+                        }}
+                        dòng sản phẩm
+                        <strong>"{{ productLineToToggle?.name }}"</strong>?
                     </p>
-                    <div v-if="hasProducts" class="warning-details">
+
+                    <!-- Status change impact details -->
+                    <div
+                        class="warning-details"
+                        :class="{
+                            'activate-details': !productLineToToggle?.isActive,
+                        }"
+                    >
                         <i class="fas fa-info-circle"></i>
-                        <span
-                            >Dòng sản phẩm này đang có
-                            {{
-                                getProductLineProductsCount(
-                                    productLineToDelete?.id
-                                )
-                            }}
-                            sản phẩm. Việc xóa có thể ảnh hưởng đến dữ liệu liên
-                            quan.</span
-                        >
+                        <div class="warning-text">
+                            <p v-if="hasProducts" class="warning-count">
+                                <span>Dòng sản phẩm này có</span>
+                                <strong>{{
+                                    getProductLineProductsCount(
+                                        productLineToToggle?.id
+                                    )
+                                }}</strong>
+                                <span>sản phẩm.</span>
+                            </p>
+                            <p
+                                v-if="productLineToToggle?.isActive"
+                                class="warning-impact"
+                            >
+                                <strong>Lưu ý:</strong> Vô hiệu hóa dòng sản
+                                phẩm sẽ ẩn tất cả sản phẩm thuộc dòng sản phẩm
+                                này khỏi trang người dùng.
+                            </p>
+                            <p v-else class="warning-impact">
+                                <strong>Lưu ý:</strong> Kích hoạt dòng sản phẩm
+                                sẽ hiển thị tất cả sản phẩm thuộc dòng sản phẩm
+                                này (trừ những sản phẩm đã bị ngừng bán thủ
+                                công).
+                            </p>
+                        </div>
                     </div>
                 </div>
 
                 <div class="modal-actions">
-                    <button @click="cancelDelete" class="cancel-button">
+                    <button @click="cancelToggleStatus" class="cancel-button">
                         <i class="fas fa-arrow-left"></i> Quay lại
                     </button>
                     <button
-                        @click="deleteProductLine"
-                        class="delete-confirm-button"
+                        @click="toggleProductLineStatus"
+                        :class="
+                            productLineToToggle?.isActive
+                                ? 'deactivate-confirm-button'
+                                : 'activate-confirm-button'
+                        "
                         :disabled="loading"
                     >
                         <span v-if="loading" class="spinner small"></span>
-                        <i v-else class="fas fa-trash-alt"></i> Xóa
+                        <i
+                            v-else
+                            class="fas"
+                            :class="
+                                productLineToToggle?.isActive
+                                    ? 'fa-toggle-off'
+                                    : 'fa-toggle-on'
+                            "
+                        ></i>
+                        {{
+                            productLineToToggle?.isActive
+                                ? "Vô hiệu hóa"
+                                : "Kích hoạt"
+                        }}
                     </button>
                 </div>
             </div>
@@ -1132,7 +1139,8 @@ onMounted(async () => {
 }
 
 .edit-button,
-.delete-button {
+.activate-button,
+.deactivate-button {
     width: 32px;
     height: 32px;
     border-radius: 8px;
@@ -1154,12 +1162,22 @@ onMounted(async () => {
     color: white;
 }
 
-.delete-button {
+.activate-button {
+    background-color: #e6f7ea;
+    color: #22c55e;
+}
+
+.activate-button:hover {
+    background-color: #22c55e;
+    color: white;
+}
+
+.deactivate-button {
     background-color: #fee2e2;
     color: #ef4444;
 }
 
-.delete-button:hover {
+.deactivate-button:hover {
     background-color: #ef4444;
     color: white;
 }
@@ -1339,18 +1357,6 @@ onMounted(async () => {
     display: none;
 }
 
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-}
-
-.checkbox-label input {
-    width: 16px;
-    height: 16px;
-}
-
 .form-actions {
     display: flex;
     justify-content: flex-end;
@@ -1360,7 +1366,8 @@ onMounted(async () => {
 
 .cancel-button,
 .submit-button,
-.delete-confirm-button {
+.activate-confirm-button,
+.deactivate-confirm-button {
     padding: 0.75rem 1.25rem;
     border-radius: 8px;
     font-weight: 500;
@@ -1417,6 +1424,11 @@ onMounted(async () => {
     margin: 0 auto 1.5rem auto;
 }
 
+.warning-icon.activate-icon {
+    background-color: #e6f7ea;
+    color: #22c55e;
+}
+
 .warning-message {
     font-size: 1.1rem;
     color: #333;
@@ -1426,13 +1438,45 @@ onMounted(async () => {
 .warning-details {
     display: flex;
     align-items: flex-start;
-    gap: 0.5rem;
-    padding: 1rem;
-    background-color: #fee2e2;
+    gap: 0.8rem;
+    padding: 1.25rem;
+    background-color: #ffeeee;
+    border: 1px solid #ffcccc;
     border-radius: 8px;
-    color: #ef4444;
+    color: #d32f2f;
     text-align: left;
-    font-size: 0.9rem;
+    font-size: 1rem;
+    margin-top: 1.5rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.warning-details.activate-details {
+    background-color: #e8f5e9;
+    border: 1px solid #c8e6c9;
+    color: #2e7d32;
+}
+
+.warning-text {
+    flex: 1;
+}
+
+.warning-count {
+    margin: 0 0 0.75rem 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.warning-impact {
+    margin-top: 0.75rem;
+    font-size: 1rem;
+}
+
+.warning-impact p {
+    margin: 0;
+    font-weight: 500;
+    line-height: 1.5;
 }
 
 .modal-actions {
@@ -1443,19 +1487,26 @@ onMounted(async () => {
     gap: 1rem;
 }
 
-.delete-confirm-button {
+.activate-confirm-button {
+    background-color: #22c55e;
+    border: none;
+    color: white;
+    min-width: 140px;
+}
+
+.activate-confirm-button:hover {
+    background-color: #16a34a;
+}
+
+.deactivate-confirm-button {
     background-color: #ef4444;
     border: none;
     color: white;
+    min-width: 140px;
 }
 
-.delete-confirm-button:hover {
+.deactivate-confirm-button:hover {
     background-color: #dc2626;
-}
-
-.delete-confirm-button:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
 }
 
 .status-filter {
@@ -1490,80 +1541,6 @@ onMounted(async () => {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(248, 110, 211, 0.1);
     outline: none;
-}
-
-.toggle-switch-wrapper {
-    background-color: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin-top: 8px;
-}
-
-.toggle-switch-container {
-    display: flex;
-    align-items: center;
-    margin: 0;
-}
-
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 48px;
-    height: 24px;
-    margin-right: 12px;
-}
-
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #e2e8f0;
-    transition: 0.3s;
-    border-radius: 24px;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-input:checked + .toggle-slider {
-    background-color: var(--primary-color);
-}
-
-input:checked + .toggle-slider:before {
-    transform: translateX(24px);
-}
-
-.toggle-status {
-    font-weight: 600;
-    font-size: 0.95rem;
-}
-
-input:checked ~ .toggle-status {
-    color: var(--primary-color);
-}
-
-.toggle-description {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px dashed #e5e7eb;
-    font-size: 0.85rem;
-    color: #6b7280;
-    line-height: 1.4;
 }
 
 /* Responsive tweaks */

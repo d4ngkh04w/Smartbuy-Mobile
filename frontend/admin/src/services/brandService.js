@@ -44,9 +44,15 @@ export const updateBrand = async (id, brandData) => {
     });
 };
 
-// Delete a brand
-export const deleteBrand = async (id) => {
-    return await instance.delete(`/brand/${id}`);
+
+// Activate a brand
+export const activateBrand = async (id) => {
+    return await instance.put(`/brand/${id}/activate`);
+};
+
+// Deactivate a brand
+export const deactivateBrand = async (id) => {
+    return await instance.put(`/brand/${id}/deactivate`);
 };
 
 // All brand services
@@ -55,7 +61,8 @@ export const brandService = {
     getBrandById,
     createBrand,
     updateBrand,
-    deleteBrand,
+    activateBrand,
+    deactivateBrand,
 };
 
 export default brandService;

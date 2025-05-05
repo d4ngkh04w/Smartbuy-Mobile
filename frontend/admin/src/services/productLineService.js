@@ -41,9 +41,14 @@ export const updateProductLine = async (id, productLineData) => {
     });
 };
 
-// Delete a product line
-export const deleteProductLine = async (id) => {
-    return await instance.delete(`/product-line/${id}`);
+// Activate a product line
+export const activateProductLine = async (id) => {
+    return await instance.put(`/product-line/${id}/activate`);
+};
+
+// Deactivate a product line
+export const deactivateProductLine = async (id) => {
+    return await instance.put(`/product-line/${id}/deactivate`);
 };
 
 // All product line services
@@ -53,7 +58,8 @@ export const productLineService = {
     getProductLineById,
     createProductLine,
     updateProductLine,
-    deleteProductLine,
+    activateProductLine,
+    deactivateProductLine,
 };
 
 export default productLineService;

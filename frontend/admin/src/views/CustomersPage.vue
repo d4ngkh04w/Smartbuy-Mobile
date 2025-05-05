@@ -929,6 +929,8 @@ onMounted(async () => {
 	padding: 1.5rem;
 }
 
+
+
 .loading-indicator {
 	display: flex;
 	flex-direction: column;
@@ -1015,6 +1017,7 @@ onMounted(async () => {
 .customer-row {
 	border-bottom: 1px solid #e5e7eb;
 	transition: background-color 0.2s;
+	
 }
 
 .customer-row:hover {

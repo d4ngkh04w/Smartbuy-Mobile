@@ -1,17 +1,20 @@
 <script setup>
-import { ref, onMounted, computed, watch, reactive } from "vue";
+import { ref, onMounted, computed, reactive } from "vue";
 import {
     getProducts,
     getProductById,
     createProduct,
     updateProduct,
-    deleteProduct,
+    activateProduct,
+    deactivateProduct,
+    createProductColor,
 } from "@/services/productService";
 import {
-    getProductLines,
     getProductLinesByBrand,
+    getProductLineById,
 } from "@/services/productLineService";
 import { getBrands } from "@/services/brandService";
+import emitter from "../../utils/evenBus.js";
 
 // State
 const products = ref([]);
@@ -19,10 +22,9 @@ const productLines = ref([]);
 const brands = ref([]);
 const loading = ref(false);
 const showModal = ref(false);
-const showDeleteModal = ref(false);
+const showStatusModal = ref(false);
 const isEditing = ref(false);
 const searchQuery = ref("");
-const showFilters = ref(false);
 const submitLoading = ref(false);
 const fileInput = ref(null);
 
@@ -33,6 +35,9 @@ const newColor = ref({
     imagePreviews: [], // URLs for previewing images
     mainImageIndex: 0, // Index of the main image for this color
 });
+
+// Product to toggle status
+const productToToggle = ref(null);
 
 // Form validation
 const formErrors = reactive({
@@ -72,27 +77,12 @@ const formData = ref({
     processor: "",
     os: "",
     simSlots: 1,
-    isActive: true,
-
-    // Instead of a simple array of colors, now we have color objects with associated images
     colorData: [], // Array of { name, images, mainImageIndex }
-
-    // This is for backward compatibility during editing
     colors: [],
 });
 
 // Product to delete reference
 const productToDelete = ref(null);
-
-// Filter options
-const filters = ref({
-    productLineId: "",
-    brandId: "",
-    priceMin: 0,
-    priceMax: 100000000,
-    isActive: "all",
-    sortBy: "newest",
-});
 
 // Format currency function
 const formatCurrency = (value) => {
@@ -107,18 +97,18 @@ const formatCurrency = (value) => {
 const formatImageUrl = (imagePath) => {
     if (!imagePath) return null;
 
-    // Nếu đường dẫn đã là URL đầy đủ hoặc là dạng base64
+    // If image path is already a full URL or base64 data
     if (imagePath.startsWith("http") || imagePath.startsWith("data:"))
         return imagePath;
 
-    // Lấy base URL từ cấu hình API
+    // Get base URL from API config
     const apiUrl = import.meta.env.VITE_API_URL || "";
     const baseUrl = apiUrl.includes("/api") ? apiUrl.split("/api")[0] : "";
 
-    // Chuẩn hóa đường dẫn (chuyển \ thành /)
+    // Normalize the path (convert \ to /)
     const normalizedPath = imagePath.replace(/\\/g, "/");
 
-    // Kiểm tra nếu đường dẫn bắt đầu bằng /
+    // Check if path starts with /
     const path = normalizedPath.startsWith("/")
         ? normalizedPath
         : `/${normalizedPath}`;
@@ -128,7 +118,7 @@ const formatImageUrl = (imagePath) => {
 
 // Computed properties
 const filteredProducts = computed(() => {
-    if (!searchQuery.value && !isFiltering.value) return products.value;
+    if (!searchQuery.value) return products.value;
 
     let result = products.value;
 
@@ -145,79 +135,7 @@ const filteredProducts = computed(() => {
         );
     }
 
-    // Apply filters if active
-    if (isFiltering.value) {
-        // Filter by product line
-        if (filters.value.productLineId) {
-            result = result.filter(
-                (p) => p.productLineId === parseInt(filters.value.productLineId)
-            );
-        }
-
-        // Filter by brand through product line
-        if (filters.value.brandId) {
-            const filteredProductLineIds = productLines.value
-                .filter((pl) => pl.brandId === parseInt(filters.value.brandId))
-                .map((pl) => pl.id);
-
-            result = result.filter((p) =>
-                filteredProductLineIds.includes(p.productLineId)
-            );
-        }
-
-        // Filter by price range
-        result = result.filter(
-            (p) =>
-                p.salePrice >= filters.value.priceMin &&
-                p.salePrice <= filters.value.priceMax
-        );
-
-        // Filter by active status
-        if (filters.value.isActive !== "all") {
-            const isActive = filters.value.isActive === "active";
-            result = result.filter((p) => p.isActive === isActive);
-        }
-    }
-
-    // Apply sorting
-    switch (filters.value.sortBy) {
-        case "newest":
-            result = [...result].sort(
-                (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-            );
-            break;
-        case "oldest":
-            result = [...result].sort(
-                (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-            );
-            break;
-        case "price_asc":
-            result = [...result].sort((a, b) => a.salePrice - b.salePrice);
-            break;
-        case "price_desc":
-            result = [...result].sort((a, b) => b.salePrice - a.salePrice);
-            break;
-        case "name_asc":
-            result = [...result].sort((a, b) => a.name.localeCompare(b.name));
-            break;
-        case "name_desc":
-            result = [...result].sort((a, b) => b.name.localeCompare(a.name));
-            break;
-    }
-
     return result;
-});
-
-// Check if filters are active
-const isFiltering = computed(() => {
-    return (
-        filters.value.productLineId !== "" ||
-        filters.value.brandId !== "" ||
-        filters.value.isActive !== "all" ||
-        filters.value.priceMin > 0 ||
-        filters.value.priceMax < 100000000 ||
-        filters.value.sortBy !== "newest"
-    );
 });
 
 // Stats for cards
@@ -229,18 +147,6 @@ const totalValue = computed(() => {
     return products.value.reduce((sum, product) => {
         return sum + product.quantity * product.salePrice;
     }, 0);
-});
-
-// Computed property để lấy danh sách dòng sản phẩm cho bộ lọc
-// Tách thành một computed riêng để tránh tính toán nhiều lần trong template
-const getProductLineOptions = computed(() => {
-    // Nếu đã chọn brand trong filter, chỉ hiển thị product lines của brand đó
-    if (filters.value.brandId) {
-        const brandId = parseInt(filters.value.brandId);
-        return productLines.value.filter((pl) => pl.brandId === brandId);
-    }
-    // Nếu không chọn brand, hiển thị tất cả product lines
-    return productLines.value;
 });
 
 // Methods
@@ -258,42 +164,41 @@ const fetchProducts = async () => {
     }
 };
 
-const fetchProductLines = async (brandId = null) => {
+const fetchProductLines = async (brandId) => {
     try {
-        let response;
-        if (brandId) {
-            // Nếu có brandId, sử dụng API lấy product line theo brand cụ thể
-            response = await getProductLinesByBrand(brandId);
-
-            // Khi lấy theo brand, dữ liệu nằm trong response.data.productLines
-            if (response.data && response.data.productLines) {
-                // Cập nhật với cách gán trực tiếp mảng mới thay vì thay đổi nội dung mảng hiện có
-                productLines.value = [...response.data.productLines];
-            }
-        } else {
-            // Nếu không có brandId, lấy tất cả product line
-            response = await getProductLines();
-
-            // Khi lấy tất cả, dữ liệu có thể nằm trong response.data.productLines
-            if (response.data && response.data.productLines) {
-                productLines.value = [...response.data.productLines];
-            }
+        if (!brandId) {
+            // Không có brandId thì không làm gì cả, hoặc set mảng rỗng
+            productLines.value = [];
+            return;
         }
 
-        // Nếu API trả về một mảng trực tiếp (không phải là .productLines)
-        if (Array.isArray(response.data)) {
+        // Nếu có brandId, gọi API lấy product line theo brand
+        // Thêm tham số isActive=true để chỉ lấy các product line đang kích hoạt
+        const response = await getProductLinesByBrand(brandId, {
+            isActive: true,
+        });
+
+        if (response.data && response.data.productLines) {
+            productLines.value = [...response.data.productLines];
+        } else if (Array.isArray(response.data)) {
+            // Trong một số trường hợp API trả về mảng trực tiếp
             productLines.value = [...response.data];
+        } else {
+            // Nếu không có dữ liệu hợp lệ, gán mảng rỗng
+            productLines.value = [];
         }
     } catch (error) {
         console.error("Error fetching product lines:", error);
-        // Nếu có lỗi, set mảng rỗng để tránh hiển thị dữ liệu cũ
         productLines.value = [];
     }
 };
 
 const fetchBrands = async () => {
     try {
-        const response = await getBrands({ includeProductLines: true });
+        const response = await getBrands({
+            includeProductLines: true,
+            isActive: true, // Only fetch active brands
+        });
         if (response.data && response.data.brands) {
             brands.value = response.data.brands;
         } else if (Array.isArray(response.data)) {
@@ -338,18 +243,6 @@ const handleBrandChange = async () => {
     }
 };
 
-// Reset filter values
-const resetFilters = () => {
-    filters.value = {
-        productLineId: "",
-        brandId: "",
-        priceMin: 0,
-        priceMax: 100000000,
-        isActive: "all",
-        sortBy: "newest",
-    };
-};
-
 // Open modal to add new product
 const openAddProductModal = async () => {
     loading.value = true;
@@ -383,6 +276,9 @@ const openAddProductModal = async () => {
         // Reset any validation errors
         resetFormErrors();
 
+        // Reset new color form
+        resetNewColor();
+
         showModal.value = true;
     } catch (error) {
         console.error("Error preparing form:", error);
@@ -402,7 +298,7 @@ const resetFormErrors = () => {
 const editProduct = async (product) => {
     loading.value = true;
     try {
-        // Chỉ lấy danh sách brands trước, không lấy product lines
+        // Fetch all brands first with their product lines included
         await fetchBrands();
 
         // Reset any validation errors
@@ -422,13 +318,12 @@ const editProduct = async (product) => {
         }
 
         isEditing.value = true;
-        const brandId = getBrandIdForProductLine(fullProduct.productLineId);
 
-        // Prepare form data from product
+        // First set all product properties except for brandId
         formData.value = {
             id: fullProduct.id,
             name: fullProduct.name,
-            brandId: brandId,
+            brandId: null, // We'll set this after determining the brand
             productLineId: fullProduct.productLineId,
             quantity: fullProduct.quantity,
             importPrice: fullProduct.importPrice,
@@ -480,9 +375,47 @@ const editProduct = async (product) => {
             });
         }
 
-        // Lấy dữ liệu product lines dựa trên brandId đã xác định
-        if (brandId) {
-            await fetchProductLines(brandId);
+        // Get the product line details to find the brand
+        if (fullProduct.productLineId) {
+            try {
+                const response = await getProductLineById(
+                    fullProduct.productLineId
+                );
+                console.log("Product Line API response:", response);
+
+                if (response.data && response.data.productLine) {
+                    const productLine = response.data.productLine;
+                    const brandName = productLine.brandName;
+
+                    console.log(
+                        "Found brand name from product line:",
+                        brandName
+                    );
+
+                    // Find the matching brand ID from the fetched brands list
+                    const matchingBrand = brands.value.find(
+                        (brand) => brand.name === brandName
+                    );
+
+                    if (matchingBrand) {
+                        formData.value.brandId = matchingBrand.id;
+                        console.log(
+                            "Found matching brand ID:",
+                            matchingBrand.id
+                        );
+
+                        // Fetch all product lines for this brand
+                        await fetchProductLines(matchingBrand.id);
+                    } else {
+                        console.error(
+                            "Could not find matching brand for name:",
+                            brandName
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching product line details:", error);
+            }
         }
 
         showModal.value = true;
@@ -493,90 +426,6 @@ const editProduct = async (product) => {
     }
 };
 
-// Handle image uploads
-const handleImageUpload = (event) => {
-    const files = event.target.files;
-    if (!files || !files.length) return;
-
-    // Clear previous error
-    formErrors.images = "";
-
-    // Check file count
-    if (formData.value.images.length + files.length > 5) {
-        formErrors.images = "Tối đa 5 hình ảnh được phép";
-        return;
-    }
-
-    // Process each file
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        // Validate file type
-        if (!["image/jpeg", "image/png", "image/jpg"].includes(file.type)) {
-            formErrors.images = "Chỉ chấp nhận các định dạng: jpg, jpeg, png";
-            continue;
-        }
-
-        // Validate file size (5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            formErrors.images = "Kích thước tệp tối đa là 5MB";
-            continue;
-        }
-
-        // Add file to the list
-        formData.value.images.push(file);
-
-        // Create preview
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            formData.value.imagesPreviews.push({
-                id: null, // null for new images
-                url: e.target.result,
-                isMain: formData.value.imagesPreviews.length === 0, // First image is main by default
-            });
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // Clear the file input for future uploads
-    if (fileInput.value) {
-        fileInput.value.value = "";
-    }
-};
-
-// Remove an image
-const removeImage = (index) => {
-    // If removing the main image, set a new main image
-    if (index === formData.value.mainImageIndex) {
-        // If there are other images, set the first one as main
-        if (formData.value.imagesPreviews.length > 1) {
-            const newMainIndex = index === 0 ? 1 : 0;
-            formData.value.mainImageIndex = newMainIndex;
-        } else {
-            formData.value.mainImageIndex = 0;
-        }
-    } else if (index < formData.value.mainImageIndex) {
-        // If removing an image before the main image, adjust the main image index
-        formData.value.mainImageIndex--;
-    }
-
-    // For new images
-    if (!formData.value.imagesPreviews[index].id) {
-        const actualIndex = formData.value.imagesPreviews
-            .slice(0, index)
-            .filter((img) => !img.id).length;
-        formData.value.images.splice(actualIndex, 1);
-    }
-
-    // Remove from previews
-    formData.value.imagesPreviews.splice(index, 1);
-};
-
-// Set main image
-const setMainImage = (index) => {
-    formData.value.mainImageIndex = index;
-};
-
 // Handle color image upload
 const handleColorImageUpload = (event) => {
     const files = event.target.files;
@@ -584,12 +433,6 @@ const handleColorImageUpload = (event) => {
 
     // Clear any previous errors
     formErrors.colors = "";
-
-    // Check if this color can accept more images (max 5 per color)
-    if (newColor.value.images.length + files.length > 5) {
-        formErrors.colors = "Tối đa 5 hình ảnh cho mỗi màu sắc";
-        return;
-    }
 
     // Process each file
     for (let i = 0; i < files.length; i++) {
@@ -721,44 +564,12 @@ const resetNewColor = () => {
     formErrors.colors = "";
 };
 
-// Add function to handle removing images from color data
-const removeColorImageFromData = (colorIndex, imageIndex) => {
-    const colorData = formData.value.colorData[colorIndex];
-
-    // If removing the main image, set a new main image
-    if (imageIndex === colorData.mainImageIndex) {
-        if (colorData.imagePreviews.length > 1) {
-            const newMainIndex = imageIndex === 0 ? 1 : 0;
-            colorData.mainImageIndex = newMainIndex;
-        } else {
-            colorData.mainImageIndex = 0;
-        }
-    } else if (imageIndex < colorData.mainImageIndex) {
-        // If removing an image before the main image, adjust the main image index
-        colorData.mainImageIndex--;
-    }
-
-    // Remove from arrays
-    colorData.images.splice(imageIndex, 1);
-    colorData.imagePreviews.splice(imageIndex, 1);
-};
-
 // Handle color-specific image operations for existing colors during editing
 const handleColorImageUploadForExisting = (event, colorIndex) => {
     const files = event.target.files;
     if (!files || !files.length) return;
 
     const colorData = formData.value.colorData[colorIndex];
-
-    // Check if this color can accept more images (max 5 per color including existing ones)
-    const currentImageCount =
-        (colorData.existingImages?.length || 0) -
-        (colorData.removedImageIds?.length || 0) +
-        (colorData.newImages?.length || 0);
-    if (currentImageCount + files.length > 5) {
-        formErrors.colors = "Tối đa 5 hình ảnh cho mỗi màu sắc";
-        return;
-    }
 
     // Process each file
     for (let i = 0; i < files.length; i++) {
@@ -811,11 +622,26 @@ const setExistingColorMainImage = (
     if (isNewImage) {
         // Set main image from newly uploaded images
         colorData.mainImageIndex = imageIndex;
+
+        // Reset any selected main image from existing images
+        for (let i = 0; i < colorData.existingImages?.length || 0; i++) {
+            if (colorData.existingImages[i]) {
+                colorData.existingImages[i].isMain = false;
+            }
+        }
     } else {
         // Set main image from existing images
         const image = colorData.existingImages[imageIndex];
         if (image) {
             colorData.mainImageId = image.id;
+
+            // Update isMain flag on all existing images for UI update
+            for (let i = 0; i < colorData.existingImages.length; i++) {
+                colorData.existingImages[i].isMain = i === imageIndex;
+            }
+
+            // Reset any main image from new images
+            colorData.mainImageIndex = undefined;
         }
     }
 };
@@ -878,7 +704,7 @@ const removeExistingColorImage = (
     }
 };
 
-// Add new color during editing
+// Add new color during edit
 const addNewColorDuringEdit = () => {
     // Validate color name
     if (!newColor.value.name.trim()) {
@@ -915,29 +741,6 @@ const addNewColorDuringEdit = () => {
 
     // Reset new color form
     resetNewColor();
-};
-
-// Add a product color
-const addColor = () => {
-    const color = document.getElementById("colorInput").value.trim();
-    if (!color) return;
-
-    // Check if color already exists
-    if (
-        formData.value.colors.some(
-            (c) => c.toLowerCase() === color.toLowerCase()
-        )
-    ) {
-        return;
-    }
-
-    formData.value.colors.push(color);
-    document.getElementById("colorInput").value = ""; // Clear input
-};
-
-// Remove a product color
-const removeColor = (index) => {
-    formData.value.colors.splice(index, 1);
 };
 
 // Validate form
@@ -996,189 +799,228 @@ const submitForm = async () => {
 
         // Add basic fields
         data.append("Name", formData.value.name);
-        data.append("Quantity", formData.value.quantity);
-        data.append("ImportPrice", formData.value.importPrice);
-        data.append("SalePrice", formData.value.salePrice);
+        data.append("Quantity", formData.value.quantity.toString());
+        data.append("ImportPrice", formData.value.importPrice.toString());
+        data.append("SalePrice", formData.value.salePrice.toString());
 
         if (formData.value.description) {
             data.append("Description", formData.value.description);
         }
 
-        // When editing, need to include ProductLineId and IsActive
-        if (isEditing.value) {
-            data.append("ProductLineId", formData.value.productLineId);
-            data.append("IsActive", formData.value.isActive.toString());
-        } else {
-            // For new products
-            data.append("BrandId", formData.value.brandId);
-            data.append("ProductLineId", formData.value.productLineId);
-        }
-
-        // Add product details
-        if (formData.value.warranty)
-            data.append("Warranty", formData.value.warranty);
-        if (formData.value.ram) data.append("RAM", formData.value.ram);
-        if (formData.value.storage)
-            data.append("Storage", formData.value.storage);
-        if (formData.value.screenSize)
-            data.append("ScreenSize", formData.value.screenSize);
-        if (formData.value.screenResolution)
-            data.append("ScreenResolution", formData.value.screenResolution);
-        if (formData.value.battery)
-            data.append("Battery", formData.value.battery);
-        if (formData.value.processor)
-            data.append("Processor", formData.value.processor);
-        if (formData.value.os) data.append("OS", formData.value.os);
-        if (formData.value.simSlots)
-            data.append("SimSlots", formData.value.simSlots);
-
-        // For creating a new product
+        // For new products, add productLineId
         if (!isEditing.value) {
-            // Process colors and their images for new product
-            formData.value.colorData.forEach((colorData, colorIndex) => {
-                // Add color name
-                data.append(`ColorData[${colorIndex}].Name`, colorData.name);
-
-                // Add which image is the main image for this color
+            data.append(
+                "ProductLineId",
+                formData.value.productLineId.toString()
+            );
+        } else {
+            // For editing, include ProductLineId and IsActive
+            if (formData.value.productLineId) {
                 data.append(
-                    `ColorData[${colorIndex}].MainImageIndex`,
-                    colorData.mainImageIndex.toString()
+                    "ProductLineId",
+                    formData.value.productLineId.toString()
                 );
-
-                // Add all images for this color
-                colorData.images.forEach((image, imageIndex) => {
-                    data.append(
-                        `ColorData[${colorIndex}].Images[${imageIndex}]`,
-                        image
-                    );
-                });
-            });
+            }
+            data.append("IsActive", formData.value.isActive.toString());
         }
-        // For editing an existing product
-        else {
-            // Handle existing colors updates and new colors
-            const updateColorData = [];
-            const removeColorIds = [];
 
-            // First, identify colors that should be removed
-            if (formData.value.existingColors) {
-                const existingColorIds = formData.value.existingColors.map(
-                    (c) => c.id
-                );
+        // Add technical specifications
+        if (formData.value.warranty) {
+            data.append("Warranty", formData.value.warranty);
+        }
+
+        if (formData.value.ram) {
+            data.append("RAM", formData.value.ram);
+        }
+
+        if (formData.value.storage) {
+            data.append("Storage", formData.value.storage);
+        }
+
+        if (formData.value.screenSize) {
+            data.append("ScreenSize", formData.value.screenSize);
+        }
+
+        if (formData.value.screenResolution) {
+            data.append("ScreenResolution", formData.value.screenResolution);
+        }
+
+        if (formData.value.battery) {
+            data.append("Battery", formData.value.battery);
+        }
+
+        if (formData.value.processor) {
+            data.append("Processor", formData.value.processor);
+        }
+
+        if (formData.value.os) {
+            data.append("OS", formData.value.os);
+        }
+
+        if (formData.value.simSlots) {
+            data.append("SimSlots", formData.value.simSlots.toString());
+        }
+
+        if (!isEditing.value) {
+            // We're creating a new product
+
+            // Process colors and their images
+            if (
+                formData.value.colorData &&
+                formData.value.colorData.length > 0
+            ) {
+                // The backend doesn't support ColorData directly in CreateProductDTO anymore
+                // Instead, we need to create the product first, then add colors separately
+                const response = await createProduct(data);
+
+                if (response.data && response.data.product) {
+                    const productId = response.data.product.id;
+
+                    // Add colors one by one
+                    for (const colorData of formData.value.colorData) {
+                        const colorFormData = new FormData();
+                        colorFormData.append("Name", colorData.name);
+                        colorFormData.append(
+                            "MainImageIndex",
+                            (colorData.mainImageIndex ?? 0).toString()
+                        );
+
+                        // Add color images
+                        for (let i = 0; i < colorData.images.length; i++) {
+                            colorFormData.append("Images", colorData.images[i]);
+                        }
+                        const response = await createProductColor(
+                            productId,
+                            colorFormData
+                        );
+                    }
+                }
+            } else {
+                // If no colors, just create the product
+                await createProduct(data);
+            }
+        } else {
+            // We're updating an existing product
+
+            // Handle existing colors updates
+            if (
+                formData.value.colorData &&
+                formData.value.colorData.length > 0
+            ) {
+                // Process removed colors
+                const existingColorIds =
+                    formData.value.existingColors?.map((c) => c.id) || [];
                 const remainingColorIds = formData.value.colorData
-                    .filter((c) => c.id) // Only consider colors with IDs (existing colors)
+                    .filter((c) => c.id) // Only consider existing colors
                     .map((c) => c.id);
 
-                // Find colors that exist in existingColors but not in colorData
-                existingColorIds.forEach((id) => {
-                    if (!remainingColorIds.includes(id)) {
-                        removeColorIds.push(id);
-                    }
+                // Find colors to remove
+                const removeColorIds = existingColorIds.filter(
+                    (id) => !remainingColorIds.includes(id)
+                );
+                removeColorIds.forEach((id) => {
+                    data.append("RemoveColorIds", id.toString());
                 });
-            }
 
-            // Add color IDs that should be removed
-            removeColorIds.forEach((id) => {
-                data.append("RemoveColorIds", id);
-            });
+                // Process color updates
+                formData.value.colorData.forEach((colorData, index) => {
+                    if (colorData.id) {
+                        // This is an existing color
+                        data.append(
+                            `UpdateColorData[${index}].Id`,
+                            colorData.id.toString()
+                        );
+                        data.append(
+                            `UpdateColorData[${index}].Name`,
+                            colorData.name
+                        );
 
-            // Process existing colors that need updates
-            formData.value.colorData.forEach((colorData, index) => {
-                if (colorData.id) {
-                    // This is an existing color being updated
-                    data.append(`UpdateColorData[${index}].Id`, colorData.id);
-                    data.append(
-                        `UpdateColorData[${index}].Name`,
-                        colorData.name
-                    );
+                        // Handle removed images
+                        if (
+                            colorData.removedImageIds &&
+                            colorData.removedImageIds.length > 0
+                        ) {
+                            colorData.removedImageIds.forEach((imageId) => {
+                                data.append(
+                                    `UpdateColorData[${index}].RemoveImageIds`,
+                                    imageId.toString()
+                                );
+                            });
+                        }
 
-                    // Handle removed images
-                    if (
-                        colorData.removedImageIds &&
-                        colorData.removedImageIds.length > 0
-                    ) {
-                        colorData.removedImageIds.forEach((imageId) => {
+                        // Add new images for this existing color
+                        if (
+                            colorData.newImages &&
+                            colorData.newImages.length > 0
+                        ) {
+                            colorData.newImages.forEach((image, imgIndex) => {
+                                data.append(
+                                    `UpdateColorData[${index}].AddImages`,
+                                    image
+                                );
+                            });
+
+                            if (colorData.mainImageIndex !== undefined) {
+                                data.append(
+                                    `UpdateColorData[${index}].MainImageIndex`,
+                                    colorData.mainImageIndex.toString()
+                                );
+                                data.append(
+                                    `UpdateColorData[${index}].SetMainImage`,
+                                    "true"
+                                );
+                            }
+                        }
+
+                        // Set main image from existing images
+                        if (colorData.mainImageId) {
                             data.append(
-                                `UpdateColorData[${index}].RemoveImageIds`,
-                                imageId
-                            );
-                        });
-                    }
-
-                    // Add new images for this existing color
-                    if (colorData.newImages && colorData.newImages.length > 0) {
-                        colorData.newImages.forEach((image, imgIndex) => {
-                            data.append(
-                                `UpdateColorData[${index}].AddImages[${imgIndex}]`,
-                                image
-                            );
-                        });
-
-                        // If there's a main image to set from the new images
-                        if (colorData.mainImageIndex !== undefined) {
-                            data.append(
-                                `UpdateColorData[${index}].MainImageIndex`,
-                                colorData.mainImageIndex.toString()
+                                `UpdateColorData[${index}].MainImageId`,
+                                colorData.mainImageId.toString()
                             );
                             data.append(
                                 `UpdateColorData[${index}].SetMainImage`,
                                 "true"
                             );
                         }
-                    }
-
-                    // If there's a main image to set from existing images
-                    if (colorData.mainImageId) {
+                    } else {
+                        // This is a new color being added during edit
                         data.append(
-                            `UpdateColorData[${index}].MainImageId`,
-                            colorData.mainImageId
+                            `UpdateColorData[${index}].Name`,
+                            colorData.name
+                        );
+
+                        // Add images for this new color
+                        if (colorData.images && colorData.images.length > 0) {
+                            colorData.images.forEach((image, imgIndex) => {
+                                data.append(
+                                    `UpdateColorData[${index}].AddImages`,
+                                    image
+                                );
+                            });
+                        }
+
+                        // Set main image for new color
+                        data.append(
+                            `UpdateColorData[${index}].MainImageIndex`,
+                            colorData.mainImageIndex.toString()
                         );
                         data.append(
                             `UpdateColorData[${index}].SetMainImage`,
                             "true"
                         );
                     }
-                } else {
-                    // This is a new color being added
-                    data.append(
-                        `UpdateColorData[${index}].Name`,
-                        colorData.name
-                    );
+                });
 
-                    // Add images for this new color
-                    if (colorData.images && colorData.images.length > 0) {
-                        colorData.images.forEach((image, imgIndex) => {
-                            data.append(
-                                `UpdateColorData[${index}].AddImages[${imgIndex}]`,
-                                image
-                            );
-                        });
-                    }
-
-                    // Set main image for this new color
-                    data.append(
-                        `UpdateColorData[${index}].MainImageIndex`,
-                        colorData.mainImageIndex.toString()
-                    );
-                    data.append(
-                        `UpdateColorData[${index}].SetMainImage`,
-                        "true"
-                    );
-                }
-            });
+                await updateProduct(formData.value.id, data);
+            } else {
+                // If no colors to update, just update the product details
+                await updateProduct(formData.value.id, data);
+            }
         }
 
-        let response;
-        if (isEditing.value) {
-            response = await updateProduct(formData.value.id, data);
-        } else {
-            response = await createProduct(data);
-        }
-
-        // Refresh the products list
+        // Refresh the products list and close the modal
         await fetchProducts();
-
-        // Close the modal
         closeModal();
     } catch (error) {
         console.error("Error submitting form:", error);
@@ -1194,48 +1036,71 @@ const closeModal = () => {
     resetFormErrors();
 };
 
-// Confirm delete
-const confirmDelete = (product) => {
-    productToDelete.value = product;
-    showDeleteModal.value = true;
+// Toggle product status modal
+const toggleStatusModal = (product) => {
+    productToToggle.value = product;
+    showStatusModal.value = true;
 };
 
-// Cancel delete
-const cancelDelete = () => {
-    showDeleteModal.value = false;
-    productToDelete.value = null;
+// Cancel status toggle
+const cancelStatusToggle = () => {
+    showStatusModal.value = false;
+    productToToggle.value = null;
 };
 
-// Delete product
-const deleteConfirmed = async () => {
-    if (!productToDelete.value) return;
+// Confirm status toggle and call the API
+const confirmStatusToggle = async () => {
+    if (!productToToggle.value) return;
 
     loading.value = true;
     try {
-        await deleteProduct(productToDelete.value.id);
+        if (productToToggle.value.isActive) {
+            // If currently active, deactivate it
+            await deactivateProduct(productToToggle.value.id);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Ngừng bán sản phẩm thành công!",
+            });
+        } else {
+            // If currently inactive, activate it
+            await activateProduct(productToToggle.value.id);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Kích hoạt bán lại sản phẩm thành công!",
+            });
+        }
+
+        // Refresh products list
         await fetchProducts();
-        showDeleteModal.value = false;
-        productToDelete.value = null;
+        showStatusModal.value = false;
+        productToToggle.value = null;
     } catch (error) {
-        console.error("Error deleting product:", error);
-        alert("Có lỗi xảy ra khi xóa sản phẩm. Vui lòng thử lại sau.");
+        console.error("Error toggling product status:", error);
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Có lỗi xảy ra khi cập nhật trạng thái sản phẩm.",
+        });
     } finally {
         loading.value = false;
     }
 };
 
 // Get product image URL
-const getProductImage = (product) => {
-    if (!product.images || product.images.length === 0) return null;
-
-    // Find main image first
-    const mainImage = product.images.find((img) => img.isMain);
-    if (mainImage) {
-        return formatImageUrl(mainImage.imagePath);
+const getProductMainImage = (product) => {
+    if (product.colors && product.colors.length > 0) {
+        for (const color of product.colors) {
+            if (color.images && color.images.length > 0) {
+                const mainImage = color.images.find((img) => img.isMain);
+                // Dù không có main image, vẫn lấy ảnh đầu tiên
+                const chosenImage = mainImage || color.images[0];
+                if (chosenImage) {
+                    return formatImageUrl(chosenImage.imagePath);
+                }
+            }
+        }
     }
 
-    // If no main image, return the first one
-    return formatImageUrl(product.images[0].imagePath);
+    return null;
 };
 
 // Load data when component mounts
@@ -1263,12 +1128,6 @@ onMounted(async () => {
                         v-model="searchQuery"
                         placeholder="Tìm kiếm sản phẩm..."
                     />
-                </div>
-
-                <div class="filter-button" @click="showFilters = !showFilters">
-                    <i class="fas fa-filter"></i>
-                    <span>Bộ lọc</span>
-                    <span v-if="isFiltering" class="filter-badge">!</span>
                 </div>
 
                 <button @click="openAddProductModal" class="add-button">
@@ -1310,89 +1169,6 @@ onMounted(async () => {
             </div>
         </div>
 
-        <!-- Filters panel -->
-        <div v-if="showFilters" class="filter-panel">
-            <div class="filter-header">
-                <h3>Bộ lọc</h3>
-                <div class="filter-actions">
-                    <button @click="resetFilters" class="reset-button">
-                        <i class="fas fa-undo"></i> Đặt lại
-                    </button>
-                    <button @click="showFilters = false" class="close-filter">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="filter-content">
-                <div class="filter-group">
-                    <label>Thương hiệu</label>
-                    <select v-model="filters.brandId">
-                        <option value="">Tất cả thương hiệu</option>
-                        <option
-                            v-for="brand in brands"
-                            :key="brand.id"
-                            :value="brand.id.toString()"
-                        >
-                            {{ brand.name }}
-                        </option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label>Dòng sản phẩm</label>
-                    <select v-model="filters.productLineId">
-                        <option value="">Tất cả dòng sản phẩm</option>
-                        <option
-                            v-for="pl in getProductLineOptions"
-                            :key="pl.id"
-                            :value="pl.id.toString()"
-                        >
-                            {{ pl.name }}
-                        </option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label>Trạng thái</label>
-                    <select v-model="filters.isActive">
-                        <option value="all">Tất cả trạng thái</option>
-                        <option value="active">Đang bán</option>
-                        <option value="inactive">Ngừng bán</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label>Sắp xếp</label>
-                    <select v-model="filters.sortBy">
-                        <option value="newest">Mới nhất</option>
-                        <option value="oldest">Cũ nhất</option>
-                        <option value="price_asc">Giá tăng dần</option>
-                        <option value="price_desc">Giá giảm dần</option>
-                        <option value="name_asc">Tên A-Z</option>
-                        <option value="name_desc">Tên Z-A</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label>Khoảng giá</label>
-                    <div class="price-range">
-                        <input
-                            type="number"
-                            v-model="filters.priceMin"
-                            placeholder="Giá tối thiểu"
-                        />
-                        <span>-</span>
-                        <input
-                            type="number"
-                            v-model="filters.priceMax"
-                            placeholder="Giá tối đa"
-                        />
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Products table -->
         <div class="data-card">
             <div v-if="loading" class="loading-state">
@@ -1401,9 +1177,7 @@ onMounted(async () => {
             </div>
             <div v-else-if="filteredProducts.length === 0" class="empty-state">
                 <i class="fas fa-box-open"></i>
-                <p v-if="searchQuery || isFiltering">
-                    Không tìm thấy sản phẩm phù hợp
-                </p>
+                <p v-if="searchQuery">Không tìm thấy sản phẩm phù hợp</p>
                 <p v-else>Không có sản phẩm nào</p>
                 <button @click="openAddProductModal" class="action-button">
                     <i class="fas fa-plus"></i> Thêm sản phẩm mới
@@ -1430,14 +1204,14 @@ onMounted(async () => {
                     >
                         <td class="name-cell">{{ product.name }}</td>
                         <td class="image-cell">
-                            <div class="image-wrapper">
+                            <div class="logo-wrapper">
                                 <img
-                                    v-if="getProductImage(product)"
-                                    :src="getProductImage(product)"
+                                    v-if="getProductMainImage(product)"
+                                    :src="getProductMainImage(product)"
                                     :alt="product.name"
                                 />
-                                <div v-else class="no-image">
-                                    <i class="fas fa-image"></i>
+                                <div v-else class="no-logo">
+                                    <i class="fas fa-mobile-alt"></i>
                                 </div>
                             </div>
                         </td>
@@ -1475,11 +1249,25 @@ onMounted(async () => {
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button
-                                @click="confirmDelete(product)"
-                                class="delete-button"
-                                title="Xóa"
+                                @click="toggleStatusModal(product)"
+                                :class="[
+                                    'status-button',
+                                    product.isActive
+                                        ? 'deactivate-button'
+                                        : 'activate-button',
+                                ]"
+                                :title="
+                                    product.isActive ? 'Ngừng bán' : 'Kích hoạt'
+                                "
                             >
-                                <i class="fas fa-trash-alt"></i>
+                                <i
+                                    class="fas"
+                                    :class="
+                                        product.isActive
+                                            ? 'fa-toggle-off'
+                                            : 'fa-toggle-on'
+                                    "
+                                ></i>
                             </button>
                         </td>
                     </tr>
@@ -1494,7 +1282,7 @@ onMounted(async () => {
                     <h3>
                         {{
                             isEditing
-                                ? "Chỉnh sửa sản phẩm"
+                                ? "Chỉnh sửa sản phẩm: " + formData.name
                                 : "Thêm sản phẩm mới"
                         }}
                     </h3>
@@ -1511,29 +1299,28 @@ onMounted(async () => {
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label
-                                        >Thương hiệu
-                                        <span class="required">*</span></label
-                                    >
-                                    <select
-                                        v-model="formData.brandId"
-                                        @change="handleBrandChange"
-                                        class="form-select"
-                                    >
-                                        <option value="" disabled selected>
-                                            Chọn thương hiệu
-                                        </option>
-                                        <option
-                                            v-for="brand in brands"
-                                            :key="brand.id"
-                                            :value="brand.id"
+                                    <label for="brandSelect">
+                                        Thương hiệu
+                                        <span class="required">*</span>
+                                    </label>
+                                    <div class="select-wrapper">
+                                        <select
+                                            id="brandSelect"
+                                            v-model="formData.brandId"
+                                            @change="handleBrandChange"
                                         >
-                                            {{ brand.name }}
-                                        </option>
-                                    </select>
-                                    <span class="input-hint"
-                                        >Chọn thương hiệu từ danh sách</span
-                                    >
+                                            <option value="" disabled selected>
+                                                Chọn thương hiệu
+                                            </option>
+                                            <option
+                                                v-for="brand in brands"
+                                                :key="brand.id"
+                                                :value="brand.id"
+                                            >
+                                                {{ brand.name }}
+                                            </option>
+                                        </select>
+                                    </div>
                                     <span
                                         v-if="formErrors.brandId"
                                         class="error-message"
@@ -1543,34 +1330,28 @@ onMounted(async () => {
                                 </div>
 
                                 <div class="form-group">
-                                    <label
-                                        >Dòng sản phẩm
-                                        <span class="required">*</span></label
-                                    >
-                                    <select
-                                        v-model="formData.productLineId"
-                                        class="form-select"
-                                        :disabled="!formData.brandId"
-                                    >
-                                        <option value="" disabled selected>
-                                            {{
-                                                formData.brandId
-                                                    ? "Chọn dòng sản phẩm"
-                                                    : "Vui lòng chọn thương hiệu trước"
-                                            }}
-                                        </option>
-                                        <option
-                                            v-for="pl in filteredProductLines"
-                                            :key="pl.id"
-                                            :value="pl.id"
+                                    <label for="productLineSelect">
+                                        Dòng sản phẩm
+                                        <span class="required">*</span>
+                                    </label>
+                                    <div class="select-wrapper">
+                                        <select
+                                            id="productLineSelect"
+                                            v-model="formData.productLineId"
+                                            :disabled="!formData.brandId"
                                         >
-                                            {{ pl.name }}
-                                        </option>
-                                    </select>
-                                    <span class="input-hint"
-                                        >Chọn dòng sản phẩm từ danh sách sau khi
-                                        chọn thương hiệu</span
-                                    >
+                                            <option value="" disabled selected>
+                                                Chọn dòng sản phẩm
+                                            </option>
+                                            <option
+                                                v-for="line in filteredProductLines"
+                                                :key="line.id"
+                                                :value="line.id"
+                                            >
+                                                {{ line.name }}
+                                            </option>
+                                        </select>
+                                    </div>
                                     <span
                                         v-if="formErrors.productLineId"
                                         class="error-message"
@@ -1587,107 +1368,93 @@ onMounted(async () => {
 
                             <!-- Tên sản phẩm - full width -->
                             <div class="form-group">
-                                <label
-                                    >Tên sản phẩm
-                                    <span class="required">*</span></label
-                                >
+                                <label for="productName">
+                                    Tên sản phẩm <span class="required">*</span>
+                                </label>
                                 <input
-                                    v-model="formData.name"
                                     type="text"
-                                    placeholder="Ví dụ: iPhone 16 Pro - Chính hãng VN/A"
-                                    maxlength="100"
+                                    id="productName"
+                                    v-model="formData.name"
+                                    placeholder="Nhập tên sản phẩm"
                                 />
-                                <span class="input-hint"
-                                    >Tối đa 100 ký tự, có thể bao gồm chữ, số,
-                                    dấu gạch ngang và gạch chéo</span
-                                >
                                 <span
                                     v-if="formErrors.name"
                                     class="error-message"
-                                    >{{ formErrors.name }}</span
                                 >
+                                    {{ formErrors.name }}
+                                </span>
                             </div>
 
                             <!-- Nhóm thông tin giá và số lượng -->
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label
-                                        >Giá nhập
-                                        <span class="required">*</span></label
-                                    >
-                                    <div class="currency-input">
-                                        <input
-                                            v-model.number="
-                                                formData.importPrice
-                                            "
-                                            type="number"
-                                            min="1000"
-                                            step="1000"
-                                            placeholder="Ví dụ: 20000000"
-                                        />
-                                        <span class="currency">VND</span>
-                                    </div>
-                                    <span class="input-hint"
-                                        >Nhập số nguyên, đơn vị VND</span
-                                    >
-                                    <span
-                                        v-if="formErrors.importPrice"
-                                        class="error-message"
-                                        >{{ formErrors.importPrice }}</span
-                                    >
-                                </div>
-
-                                <div class="form-group">
-                                    <label
-                                        >Giá bán
-                                        <span class="required">*</span></label
-                                    >
-                                    <div class="currency-input">
-                                        <input
-                                            v-model.number="formData.salePrice"
-                                            type="number"
-                                            min="1000"
-                                            step="1000"
-                                            placeholder="Ví dụ: 25000000"
-                                        />
-                                        <span class="currency">VND</span>
-                                    </div>
-                                    <span class="input-hint"
-                                        >Nhập số nguyên, đơn vị VND</span
-                                    >
-                                    <span
-                                        v-if="formErrors.salePrice"
-                                        class="error-message"
-                                        >{{ formErrors.salePrice }}</span
-                                    >
-                                </div>
-
-                                <div class="form-group">
-                                    <label
-                                        >Số lượng
-                                        <span class="required">*</span></label
-                                    >
+                                    <label for="quantity">
+                                        Số lượng <span class="required">*</span>
+                                    </label>
                                     <input
-                                        v-model.number="formData.quantity"
                                         type="number"
-                                        min="1"
-                                        placeholder="Ví dụ: 10"
+                                        id="quantity"
+                                        v-model="formData.quantity"
+                                        min="0"
+                                        step="1"
                                     />
-                                    <span class="input-hint"
-                                        >Nhập số nguyên dương</span
-                                    >
                                     <span
                                         v-if="formErrors.quantity"
                                         class="error-message"
-                                        >{{ formErrors.quantity }}</span
                                     >
+                                        {{ formErrors.quantity }}
+                                    </span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="importPrice">
+                                        Giá nhập <span class="required">*</span>
+                                    </label>
+                                    <div class="currency-input">
+                                        <input
+                                            type="number"
+                                            id="importPrice"
+                                            v-model="formData.importPrice"
+                                            min="0"
+                                            step="1000"
+                                        />
+                                        <span class="currency">VND</span>
+                                    </div>
+                                    <span
+                                        v-if="formErrors.importPrice"
+                                        class="error-message"
+                                    >
+                                        {{ formErrors.importPrice }}
+                                    </span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="salePrice">
+                                        Giá bán <span class="required">*</span>
+                                    </label>
+                                    <div class="currency-input">
+                                        <input
+                                            type="number"
+                                            id="salePrice"
+                                            v-model="formData.salePrice"
+                                            min="0"
+                                            step="1000"
+                                        />
+                                        <span class="currency">VND</span>
+                                    </div>
+                                    <span
+                                        v-if="formErrors.salePrice"
+                                        class="error-message"
+                                    >
+                                        {{ formErrors.salePrice }}
+                                    </span>
                                 </div>
                             </div>
 
                             <!-- Nhóm trạng thái -->
                             <div class="form-row">
-                                <div class="form-group">
-                                    <label>Trạng thái sản phẩm</label>
+                                <div class="form-group" v-if="isEditing">
+                                    <label>Trạng thái</label>
                                     <div class="toggle-switch-wrapper">
                                         <div class="toggle-switch-container">
                                             <label class="toggle-switch">
@@ -1713,185 +1480,152 @@ onMounted(async () => {
 
                             <!-- Mô tả sản phẩm - full width -->
                             <div class="form-group">
-                                <label>Mô tả sản phẩm</label>
+                                <label for="description">
+                                    Mô tả sản phẩm
+                                    <span class="optional-hint"
+                                        >(không bắt buộc)</span
+                                    >
+                                </label>
                                 <textarea
+                                    id="description"
                                     v-model="formData.description"
-                                    placeholder="Nhập mô tả chi tiết về sản phẩm"
                                     rows="4"
+                                    placeholder="Nhập mô tả sản phẩm"
                                 ></textarea>
-                                <span class="input-hint"
-                                    >Mô tả chi tiết về sản phẩm, tính năng và
-                                    đặc điểm nổi bật</span
-                                >
                             </div>
                         </div>
 
                         <!-- Technical Specifications -->
                         <div class="form-section">
-                            <h4 class="section-title">Thông số kỹ thuật</h4>
+                            <h4 class="section-title">
+                                Thông số kỹ thuật
+                                <span class="optional-badge"
+                                    >Không bắt buộc</span
+                                >
+                            </h4>
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>RAM (GB)</label>
+                                    <label for="warranty"
+                                        >Bảo hành (tháng)</label
+                                    >
                                     <input
-                                        v-model.number="formData.ram"
                                         type="number"
+                                        id="warranty"
+                                        v-model="formData.warranty"
+                                        min="0"
+                                        max="60"
+                                        placeholder="12"
+                                    />
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="ram">RAM (GB)</label>
+                                    <input
+                                        type="number"
+                                        id="ram"
+                                        v-model="formData.ram"
                                         min="1"
                                         max="32"
-                                        placeholder="Ví dụ: 8"
+                                        placeholder="4"
                                     />
-                                    <span class="input-hint"
-                                        >Nhập số nguyên (1-32) đơn vị GB</span
-                                    >
-                                    <span
-                                        v-if="formErrors.ram"
-                                        class="error-message"
-                                        >{{ formErrors.ram }}</span
-                                    >
                                 </div>
 
                                 <div class="form-group">
-                                    <label>Bộ nhớ (GB)</label>
+                                    <label for="storage"
+                                        >Bộ nhớ trong (GB)</label
+                                    >
                                     <input
-                                        v-model.number="formData.storage"
                                         type="number"
+                                        id="storage"
+                                        v-model="formData.storage"
                                         min="8"
                                         max="2048"
-                                        placeholder="Ví dụ: 128"
+                                        placeholder="64"
                                     />
-                                    <span class="input-hint"
-                                        >Nhập số nguyên (8-2048) đơn vị GB</span
-                                    >
-                                    <span
-                                        v-if="formErrors.storage"
-                                        class="error-message"
-                                        >{{ formErrors.storage }}</span
-                                    >
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Số khe SIM</label>
-                                    <select
-                                        v-model.number="formData.simSlots"
-                                        class="form-select"
-                                    >
-                                        <option :value="1">1 SIM</option>
-                                        <option :value="2">2 SIM</option>
-                                        <option :value="3">3 SIM</option>
-                                        <option :value="4">4 SIM</option>
-                                    </select>
-                                    <span class="input-hint"
-                                        >Chọn số khe SIM của thiết bị</span
-                                    >
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>Thời gian bảo hành (tháng)</label>
-                                    <input
-                                        v-model.number="formData.warranty"
-                                        type="number"
-                                        min="1"
-                                        max="60"
-                                        placeholder="Ví dụ: 12"
-                                    />
-                                    <span class="input-hint"
-                                        >Nhập số tháng bảo hành (1-60)</span
+                                    <label for="screenSize"
+                                        >Kích thước màn hình (inch)</label
                                     >
-                                    <span
-                                        v-if="formErrors.warranty"
-                                        class="error-message"
-                                        >{{ formErrors.warranty }}</span
-                                    >
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Kích thước màn hình (inch)</label>
                                     <input
-                                        v-model.number="formData.screenSize"
                                         type="number"
-                                        min="3.0"
-                                        max="15.0"
+                                        id="screenSize"
+                                        v-model="formData.screenSize"
+                                        min="3"
+                                        max="15"
                                         step="0.1"
-                                        placeholder="Ví dụ: 6.1"
+                                        placeholder="6.1"
                                     />
-                                    <span class="input-hint"
-                                        >Nhập số thập phân (3.0-15.0) đơn vị
-                                        inch</span
-                                    >
-                                    <span
-                                        v-if="formErrors.screenSize"
-                                        class="error-message"
-                                        >{{ formErrors.screenSize }}</span
-                                    >
                                 </div>
 
                                 <div class="form-group">
-                                    <label>Độ phân giải màn hình</label>
+                                    <label for="screenResolution"
+                                        >Độ phân giải màn hình</label
+                                    >
                                     <input
-                                        v-model="formData.screenResolution"
                                         type="text"
-                                        placeholder="Ví dụ: 1170x2532"
-                                        pattern="\d{3,4}x\d{3,4}"
+                                        id="screenResolution"
+                                        v-model="formData.screenResolution"
+                                        placeholder="1920x1080"
                                     />
                                     <span class="input-hint"
-                                        >Nhập theo định dạng: 1234x5678</span
-                                    >
-                                    <span
-                                        v-if="formErrors.screenResolution"
-                                        class="error-message"
-                                        >{{ formErrors.screenResolution }}</span
+                                        >Định dạng: 1920x1080</span
                                     >
                                 </div>
-                            </div>
 
-                            <div class="form-row">
                                 <div class="form-group">
-                                    <label>Dung lượng Pin (mAh)</label>
+                                    <label for="battery"
+                                        >Dung lượng pin (mAh)</label
+                                    >
                                     <input
-                                        v-model.number="formData.battery"
                                         type="number"
+                                        id="battery"
+                                        v-model="formData.battery"
                                         min="1000"
                                         max="10000"
-                                        step="100"
-                                        placeholder="Ví dụ: 3500"
+                                        placeholder="4000"
                                     />
-                                    <span class="input-hint"
-                                        >Nhập số nguyên (1000-10000) đơn vị
-                                        mAh</span
-                                    >
-                                    <span
-                                        v-if="formErrors.battery"
-                                        class="error-message"
-                                        >{{ formErrors.battery }}</span
-                                    >
                                 </div>
+                            </div>
 
+                            <div class="form-row">
                                 <div class="form-group">
-                                    <label>Vi xử lý</label>
+                                    <label for="os">Hệ điều hành</label>
                                     <input
-                                        v-model="formData.processor"
                                         type="text"
-                                        placeholder="Ví dụ: Apple A15 Bionic"
-                                        maxlength="100"
-                                    />
-                                    <span class="input-hint"
-                                        >Tối đa 100 ký tự</span
-                                    >
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Hệ điều hành</label>
-                                    <input
+                                        id="os"
                                         v-model="formData.os"
-                                        type="text"
-                                        placeholder="Ví dụ: iOS 16"
-                                        maxlength="50"
+                                        placeholder="Android 13"
                                     />
-                                    <span class="input-hint"
-                                        >Tối đa 50 ký tự</span
-                                    >
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="processor">Chip xử lý</label>
+                                    <input
+                                        type="text"
+                                        id="processor"
+                                        v-model="formData.processor"
+                                        placeholder="Snapdragon 8 Gen 2"
+                                    />
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="simSlots">Số khe SIM</label>
+                                    <div class="select-wrapper">
+                                        <select
+                                            id="simSlots"
+                                            v-model="formData.simSlots"
+                                        >
+                                            <option value="1">1 SIM</option>
+                                            <option value="2">2 SIM</option>
+                                            <option value="3">3 SIM</option>
+                                            <option value="4">4 SIM</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1901,70 +1635,63 @@ onMounted(async () => {
                             <h4 class="section-title">Màu sắc và Hình ảnh</h4>
 
                             <div class="color-section-layout">
-                                <!-- Phần nhập màu - bên trái -->
                                 <div class="color-add-form-simple">
+                                    <h5>Thêm màu sắc mới</h5>
+
                                     <div class="color-name-input">
-                                        <label>Tên màu sắc</label>
+                                        <label for="colorNameInput"
+                                            >Tên màu
+                                            <span class="required"
+                                                >*</span
+                                            ></label
+                                        >
                                         <input
+                                            type="text"
+                                            id="colorNameInput"
                                             v-model="newColor.name"
-                                            placeholder="Nhập tên màu sắc"
+                                            placeholder="Ví dụ: Đen, Trắng, Xanh,..."
                                         />
                                     </div>
 
                                     <div class="color-upload-wrapper-simple">
-                                        <label>Hình ảnh màu</label>
+                                        <label>
+                                            Hình ảnh màu sắc
+                                            <span class="required">*</span>
+                                        </label>
                                         <div
                                             class="color-upload-area-simple"
                                             @click="
-                                                $refs.colorFileInput.click()
+                                                $refs.colorImageInput.click()
                                             "
                                         >
+                                            <input
+                                                type="file"
+                                                ref="colorImageInput"
+                                                class="hidden-input"
+                                                accept="image/png, image/jpeg, image/jpg"
+                                                multiple
+                                                @change="handleColorImageUpload"
+                                            />
                                             <div
                                                 class="upload-placeholder-simple"
                                             >
                                                 <i
                                                     class="fas fa-cloud-upload-alt"
                                                 ></i>
-                                                <p>Nhấp để tải lên hình ảnh</p>
+                                                <p>Nhấn để tải hình ảnh lên</p>
                                             </div>
                                         </div>
-                                        <input
-                                            ref="colorFileInput"
-                                            type="file"
-                                            accept="image/jpeg, image/png, image/jpg"
-                                            @change="handleColorImageUpload"
-                                            multiple
-                                            class="hidden-input"
-                                        />
+                                        <span
+                                            v-if="formErrors.colors"
+                                            class="error-message"
+                                        >
+                                            {{ formErrors.colors }}
+                                        </span>
                                     </div>
 
-                                    <div class="color-actions-simple">
-                                        <button
-                                            @click="
-                                                isEditing
-                                                    ? addNewColorDuringEdit()
-                                                    : addColorWithImages()
-                                            "
-                                            class="add-color-btn"
-                                            :disabled="
-                                                !newColor.name ||
-                                                newColor.images.length === 0
-                                            "
-                                        >
-                                            <i class="fas fa-plus"></i> Thêm màu
-                                        </button>
-                                        <button
-                                            @click="resetNewColor"
-                                            class="reset-color-btn"
-                                        >
-                                            <i class="fas fa-redo"></i> Làm mới
-                                        </button>
-                                    </div>
-
-                                    <!-- Preview của màu đang thêm mới -->
                                     <div
-                                        class="color-preview-simple"
                                         v-if="newColor.imagePreviews.length > 0"
+                                        class="color-preview-simple"
                                     >
                                         <div class="preview-label">
                                             Xem trước hình ảnh:
@@ -1988,18 +1715,20 @@ onMounted(async () => {
                                                 />
                                                 <div class="image-actions">
                                                     <button
+                                                        type="button"
                                                         @click="
                                                             setColorMainImage(
                                                                 index
                                                             )
                                                         "
-                                                        title="Đặt làm ảnh chính"
+                                                        title="Đặt làm ảnh đại diện"
                                                     >
                                                         <i
                                                             class="fas fa-star"
                                                         ></i>
                                                     </button>
                                                     <button
+                                                        type="button"
                                                         @click="
                                                             removeColorImage(
                                                                 index
@@ -2016,31 +1745,43 @@ onMounted(async () => {
                                         </div>
                                     </div>
 
-                                    <span
-                                        v-if="formErrors.colors"
-                                        class="error-message"
-                                    >
-                                        {{ formErrors.colors }}
-                                    </span>
+                                    <div class="color-actions-simple">
+                                        <button
+                                            type="button"
+                                            class="add-color-btn"
+                                            @click="
+                                                isEditing
+                                                    ? addNewColorDuringEdit()
+                                                    : addColorWithImages()
+                                            "
+                                            :disabled="
+                                                !newColor.name ||
+                                                newColor.images.length === 0
+                                            "
+                                        >
+                                            <i class="fas fa-plus"></i> Thêm màu
+                                            sắc
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="reset-color-btn"
+                                            @click="resetNewColor"
+                                        >
+                                            <i class="fas fa-times"></i> Hủy
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <!-- Phần hiển thị màu đã thêm - bên phải -->
                                 <div class="colors-display-simple">
                                     <div class="colors-display-header">
                                         <h5 class="colors-display-title">
-                                            Màu đã thêm ({{
-                                                formData.colorData.length
-                                            }})
+                                            Màu sắc đã thêm
                                         </h5>
                                     </div>
 
-                                    <!-- Hiển thị màu hiện tại khi thêm mới sản phẩm -->
                                     <div
-                                        v-if="
-                                            !isEditing &&
-                                            formData.colorData.length > 0
-                                        "
                                         class="colors-list-simple"
+                                        v-if="formData.colorData.length > 0"
                                     >
                                         <div
                                             v-for="(
@@ -2052,290 +1793,218 @@ onMounted(async () => {
                                             <div class="color-item-header">
                                                 <h6>{{ color.name }}</h6>
                                                 <button
+                                                    type="button"
+                                                    class="remove-color-btn-simple"
                                                     @click="
                                                         removeColorData(
                                                             colorIndex
                                                         )
                                                     "
-                                                    class="remove-color-btn-simple"
-                                                    title="Xóa màu"
+                                                    title="Xóa màu sắc"
                                                 >
                                                     <i class="fas fa-times"></i>
                                                 </button>
                                             </div>
 
-                                            <div class="preview-label">
-                                                Hình ảnh:
-                                            </div>
-                                            <div class="image-previews-grid">
+                                            <div v-if="isEditing && color.id">
+                                                <!-- Existing images display for editing -->
                                                 <div
-                                                    v-for="(
-                                                        preview, imageIndex
-                                                    ) in color.imagePreviews"
-                                                    :key="`preview-${colorIndex}-${imageIndex}`"
-                                                    class="color-image-preview"
-                                                    :class="{
-                                                        'main-image':
-                                                            imageIndex ===
-                                                            color.mainImageIndex,
-                                                    }"
+                                                    v-if="
+                                                        color.existingImages &&
+                                                        color.existingImages
+                                                            .length > 0
+                                                    "
                                                 >
-                                                    <img
-                                                        :src="preview"
-                                                        alt="Product Image"
-                                                    />
-                                                    <div class="image-actions">
-                                                        <button
-                                                            @click="
-                                                                setColorMainImage(
-                                                                    imageIndex,
-                                                                    colorIndex
-                                                                )
-                                                            "
-                                                            title="Đặt làm ảnh chính"
+                                                    <div
+                                                        class="color-thumbnails-simple"
+                                                    >
+                                                        <div
+                                                            v-for="(
+                                                                image, imgIndex
+                                                            ) in color.existingImages"
+                                                            :key="`existing-img-${image.id}`"
+                                                            class="color-image-preview"
+                                                            :class="{
+                                                                'main-image':
+                                                                    image.isMain ||
+                                                                    image.id ===
+                                                                        color.mainImageId,
+                                                            }"
                                                         >
-                                                            <i
-                                                                class="fas fa-star"
-                                                            ></i>
-                                                        </button>
-                                                        <button
-                                                            @click="
-                                                                removeColorImageFromData(
-                                                                    colorIndex,
-                                                                    imageIndex
-                                                                )
-                                                            "
-                                                            title="Xóa ảnh"
+                                                            <img
+                                                                :src="
+                                                                    formatImageUrl(
+                                                                        image.imagePath
+                                                                    )
+                                                                "
+                                                                alt="Preview"
+                                                            />
+                                                            <div
+                                                                class="image-actions"
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    @click="
+                                                                        setExistingColorMainImage(
+                                                                            colorIndex,
+                                                                            imgIndex
+                                                                        )
+                                                                    "
+                                                                    title="Đặt làm ảnh đại diện"
+                                                                >
+                                                                    <i
+                                                                        class="fas fa-star"
+                                                                    ></i>
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    @click="
+                                                                        removeExistingColorImage(
+                                                                            colorIndex,
+                                                                            imgIndex
+                                                                        )
+                                                                    "
+                                                                    title="Xóa ảnh"
+                                                                >
+                                                                    <i
+                                                                        class="fas fa-trash"
+                                                                    ></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Display for new images added to existing color -->
+                                                        <div
+                                                            v-for="(
+                                                                preview,
+                                                                newImgIndex
+                                                            ) in color.newImagePreviews"
+                                                            :key="`new-img-${colorIndex}-${newImgIndex}`"
+                                                            class="color-image-preview"
+                                                            :class="{
+                                                                'main-image':
+                                                                    color.mainImageId ===
+                                                                        null &&
+                                                                    newImgIndex ===
+                                                                        color.mainImageIndex,
+                                                            }"
                                                         >
-                                                            <i
-                                                                class="fas fa-trash"
-                                                            ></i>
-                                                        </button>
+                                                            <img
+                                                                :src="preview"
+                                                                alt="Preview"
+                                                            />
+                                                            <div
+                                                                class="image-actions"
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    @click="
+                                                                        setExistingColorMainImage(
+                                                                            colorIndex,
+                                                                            newImgIndex,
+                                                                            true
+                                                                        )
+                                                                    "
+                                                                    title="Đặt làm ảnh đại diện"
+                                                                >
+                                                                    <i
+                                                                        class="fas fa-star"
+                                                                    ></i>
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    @click="
+                                                                        removeExistingColorImage(
+                                                                            colorIndex,
+                                                                            newImgIndex,
+                                                                            true
+                                                                        )
+                                                                    "
+                                                                    title="Xóa ảnh"
+                                                                >
+                                                                    <i
+                                                                        class="fas fa-trash"
+                                                                    ></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Add more images button -->
+                                                        <div
+                                                            class="color-image-preview add-more"
+                                                            @click="
+                                                                $refs[
+                                                                    `colorImageInput${colorIndex}`
+                                                                ][0].click()
+                                                            "
+                                                        >
+                                                            <input
+                                                                type="file"
+                                                                :ref="`colorImageInput${colorIndex}`"
+                                                                class="hidden-input"
+                                                                accept="image/png, image/jpeg, image/jpg"
+                                                                multiple
+                                                                @change="
+                                                                    (e) =>
+                                                                        handleColorImageUploadForExisting(
+                                                                            e,
+                                                                            colorIndex
+                                                                        )
+                                                                "
+                                                            />
+                                                            <div
+                                                                class="add-icon"
+                                                            >
+                                                                <i
+                                                                    class="fas fa-plus"
+                                                                ></i>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
 
-                                    <!-- Hiển thị màu hiện tại khi cập nhật sản phẩm -->
-                                    <div
-                                        v-if="
-                                            isEditing &&
-                                            formData.colorData.length > 0
-                                        "
-                                        class="colors-list-simple"
-                                    >
-                                        <div
-                                            v-for="(
-                                                color, colorIndex
-                                            ) in formData.colorData"
-                                            :key="`color-${
-                                                color.id || colorIndex
-                                            }`"
-                                            class="color-item-simple"
-                                        >
-                                            <div class="color-item-header">
-                                                <h6>{{ color.name }}</h6>
-                                                <button
-                                                    @click="
-                                                        removeColorData(
-                                                            colorIndex
-                                                        )
-                                                    "
-                                                    class="remove-color-btn-simple"
-                                                    title="Xóa màu"
-                                                >
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </div>
-
-                                            <!-- Existing images for this color -->
+                                            <!-- New color images display -->
                                             <div
                                                 v-if="
-                                                    color.existingImages &&
-                                                    color.existingImages
-                                                        .length > 0
+                                                    !color.id ||
+                                                    (!color.existingImages &&
+                                                        !color.id)
                                                 "
                                             >
-                                                <div class="preview-label">
-                                                    Hình ảnh hiện có:
-                                                </div>
                                                 <div
-                                                    class="image-previews-grid"
+                                                    class="color-thumbnails-simple"
                                                 >
                                                     <div
                                                         v-for="(
-                                                            image, imageIndex
-                                                        ) in color.existingImages"
-                                                        :key="`existing-img-${image.id}`"
+                                                            preview, imgIndex
+                                                        ) in color.imagePreviews ||
+                                                        color.images"
+                                                        :key="`preview-${colorIndex}-${imgIndex}`"
                                                         class="color-image-preview"
                                                         :class="{
                                                             'main-image':
-                                                                color.mainImageId ===
-                                                                image.id,
+                                                                imgIndex ===
+                                                                color.mainImageIndex,
                                                         }"
-                                                        v-show="
-                                                            !color.removedImageIds ||
-                                                            !color.removedImageIds.includes(
-                                                                image.id
-                                                            )
-                                                        "
                                                     >
                                                         <img
                                                             :src="
-                                                                formatImageUrl(
-                                                                    image.imagePath
-                                                                )
+                                                                typeof preview ===
+                                                                'string'
+                                                                    ? preview
+                                                                    : URL.createObjectURL(
+                                                                          preview
+                                                                      )
                                                             "
-                                                            alt="Product Image"
+                                                            alt="Preview"
                                                         />
-                                                        <div
-                                                            class="image-actions"
-                                                        >
-                                                            <button
-                                                                @click="
-                                                                    setExistingColorMainImage(
-                                                                        colorIndex,
-                                                                        imageIndex
-                                                                    )
-                                                                "
-                                                                title="Đặt làm ảnh chính"
-                                                            >
-                                                                <i
-                                                                    class="fas fa-star"
-                                                                ></i>
-                                                            </button>
-                                                            <button
-                                                                @click="
-                                                                    removeExistingColorImage(
-                                                                        colorIndex,
-                                                                        imageIndex
-                                                                    )
-                                                                "
-                                                                title="Xóa ảnh"
-                                                            >
-                                                                <i
-                                                                    class="fas fa-trash"
-                                                                ></i>
-                                                            </button>
-                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-
-                                            <!-- New images for this color -->
-                                            <div
-                                                v-if="
-                                                    color.newImagePreviews &&
-                                                    color.newImagePreviews
-                                                        .length > 0
-                                                "
-                                            >
-                                                <div class="preview-label">
-                                                    Hình ảnh mới thêm:
-                                                </div>
-                                                <div
-                                                    class="image-previews-grid"
-                                                >
-                                                    <div
-                                                        v-for="(
-                                                            preview, imageIndex
-                                                        ) in color.newImagePreviews"
-                                                        :key="`new-image-${colorIndex}-${imageIndex}`"
-                                                        class="color-image-preview"
-                                                        :class="{
-                                                            'main-image':
-                                                                color.mainImageIndex ===
-                                                                imageIndex,
-                                                        }"
-                                                    >
-                                                        <img
-                                                            :src="preview"
-                                                            alt="New Product Image"
-                                                        />
-                                                        <div
-                                                            class="image-actions"
-                                                        >
-                                                            <button
-                                                                @click="
-                                                                    setExistingColorMainImage(
-                                                                        colorIndex,
-                                                                        imageIndex,
-                                                                        true
-                                                                    )
-                                                                "
-                                                                title="Đặt làm ảnh chính"
-                                                            >
-                                                                <i
-                                                                    class="fas fa-star"
-                                                                ></i>
-                                                            </button>
-                                                            <button
-                                                                @click="
-                                                                    removeExistingColorImage(
-                                                                        colorIndex,
-                                                                        imageIndex,
-                                                                        true
-                                                                    )
-                                                                "
-                                                                title="Xóa ảnh"
-                                                            >
-                                                                <i
-                                                                    class="fas fa-trash"
-                                                                ></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Button to add more images to this color -->
-                                            <div
-                                                class="color-upload-wrapper-simple mt-2"
-                                            >
-                                                <button
-                                                    class="add-image-btn"
-                                                    @click="
-                                                        $refs[
-                                                            `colorFileInput${colorIndex}`
-                                                        ][0].click()
-                                                    "
-                                                    style="
-                                                        padding: 6px 10px;
-                                                        background-color: #f5f5f5;
-                                                        border: 1px solid #ddd;
-                                                        border-radius: 6px;
-                                                        cursor: pointer;
-                                                        width: 100%;
-                                                    "
-                                                >
-                                                    <i class="fas fa-plus"></i>
-                                                    Thêm hình ảnh cho màu này
-                                                </button>
-                                                <input
-                                                    :ref="`colorFileInput${colorIndex}`"
-                                                    type="file"
-                                                    accept="image/jpeg, image/png, image/jpg"
-                                                    @change="
-                                                        (e) =>
-                                                            handleColorImageUploadForExisting(
-                                                                e,
-                                                                colorIndex
-                                                            )
-                                                    "
-                                                    multiple
-                                                    class="hidden-input"
-                                                />
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div
-                                        v-else-if="
-                                            formData.colorData.length === 0
-                                        "
-                                        class="no-colors-added"
-                                    >
+                                    <div v-else class="no-colors-added">
                                         Chưa có màu sắc nào được thêm
                                     </div>
                                 </div>
@@ -2345,8 +2014,8 @@ onMounted(async () => {
                         <div class="form-actions">
                             <button
                                 type="button"
-                                @click="closeModal"
                                 class="cancel-button"
+                                @click="closeModal"
                             >
                                 <i class="fas fa-times"></i> Hủy
                             </button>
@@ -2355,12 +2024,18 @@ onMounted(async () => {
                                 class="submit-button"
                                 :disabled="submitLoading"
                             >
-                                <i
+                                <span
                                     v-if="submitLoading"
                                     class="spinner small"
-                                ></i>
-                                <i v-else class="fas fa-save"></i>
-                                {{ isEditing ? "Cập nhật" : "Thêm mới" }}
+                                ></span>
+                                <span v-else>
+                                    <i class="fas fa-save"></i>
+                                    {{
+                                        isEditing
+                                            ? "Lưu thay đổi"
+                                            : "Thêm sản phẩm"
+                                    }}
+                                </span>
                             </button>
                         </div>
                     </form>
@@ -2368,41 +2043,103 @@ onMounted(async () => {
             </div>
         </div>
 
-        <!-- Delete Confirmation Modal -->
-        <div v-if="showDeleteModal" class="modal-backdrop">
+        <!-- Status Confirmation Modal -->
+        <div v-if="showStatusModal" class="modal-backdrop">
             <div class="modal-container warning-modal">
-                <div class="modal-header warning">
-                    <h3>Xác nhận xóa sản phẩm</h3>
-                    <button @click="cancelDelete" class="close-button">
+                <div
+                    class="modal-header"
+                    :class="{ warning: productToToggle?.isActive }"
+                >
+                    <h3>
+                        {{
+                            productToToggle?.isActive
+                                ? "Xác nhận ngừng bán sản phẩm"
+                                : "Xác nhận kích hoạt sản phẩm"
+                        }}
+                    </h3>
+                    <button @click="cancelStatusToggle" class="close-button">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
 
                 <div class="modal-body text-center">
-                    <div class="warning-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
+                    <div
+                        class="warning-icon"
+                        :class="{ 'activate-icon': !productToToggle?.isActive }"
+                    >
+                        <i
+                            class="fas"
+                            :class="
+                                productToToggle?.isActive
+                                    ? 'fa-toggle-off'
+                                    : 'fa-toggle-on'
+                            "
+                        ></i>
                     </div>
                     <p class="warning-message">
-                        Bạn có chắc chắn muốn xóa sản phẩm
-                        <strong>"{{ productToDelete?.name }}"</strong>?
+                        Bạn có chắc chắn muốn
+                        <strong>
+                            {{
+                                productToToggle?.isActive
+                                    ? "ngừng bán"
+                                    : "bán lại"
+                            }}
+                        </strong>
+                        sản phẩm
+                        <strong>"{{ productToToggle?.name }}"</strong>?
                     </p>
-                    <p class="warning-details">
-                        Hành động này không thể hoàn tác và sẽ xóa vĩnh viễn sản
-                        phẩm khỏi hệ thống.
-                    </p>
+                    <div
+                        class="warning-details"
+                        :class="{
+                            'activate-details': !productToToggle?.isActive,
+                        }"
+                    >
+                        <i class="fas fa-info-circle"></i>
+                        <div class="warning-text">
+                            <p
+                                v-if="productToToggle?.isActive"
+                                class="warning-impact"
+                            >
+                                <strong>Lưu ý:</strong> Ngừng bán sản phẩm sẽ ẩn
+                                sản phẩm này khỏi trang người dùng và không thể
+                                mua được nữa. Sản phẩm vẫn sẽ xuất hiện trong
+                                lịch sử đơn hàng của khách hàng đã mua trước đó.
+                            </p>
+                            <p v-else class="warning-impact">
+                                <strong>Lưu ý:</strong> Kích hoạt sản phẩm sẽ
+                                hiển thị lại sản phẩm này trên trang người dùng
+                                và có thể được mua bởi khách hàng.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="modal-actions">
-                    <button @click="cancelDelete" class="cancel-button">
+                    <button @click="cancelStatusToggle" class="cancel-button">
                         <i class="fas fa-arrow-left"></i> Quay lại
                     </button>
                     <button
-                        @click="deleteConfirmed"
-                        class="delete-confirm-button"
+                        @click="confirmStatusToggle"
+                        :class="
+                            productToToggle?.isActive
+                                ? 'deactivate-confirm-button'
+                                : 'activate-confirm-button'
+                        "
                         :disabled="loading"
                     >
                         <span v-if="loading" class="spinner small"></span>
-                        <i v-else class="fas fa-trash-alt"></i>
+                        <i
+                            v-else
+                            class="fas"
+                            :class="
+                                productToToggle?.isActive
+                                    ? 'fa-toggle-off'
+                                    : 'fa-toggle-on'
+                            "
+                        ></i>
+                        {{
+                            productToToggle?.isActive ? "Ngừng bán" : "Bán lại"
+                        }}
                     </button>
                 </div>
             </div>
@@ -2473,38 +2210,6 @@ onMounted(async () => {
     outline: none;
 }
 
-/* Filter Button Styling */
-.filter-button {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1rem;
-    background-color: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    cursor: pointer;
-    position: relative;
-}
-
-.filter-button:hover {
-    background-color: #f0f0f0;
-}
-
-.filter-badge {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background-color: var(--primary-color);
-    color: white;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    font-size: 0.6rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
 /* Add Button Styling */
 .add-button {
     display: flex;
@@ -2571,158 +2276,69 @@ onMounted(async () => {
     font-size: 0.85rem;
 }
 
-/* Filter Panel Styling */
-.filter-panel {
-    background-color: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.filter-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.filter-header h3 {
-    font-size: 1.1rem;
-    margin: 0;
-    color: #333;
-}
-
-.filter-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.reset-button,
-.close-filter {
-    padding: 0.4rem 0.75rem;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.85rem;
-}
-
-.reset-button {
-    background-color: #f9f9f9;
-    border: 1px solid #ddd;
-    color: #666;
-}
-
-.reset-button:hover {
-    background-color: #f0f0f0;
-}
-
-.close-filter {
-    background: none;
-    color: #666;
-}
-
-.close-filter:hover {
-    color: #333;
-}
-
-.filter-content {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1rem;
-}
-
-.filter-group {
-    margin-bottom: 0.5rem;
-}
-
-.filter-group label {
-    display: block;
-    font-size: 0.9rem;
-    margin-bottom: 0.35rem;
-    color: #555;
-}
-
-.filter-group select,
-.filter-group input {
-    width: 100%;
-    padding: 0.6rem;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 0.9rem;
-}
-
-.filter-group select:focus,
-.filter-group input:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(248, 110, 211, 0.1);
-    outline: none;
-}
-
-.price-range {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.price-range input {
-    flex: 1;
-}
-
-.price-range span {
-    font-size: 1.25rem;
-    font-weight: 500;
-    color: #666;
-}
-
 /* Data Table Styling */
 .data-card {
     background-color: white;
     border-radius: 12px;
-    padding: 1rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    position: relative;
+    padding: 1.5rem;
+    overflow: hidden;
 }
 
 .data-table {
     width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
+    border-collapse: collapse;
+    table-layout: fixed;
 }
 
 .data-table th {
     text-align: left;
     padding: 1rem;
-    font-weight: 500;
-    color: #555;
+    color: #666;
     border-bottom: 1px solid #eee;
-    background-color: #fafafa;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
 }
 
-.data-table th:first-child {
-    border-top-left-radius: 8px;
-}
+.data-table th:nth-child(1) {
+    width: 20%;
+} /* SẢN PHẨM */
+.data-table th:nth-child(2) {
+    width: 10%;
+} /* HÌNH ẢNH */
+.data-table th:nth-child(3) {
+    width: 12%;
+} /* GIÁ NHẬP */
+.data-table th:nth-child(4) {
+    width: 12%;
+} /* GIÁ BÁN */
+.data-table th:nth-child(5) {
+    width: 10%;
+} /* SỐ LƯỢNG */
+.data-table th:nth-child(6) {
+    width: 15%;
+} /* DÒNG SẢN PHẨM */
+.data-table th:nth-child(7) {
+    width: 12%;
+} /* TRẠNG THÁI */
+.data-table th:nth-child(8) {
+    width: 9%;
+} /* HÀNH ĐỘNG */
 
-.data-table th:last-child {
-    border-top-right-radius: 8px;
-    text-align: center;
-}
-
-.data-table td {
-    padding: 1rem;
+.data-row {
     border-bottom: 1px solid #eee;
-    vertical-align: middle;
+    transition: background-color 0.2s;
 }
 
 .data-row:hover {
     background-color: #f9f9f9;
 }
 
-.data-table td:last-child {
-    text-align: center;
+.data-row td {
+    padding: 1rem;
+    color: #333;
+    vertical-align: middle;
 }
 
 /* Image cell styling */
@@ -2730,18 +2346,20 @@ onMounted(async () => {
     width: 80px;
 }
 
-.image-wrapper {
+.logo-wrapper {
     width: 60px;
     height: 60px;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
     background-color: #f9f9f9;
+    border: 1px solid #eee;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.image-wrapper img {
+.logo-wrapper img {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
@@ -2772,49 +2390,48 @@ onMounted(async () => {
 
 .status-badge {
     padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
     display: inline-block;
 }
 
 .status-badge.active {
-    background-color: #e8f5e9;
-    color: #2e7d32;
+    background-color: #e6f7ea;
+    color: #22c55e;
 }
 
 .status-badge.inactive {
-    background-color: #f5f5f5;
-    color: #757575;
+    background-color: #fee2e2;
+    color: #ef4444;
 }
 
 .actions-cell {
-    white-space: nowrap;
+    display: flex;
+    gap: 0.5rem;
 }
 
-.actions-cell button {
-    padding: 0.4rem;
-    margin: 0 0.25rem;
+.edit-button,
+.status-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: none;
-    background: none;
     cursor: pointer;
-    border-radius: 4px;
     transition: all 0.2s;
 }
 
 .edit-button {
-    color: #5c6bc0;
+    background-color: #e6f7ea;
+    color: #22c55e;
 }
 
 .edit-button:hover {
-    background-color: #ede7f6;
-}
-
-.delete-button {
-    color: #e57373;
-}
-
-.delete-button:hover {
-    background-color: #ffebee;
+    background-color: #22c55e;
+    color: white;
 }
 
 /* No data states */
@@ -2896,8 +2513,9 @@ onMounted(async () => {
 }
 
 .modal-header.warning {
+    border-bottom-color: #fee2e2;
     background-color: #ffebee;
-    border-bottom: none;
+    color: #ef4444;
 }
 
 .modal-header h3 {
@@ -3575,51 +3193,142 @@ input:checked + .toggle-slider:before {
 }
 
 .warning-icon {
-    font-size: 3rem;
-    color: #f44336;
-    margin-bottom: 1rem;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background-color: #fee2e2;
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin: 0 auto 1.5rem auto;
+}
+
+.warning-icon.activate-icon {
+    background-color: #e6f7ea;
+    color: #22c55e;
 }
 
 .warning-message {
     font-size: 1.1rem;
-    margin-bottom: 0.75rem;
     color: #333;
+    margin-bottom: 1.5rem;
 }
 
 .warning-details {
-    color: #666;
-    margin-bottom: 0;
-    font-size: 0.9rem;
-}
-
-.modal-actions {
-    padding: 1rem 1.5rem;
     display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    border-top: 1px solid #eee;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 1.25rem;
+    background-color: #ffeeee;
+    border: 1px solid #ffcccc;
+    border-radius: 8px;
+    color: #d32f2f;
+    text-align: left;
+    font-size: 1rem;
+    margin-top: 1.5rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
-.delete-confirm-button {
-    padding: 0.6rem 1.5rem;
-    background-color: #f44336;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 0.9rem;
+.warning-details.activate-details {
+    background-color: #e8f5e9;
+    border: 1px solid #c8e6c9;
+    color: #2e7d32;
+}
+
+.warning-text {
+    flex: 1;
+}
+
+.warning-count {
+    margin: 0 0 0.75rem 0;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.warning-impact {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.warning-details i {
+    font-size: 1.5rem;
+    margin-top: 0.2rem;
+}
+
+.activate-confirm-button,
+.deactivate-confirm-button {
+    min-width: 140px;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-.delete-confirm-button:hover {
-    background-color: #d32f2f;
+.activate-confirm-button {
+    background-color: #22c55e;
+    border: none;
+    color: white;
+    box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
 }
 
-.delete-confirm-button:disabled {
-    background-color: #e57373;
-    cursor: not-allowed;
+.activate-confirm-button:hover {
+    background-color: #16a34a;
+    box-shadow: 0 4px 6px rgba(34, 197, 94, 0.3);
+}
+
+.deactivate-confirm-button {
+    background-color: #ef4444;
+    border: none;
+    color: white;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+.deactivate-confirm-button:hover {
+    background-color: #dc2626;
+    box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);
+}
+
+/* Status Toggle Buttons */
+.status-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.activate-button {
+    background-color: #e6f7ea;
+    color: #22c55e;
+}
+
+.activate-button:hover {
+    background-color: #22c55e;
+    color: white;
+}
+
+.deactivate-button {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+.deactivate-button:hover {
+    background-color: #ef4444;
+    color: white;
 }
 
 /* Spinner */
@@ -3646,14 +3355,15 @@ input:checked + .toggle-slider:before {
 }
 
 /* No image placeholder */
-.no-image {
+.no-logo {
     width: 100%;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #ccc;
+    color: #ddd;
     font-size: 1.5rem;
+    background-color: #f9f9f9;
 }
 
 /* Text center utility */

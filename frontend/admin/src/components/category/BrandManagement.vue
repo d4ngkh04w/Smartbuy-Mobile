@@ -4,38 +4,36 @@ import {
     getBrands,
     createBrand,
     updateBrand,
-    deleteBrand as deleteBrandApi,
+    activateBrand,
+    deactivateBrand,
 } from "@/services/brandService";
+import emitter from "../../utils/evenBus.js";
 
 // State
 const brands = ref([]);
-const productLines = ref([]);
 const loading = ref(false);
 const showModal = ref(false);
-const showDeleteModal = ref(false);
 const isEditing = ref(false);
 const formData = ref({
     name: "",
     logoFile: null,
     description: "",
-    isActive: true,
 });
-const brandToDelete = ref(null);
 const hasProductLines = ref(false);
 const logoPreview = ref("");
 const fileInput = ref(null);
 const searchQuery = ref("");
 const statusFilter = ref("all"); // Add status filter state: "all", "active", "inactive"
-
-// API base URL
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+const showStatusModal = ref(false); // For activation/deactivation confirmation
+const brandToToggle = ref(null);
 
 // Function to format logo URL
 const formatLogoUrl = (logoPath) => {
     if (!logoPath) return null;
 
-    // If logo is already a full URL (starts with http or https)
-    if (logoPath.startsWith("http")) return logoPath;
+    // If logo is already a full URL (starts with http or https) or is base64 data
+    if (logoPath.startsWith("http") || logoPath.startsWith("data:"))
+        return logoPath;
 
     // Get base URL from API config
     const apiUrl = import.meta.env.VITE_API_URL || "";
@@ -97,19 +95,8 @@ const fetchBrands = async () => {
         if (statusFilter.value !== "all") {
             params.isActive = statusFilter.value === "active";
         }
-        const response = await getBrands(params);
-
+        const response = await getBrands(params);   
         brands.value = response.data.brands;
-
-        // Kiểm tra xem productLines có được trả về không
-        console.log(
-            "Received brands with productLines:",
-            brands.value.map((b) => ({
-                id: b.id,
-                name: b.name,
-                productLinesCount: b.productLines?.length || 0,
-            }))
-        );
     } catch (error) {
         console.error("Error fetching brands:", error);
         // Hiển thị thông báo lỗi (có thể thêm later)
@@ -125,7 +112,6 @@ const openAddBrandModal = () => {
         name: "",
         logoFile: null,
         description: "",
-        isActive: true,
     };
     logoPreview.value = "";
     showModal.value = true;
@@ -139,7 +125,6 @@ const editBrand = (brand) => {
         name: brand.name,
         logoFile: null, // For file upload
         description: brand.description || "",
-        isActive: brand.isActive !== undefined ? brand.isActive : true,
         existingLogo: brand.logo || "", // Store the existing logo path
     };
     logoPreview.value = brand.logo ? formatLogoUrl(brand.logo) : "";
@@ -159,13 +144,19 @@ const handleFileChange = (event) => {
         "image/svg+xml",
     ];
     if (!allowedTypes.includes(file.type)) {
-        alert("Chỉ chấp nhận file hình ảnh (jpg, jpeg, png, svg)");
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Định dạng tệp không hợp lệ. Vui lòng chọn tệp SVG, PNG, JPG.",
+        });
         return;
     }
 
     // File size validation (2MB)
     if (file.size > 2 * 1024 * 1024) {
-        alert("Kích thước tệp quá lớn. Vui lòng chọn tệp dưới 2MB.");
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Kích thước tệp quá lớn. Vui lòng chọn tệp nhỏ hơn 2MB.",
+        });
         return;
     }
 
@@ -211,9 +202,6 @@ const submitForm = async () => {
 
             // Always include description field, even if empty
             data.append("Description", formData.value.description || "");
-
-            // Include IsActive state
-            data.append("IsActive", formData.value.isActive.toString());
         } else {
             // For create operation, include all required fields
             data.append("Name", formData.value.name);
@@ -221,14 +209,22 @@ const submitForm = async () => {
                 data.append("Logo", formData.value.logoFile);
             }
             data.append("Description", formData.value.description || "");
-            data.append("IsActive", formData.value.isActive.toString());
+            // New brands are active by default in the backend
         }
 
         let response;
         if (isEditing.value) {
             response = await updateBrand(formData.value.id, data);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Cập nhật thương hiệu thành công!",
+            });
         } else {
             response = await createBrand(data);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Thêm thương hiệu thành công!",
+            });
         }
 
         // Make sure to refresh the brands list with a fresh API call
@@ -237,8 +233,10 @@ const submitForm = async () => {
         // Close the modal only after successful data refresh
         closeModal();
     } catch (error) {
-        console.error("Error submitting form:", error);
-        // Handle error (show notification, etc.)
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Có lỗi xảy ra trong quá trình xử lý yêu cầu.",
+        });
     } finally {
         loading.value = false;
     }
@@ -251,7 +249,6 @@ const closeModal = () => {
         name: "",
         logoFile: null,
         description: "",
-        isActive: true,
     };
     logoPreview.value = "";
     if (fileInput.value) {
@@ -259,33 +256,50 @@ const closeModal = () => {
     }
 };
 
-// Confirm delete
-const confirmDelete = async (brand) => {
-    brandToDelete.value = brand;
+// Confirm status toggle
+const confirmToggleStatus = async (brand) => {
+    brandToToggle.value = brand;
     hasProductLines.value = brand.productLines && brand.productLines.length > 0;
-    showDeleteModal.value = true;
+    showStatusModal.value = true;
 };
 
-// Cancel delete
-const cancelDelete = () => {
-    showDeleteModal.value = false;
-    brandToDelete.value = null;
+// Cancel status toggle
+const cancelStatusToggle = () => {
+    showStatusModal.value = false;
+    brandToToggle.value = null;
     hasProductLines.value = false;
 };
 
-// Delete brand
-const confirmDeleteBrand = async () => {
-    if (!brandToDelete.value) return;
+// Toggle brand status
+const confirmToggleBrandStatus = async () => {
+    if (!brandToToggle.value) return;
 
     loading.value = true;
     try {
-        await deleteBrandApi(brandToDelete.value.id);
-        fetchBrands();
-        showDeleteModal.value = false;
-        brandToDelete.value = null;
+        if (brandToToggle.value.isActive) {
+            // Deactivate
+            await deactivateBrand(brandToToggle.value.id);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Vô hiệu hóa thương hiệu thành công!",
+            });
+        } else {
+            // Activate
+            await activateBrand(brandToToggle.value.id);
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Kích hoạt thương hiệu thành công!",
+            });
+        }
+
+        await fetchBrands();
+        showStatusModal.value = false;
+        brandToToggle.value = null;
     } catch (error) {
-        console.error("Error deleting brand:", error);
-        // Handle error (show notification, etc.)
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Có lỗi xảy ra trong quá trình xử lý yêu cầu.",
+        });
     } finally {
         loading.value = false;
     }
@@ -441,11 +455,25 @@ watch(statusFilter, async () => {
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button
-                                @click="confirmDelete(brand)"
-                                class="delete-button"
-                                title="Xóa"
+                                @click="confirmToggleStatus(brand)"
+                                :class="[
+                                    'status-button',
+                                    brand.isActive
+                                        ? 'deactivate-button'
+                                        : 'activate-button',
+                                ]"
+                                :title="
+                                    brand.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'
+                                "
                             >
-                                <i class="fas fa-trash-alt"></i>
+                                <i
+                                    class="fas"
+                                    :class="
+                                        brand.isActive
+                                            ? 'fa-toggle-off'
+                                            : 'fa-toggle-on'
+                                    "
+                                ></i>
                             </button>
                         </td>
                     </tr>
@@ -523,35 +551,6 @@ watch(statusFilter, async () => {
                     </div>
 
                     <div class="form-group">
-                        <label>Trạng thái thương hiệu</label>
-                        <div class="toggle-switch-wrapper">
-                            <div class="toggle-switch-container">
-                                <label class="toggle-switch">
-                                    <input
-                                        type="checkbox"
-                                        v-model="formData.isActive"
-                                    />
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <span class="toggle-status">
-                                    {{
-                                        formData.isActive
-                                            ? "Đang kích hoạt"
-                                            : "Không kích hoạt"
-                                    }}
-                                </span>
-                            </div>
-                            <div class="toggle-description">
-                                {{
-                                    formData.isActive
-                                        ? "Thương hiệu sẽ hiển thị cho khách hàng trên trang web."
-                                        : "Thương hiệu sẽ bị ẩn khỏi trang web."
-                                }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
                         <label>Mô tả</label>
                         <textarea
                             v-model="formData.description"
@@ -586,46 +585,112 @@ watch(statusFilter, async () => {
             </div>
         </div>
 
-        <!-- Delete Confirmation Modal -->
-        <div v-if="showDeleteModal" class="modal-backdrop">
+        <!-- Status Toggle Confirmation Modal -->
+        <div v-if="showStatusModal" class="modal-backdrop">
             <div class="modal-container warning-modal">
-                <div class="modal-header warning">
-                    <h3>Xác nhận xóa thương hiệu</h3>
-                    <button @click="cancelDelete" class="close-button">
+                <div
+                    class="modal-header"
+                    :class="{ warning: brandToToggle?.isActive }"
+                >
+                    <h3>
+                        {{
+                            brandToToggle?.isActive
+                                ? "Xác nhận vô hiệu hóa thương hiệu"
+                                : "Xác nhận kích hoạt thương hiệu"
+                        }}
+                    </h3>
+                    <button @click="cancelStatusToggle" class="close-button">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
 
                 <div class="modal-body text-center">
-                    <div class="warning-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
+                    <div
+                        class="warning-icon"
+                        :class="{ 'activate-icon': !brandToToggle?.isActive }"
+                    >
+                        <i
+                            class="fas"
+                            :class="
+                                brandToToggle?.isActive
+                                    ? 'fa-toggle-off'
+                                    : 'fa-toggle-on'
+                            "
+                        ></i>
                     </div>
                     <p class="warning-message">
-                        Bạn có chắc chắn muốn xóa thương hiệu
-                        <strong>"{{ brandToDelete?.name }}"</strong>?
+                        Bạn có chắc chắn muốn
+                        {{
+                            brandToToggle?.isActive
+                                ? "vô hiệu hóa"
+                                : "kích hoạt"
+                        }}
+                        thương hiệu
+                        <strong>"{{ brandToToggle?.name }}"</strong>?
                     </p>
-                    <div v-if="hasProductLines" class="warning-details">
+
+                    <!-- PHẦN QUAN TRỌNG: Thông báo tác động -->
+                    <div
+                        class="warning-details"
+                        :class="{
+                            'activate-details': !brandToToggle?.isActive,
+                        }"
+                    >
                         <i class="fas fa-info-circle"></i>
-                        <span
-                            >Thương hiệu này đang có
-                            {{ getBrandProductLinesCount(brandToDelete?.id) }}
-                            dòng sản phẩm. Việc xóa có thể ảnh hưởng đến dữ
-                            liệu.</span
-                        >
+                        <div class="warning-text">
+                            <p v-if="hasProductLines" class="warning-count">
+                                <span>Thương hiệu này có</span>
+                                <strong>{{
+                                    getBrandProductLinesCount(brandToToggle?.id)
+                                }}</strong>
+                                <span>dòng sản phẩm.</span>
+                            </p>
+                            <p
+                                v-if="brandToToggle?.isActive"
+                                class="warning-impact"
+                            >
+                                <strong>Lưu ý:</strong> Vô hiệu hóa thương hiệu
+                                sẽ ẩn tất cả dòng sản phẩm và sản phẩm thuộc
+                                thương hiệu này.
+                            </p>
+                            <p v-else class="warning-impact">
+                                <strong>Lưu ý:</strong> Kích hoạt thương hiệu sẽ
+                                hiển thị tất cả dòng sản phẩm và sản phẩm thuộc
+                                thương hiệu này (trừ những dòng sản phẩm đã bị
+                                vô hiệu hóa thủ công).
+                            </p>
+                        </div>
                     </div>
                 </div>
 
                 <div class="modal-actions">
-                    <button @click="cancelDelete" class="cancel-button">
+                    <button @click="cancelStatusToggle" class="cancel-button">
                         <i class="fas fa-arrow-left"></i> Quay lại
                     </button>
                     <button
-                        @click="confirmDeleteBrand"
-                        class="delete-confirm-button"
+                        @click="confirmToggleBrandStatus"
+                        :class="
+                            brandToToggle?.isActive
+                                ? 'deactivate-confirm-button'
+                                : 'activate-confirm-button'
+                        "
                         :disabled="loading"
                     >
                         <span v-if="loading" class="spinner small"></span>
-                        <i v-else class="fas fa-trash-alt"></i> Xóa
+                        <i
+                            v-else
+                            class="fas"
+                            :class="
+                                brandToToggle?.isActive
+                                    ? 'fa-toggle-off'
+                                    : 'fa-toggle-on'
+                            "
+                        ></i>
+                        {{
+                            brandToToggle?.isActive
+                                ? "Vô hiệu hóa"
+                                : "Kích hoạt"
+                        }}
                     </button>
                 </div>
             </div>
@@ -945,7 +1010,7 @@ watch(statusFilter, async () => {
 }
 
 .edit-button,
-.delete-button {
+.status-button {
     width: 32px;
     height: 32px;
     border-radius: 8px;
@@ -967,14 +1032,151 @@ watch(statusFilter, async () => {
     color: white;
 }
 
-.delete-button {
+.activate-button {
+    background-color: #e6f7ea;
+    color: #22c55e;
+}
+
+.activate-button:hover {
+    background-color: #22c55e;
+    color: white;
+}
+
+.deactivate-button {
     background-color: #fee2e2;
     color: #ef4444;
 }
 
-.delete-button:hover {
+.deactivate-button:hover {
     background-color: #ef4444;
     color: white;
+}
+
+.activate-confirm-button {
+    background-color: #22c55e;
+    border: none;
+    color: white;
+}
+
+.activate-confirm-button:hover {
+    background-color: #16a34a;
+}
+
+.deactivate-confirm-button {
+    background-color: #ef4444;
+    border: none;
+    color: white;
+}
+
+.deactivate-confirm-button:hover {
+    background-color: #dc2626;
+}
+
+.activate-icon {
+    background-color: #e6f7ea;
+    color: #22c55e;
+}
+
+.activate-details {
+    background-color: #e6f7ea;
+    border: 1px solid #c8e6c9;
+    color: #2e7d32;
+}
+
+.warning-details {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 1.25rem;
+    background-color: #ffeeee;
+    border: 1px solid #ffcccc;
+    border-radius: 8px;
+    color: #d32f2f;
+    text-align: left;
+    font-size: 1rem;
+    margin-top: 1.5rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.warning-details.activate-details {
+    background-color: #e8f5e9;
+    border: 1px solid #c8e6c9;
+    color: #2e7d32;
+}
+
+.warning-text {
+    flex: 1;
+}
+
+.warning-count {
+    margin: 0 0 0.75rem 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.warning-impact {
+    margin-top: 0.75rem;
+    font-size: 1rem;
+}
+
+.warning-impact p {
+    margin: 0;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.warning-details i {
+    font-size: 1.5rem;
+    margin-top: 0.2rem;
+}
+
+/* Modal action buttons */
+.modal-actions {
+    padding: 1.25rem 1.5rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.deactivate-confirm-button,
+.activate-confirm-button {
+    min-width: 140px;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.deactivate-confirm-button {
+    background-color: #ef4444;
+    border: none;
+    color: white;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+.activate-confirm-button {
+    background-color: #22c55e;
+    border: none;
+    color: white;
+    box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+}
+
+.deactivate-confirm-button:hover {
+    background-color: #dc2626;
+    box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);
+}
+
+.activate-confirm-button:hover {
+    background-color: #16a34a;
+    box-shadow: 0 4px 6px rgba(34, 197, 94, 0.3);
 }
 
 /* Modal Styles */
@@ -1151,18 +1353,6 @@ watch(statusFilter, async () => {
     display: none;
 }
 
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-}
-
-.checkbox-label input {
-    width: 16px;
-    height: 16px;
-}
-
 .form-actions {
     display: flex;
     justify-content: flex-end;
@@ -1171,8 +1361,7 @@ watch(statusFilter, async () => {
 }
 
 .cancel-button,
-.submit-button,
-.delete-confirm-button {
+.submit-button {
     padding: 0.75rem 1.25rem;
     border-radius: 8px;
     font-weight: 500;
@@ -1235,39 +1424,12 @@ watch(statusFilter, async () => {
     margin-bottom: 1.5rem;
 }
 
-.warning-details {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    padding: 1rem;
-    background-color: #fee2e2;
-    border-radius: 8px;
-    color: #ef4444;
-    text-align: left;
-    font-size: 0.9rem;
-}
-
 .modal-actions {
     padding: 1.25rem 1.5rem;
     border-top: 1px solid #eee;
     display: flex;
     justify-content: flex-end;
     gap: 1rem;
-}
-
-.delete-confirm-button {
-    background-color: #ef4444;
-    border: none;
-    color: white;
-}
-
-.delete-confirm-button:hover {
-    background-color: #dc2626;
-}
-
-.delete-confirm-button:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
 }
 
 .status-filter {
@@ -1304,81 +1466,6 @@ watch(statusFilter, async () => {
     outline: none;
 }
 
-/* Toggle Switch Styles */
-.toggle-switch-wrapper {
-    background-color: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin-top: 8px;
-}
-
-.toggle-switch-container {
-    display: flex;
-    align-items: center;
-    margin: 0;
-}
-
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 48px;
-    height: 24px;
-    margin-right: 12px;
-}
-
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #e2e8f0;
-    transition: 0.3s;
-    border-radius: 24px;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-input:checked + .toggle-slider {
-    background-color: var(--primary-color);
-}
-
-input:checked + .toggle-slider:before {
-    transform: translateX(24px);
-}
-
-.toggle-status {
-    font-weight: 600;
-    font-size: 0.95rem;
-}
-
-input:checked ~ .toggle-status {
-    color: var(--primary-color);
-}
-
-.toggle-description {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px dashed #e5e7eb;
-    font-size: 0.85rem;
-    color: #6b7280;
-    line-height: 1.4;
-}
-
 @media (max-width: 768px) {
     .section-header {
         flex-direction: column;
@@ -1410,4 +1497,3 @@ input:checked ~ .toggle-status {
     }
 }
 </style>
-```
