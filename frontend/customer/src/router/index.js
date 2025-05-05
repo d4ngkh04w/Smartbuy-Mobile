@@ -1,0 +1,127 @@
+import { createRouter, createWebHistory } from "vue-router";
+import { authService } from "../services/authService.js";
+
+// Import layouts
+import MainLayout from "../layouts/MainLayout.vue";
+import BlankLayout from "../layouts/BlankLayout.vue";
+
+// Import trang chủ
+import HomePage from "../views/HomePage.vue";
+
+const routes = [
+    // Routes với MainLayout (có header và footer)
+    {
+        path: "/",
+        component: MainLayout,
+        children: [
+            {
+                path: "",
+                name: "home",
+                component: HomePage,
+                meta: {
+                    title: "Trang chủ - SmartBuy Mobile",
+                    requiresAuth: false,
+                },
+            },
+            
+            // // Thêm các trang khác sử dụng MainLayout ở đây
+            // {
+            //     path: "cart",
+            //     name: "cart",
+            //     component: () => import("../views/CartPage.vue"),
+            //     meta: {
+            //         title: "Giỏ hàng - SmartBuy Mobile",
+            //         requiresAuth: false,
+            //     },
+            // },
+            // {
+            //     path: "product/:id",
+            //     name: "product-detail",
+            //     component: () => import("../views/ProductDetailPage.vue"),
+            //     meta: {
+            //         title: "Chi tiết sản phẩm - SmartBuy Mobile",
+            //         requiresAuth: false,
+            //     },
+            // },
+            // // Các route khác với MainLayout...
+        ],
+    },
+
+    // Routes với BlankLayout (không có header và footer)
+    {
+        path: "/",
+        component: BlankLayout,
+        children: [
+            {
+                path: "login",
+                name: "login",
+                component: () => import("../views/LoginPage.vue"),
+                meta: {
+                    title: "Đăng nhập - SmartBuy Mobile",
+                    requiresAuth: false,
+                },
+            },
+            // {
+            //     path: "register",
+            //     name: "register",
+            //     component: () => import("../views/RegisterPage.vue"),
+            //     meta: {
+            //         title: "Đăng ký - SmartBuy Mobile",
+            //         requiresAuth: false,
+            //     },
+            // },
+            // {
+            //     path: "forgot-password",
+            //     name: "forgot-password",
+            //     component: () => import("../views/ForgotPasswordPage.vue"),
+            //     meta: {
+            //         title: "Quên mật khẩu - SmartBuy Mobile",
+            //         requiresAuth: false,
+            //     },
+            // },
+            // // Có thể thêm các trang khác không cần header/footer như trang lỗi
+            // {
+            //     path: "/:pathMatch(.*)*",
+            //     name: "not-found",
+            //     component: () => import("../views/NotFoundPage.vue"),
+            //     meta: {
+            //         title: "Không tìm thấy trang - SmartBuy Mobile",
+            //         requiresAuth: false,
+            //     },
+            // },
+        ],
+    },
+];
+
+// Khởi tạo router
+const router = createRouter({
+    history: createWebHistory(import.meta.env.BASE_URL),
+    routes,
+    scrollBehavior(to, from, savedPosition) {
+        if (to.hash) {
+            return { el: to.hash, behavior: "smooth" };
+        }
+        return savedPosition || { top: 0 };
+    },
+});
+
+// Update document title based on route meta
+router.beforeEach(async (to, from, next) => {
+    const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
+    document.title = to.meta.title || "SmartBuy Mobile";
+    if (requiresAuth) {
+        try {
+            await authService.verifyUser();
+            next();
+        } catch (error) {
+            if (error.response?.status != 401) {
+                console.error("Lỗi xác thực:", error);
+                next("/login");
+            }
+        }
+    } else {
+        next();
+    }
+});
+
+export default router;
