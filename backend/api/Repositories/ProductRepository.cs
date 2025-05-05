@@ -24,7 +24,6 @@ namespace api.Repositories
                 .Include(p => p.Detail)
                 .Include(p => p.ProductTags)
                     .ThenInclude(pt => pt.Tag)
-                .Where(p => p.IsActive)
                 .ToListAsync();
         }
 
@@ -91,7 +90,7 @@ namespace api.Repositories
         public async Task<List<Product>> GetProductsByProductLineIdAsync(int productLineId)
         {
             return await _db.Products
-                .Where(p => p.ProductLineId == productLineId && p.IsActive)
+                .Where(p => p.ProductLineId == productLineId)
                 .ToListAsync();
         }
 

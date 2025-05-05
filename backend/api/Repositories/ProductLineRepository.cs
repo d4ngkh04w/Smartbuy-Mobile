@@ -116,7 +116,7 @@ namespace api.Repositories
         {
             return await _db.ProductLines
                 .Include(pl => pl.Products)
-                .Where(pl => pl.BrandId == brandId && pl.IsActive)
+                .Where(pl => pl.BrandId == brandId)
                 .ToListAsync();
         }
     }

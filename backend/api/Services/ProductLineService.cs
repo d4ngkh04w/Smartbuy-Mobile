@@ -89,10 +89,13 @@ namespace api.Services
                             {
                                 foreach (var image in color.Images)
                                 {
-                                    var deleted = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
-                                    if (!deleted)
+                                    if (!string.IsNullOrEmpty(image.ImagePath))
                                     {
-                                        return (false, "Error deleting product color image");
+                                        var deleted = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
+                                        if (!deleted)
+                                        {
+                                            return (false, "Error deleting product color image");
+                                        }
                                     }
                                 }
                             }
@@ -167,11 +170,6 @@ namespace api.Services
                     productLine.Description = productLineDTO.Description.Trim();
                 }
 
-                // if (productLineDTO.IsActive.HasValue)
-                // {
-                //     productLine.IsActive = productLineDTO.IsActive.Value;
-                // }
-
                 if (productLineDTO.BrandId.HasValue)
                 {
                     productLine.BrandId = productLineDTO.BrandId.Value;
@@ -179,11 +177,13 @@ namespace api.Services
 
                 if (productLineDTO.Image != null)
                 {
-                    // Xoá hình cũ
-                    var deleted = ImageHelper.DeleteImage(_env.WebRootPath + productLine.Image);
-                    if (!deleted)
+                    if (!string.IsNullOrEmpty(productLine.Image))
                     {
-                        return (false, "Error deleting old image", null);
+                        var deleted = ImageHelper.DeleteImage(_env.WebRootPath + productLine.Image);
+                        if (!deleted)
+                        {
+                            return (false, "Error deleting old image", null);
+                        }
                     }
                     var res = await ImageHelper.SaveImageAsync(productLineDTO.Image, _env.WebRootPath, "product-lines", 5 * 1024 * 1024);
                     if (!res.Success)

@@ -95,10 +95,13 @@ namespace api.Services
                                     {
                                         foreach (var image in color.Images)
                                         {
-                                            var deleted = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
-                                            if (!deleted)
+                                            if (!string.IsNullOrEmpty(image.ImagePath))
                                             {
-                                                return (false, "Error deleting product color images");
+                                                var deleted = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
+                                                if (!deleted)
+                                                {
+                                                    return (false, "Error deleting product color image");
+                                                }
                                             }
                                         }
                                     }
@@ -177,14 +180,14 @@ namespace api.Services
 
                 brand.Description = brandDTO.Description;
 
-                // if (brandDTO.IsActive.HasValue)
-                //     brand.IsActive = brandDTO.IsActive.Value;
-
                 if (brandDTO.Logo != null)
                 {
-                    var deleted = ImageHelper.DeleteImage(_env.WebRootPath + brand.Logo);
-                    if (!deleted)
-                        return (false, "Error deleting old logo", null);
+                    if (!string.IsNullOrEmpty(brand.Logo))
+                    {
+                        var deletedImg = ImageHelper.DeleteImage(_env.WebRootPath + brand.Logo);
+                        if (!deletedImg)
+                            return (false, "Error deleting old logo", null);
+                    }
 
                     var (success, errorMessage, path) = await ImageHelper.SaveImageAsync(brandDTO.Logo, _env.WebRootPath, "brands", 2 * 1024 * 1024);
                     if (!success)
@@ -226,7 +229,6 @@ namespace api.Services
                 {
                     foreach (var productLine in productLines)
                     {
-                        // Only activate product lines that weren't manually deactivated
                         if (!productLine.IsActive && !productLine.ManuallyDeactivated)
                         {
                             productLine.IsActive = true;
@@ -238,7 +240,6 @@ namespace api.Services
                             {
                                 foreach (var product in products)
                                 {
-                                    // Only activate products that weren't manually deactivated
                                     if (!product.IsActive && !product.ManuallyDeactivated)
                                     {
                                         product.IsActive = true;
@@ -284,7 +285,6 @@ namespace api.Services
                         {
                             productLine.IsActive = false;
                             productLine.UpdatedAt = DateTime.Now;
-                            // Don't mark as manually deactivated since it's due to brand deactivation
                             await _productLineRepo.UpdateProductLineAsync(productLine);
 
                             var products = await _productRepo.GetProductsByProductLineIdAsync(productLine.Id);
@@ -296,7 +296,6 @@ namespace api.Services
                                     {
                                         product.IsActive = false;
                                         product.UpdatedAt = DateTime.Now;
-                                        // Don't mark as manually deactivated since it's due to brand deactivation
                                         await _productRepo.UpdateAsync(product);
                                     }
                                 }

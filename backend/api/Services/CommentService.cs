@@ -43,11 +43,11 @@ namespace api.Services
         {
             try
             {
-                if (!await _productRepository.ExistsByNameAsync(productId.ToString()))
+                var product = await _productRepository.GetByIdAsync(productId);
+                if (product == null)
                 {
                     return (false, "Product not found", null);
                 }
-
                 var comments = await _commentRepository.GetCommentsByProductIdAsync(productId, page, pageSize);
                 // Tổng số bình luận cho sản phẩm
                 var totalComments = await _commentRepository.GetCommentsCountByProductIdAsync(productId);
@@ -120,8 +120,6 @@ namespace api.Services
                 var comment = commentDTO.ToCommentModel(userId);
                 comment.Content = comment.Content.Trim();
                 var createdComment = await _commentRepository.CreateCommentAsync(comment);
-
-                Console.WriteLine($"{createdComment.User.Avatar}, {createdComment.User.Name}");
 
                 var commentDto = createdComment.ToCommentDTO();
 

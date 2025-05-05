@@ -27,6 +27,7 @@ namespace api.Mappers
                 Description = productLine.Description ?? string.Empty,
                 Image = productLine.Image ?? string.Empty,
                 IsActive = productLine.IsActive,
+                ManuallyDeactivated = productLine.ManuallyDeactivated,
                 BrandName = productLine.Brand?.Name ?? string.Empty,
                 Products = productLine.Products.Select(p => p.ToProductDTO()).ToHashSet()
             };
