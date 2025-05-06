@@ -105,6 +105,15 @@ const routes = [
                     requiresAuth: false,
                 },
             },
+            {
+                path: "verify-email",
+                name: "verify-email",
+                component: () => import("../views/VerifyEmailPage.vue"),
+                meta: {
+                    title: "Xác thực email - SmartBuy Mobile",
+                    requiresAuth: false,
+                },
+            },
             // // Có thể thêm các trang khác không cần header/footer như trang lỗi
             // {
             //     path: "/:pathMatch(.*)*",

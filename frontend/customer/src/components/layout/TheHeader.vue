@@ -296,14 +296,6 @@ const handleSearch = () => {
     }
 };
 
-const toggleUserMenu = () => {
-    isUserMenuOpen.value = !isUserMenuOpen.value;
-    if (isUserMenuOpen.value) {
-        showNotifications.value = false;
-        showCart.value = false;
-    }
-};
-
 const goToLogin = () => {
     router.push("/login");
 };
@@ -398,20 +390,6 @@ const formatPrice = (price) => {
     }).format(price);
 };
 
-const logout = async () => {
-    try {
-        // Xử lý đăng xuất ở đây
-        await authService.logout();
-        isLoggedIn.value = false;
-        currentUser.value = null;
-        userAvatar.value = null;
-        isUserMenuOpen.value = false;
-        router.push("/login");
-    } catch (error) {
-        console.error("Error logging out:", error);
-    }
-};
-
 // Fetch user data on component mount
 const fetchUserData = async () => {
     try {
@@ -422,7 +400,26 @@ const fetchUserData = async () => {
 
         // Set user avatar if available
         if (userData.avatar) {
-            userAvatar.value = `${baseApiUrl}${userData.avatar}`;
+            // Nếu avatar đã là URL đầy đủ (bắt đầu bằng http hoặc https)
+            if (userData.avatar.startsWith("http")) {
+                userAvatar.value = userData.avatar;
+            } else {
+                // Lấy base URL từ cấu hình API
+                const apiUrl = baseApiUrl;
+                const baseUrl = apiUrl.includes("/api")
+                    ? apiUrl.split("/api")[0]
+                    : "";
+
+                // Chuẩn hóa đường dẫn file (chuyển \ thành /)
+                const normalizedPath = userData.avatar.replace(/\\/g, "/");
+
+                // Kiểm tra xem có prefix / hay không
+                const avatarPath = normalizedPath.startsWith("/")
+                    ? normalizedPath
+                    : `/${normalizedPath}`;
+
+                userAvatar.value = `${baseUrl}${avatarPath}`;
+            }
         } else {
             userAvatar.value = null;
         }

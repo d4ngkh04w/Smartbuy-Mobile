@@ -56,6 +56,14 @@ export const logout = async () => {
     return await instance.post("/auth/logout");
 };
 
+export const sendVerificationEmail = async () => {
+    return await instance.post("/user/auth/send-verification-email");
+};
+
+export const verifyEmail = async (verificationData) => {
+    return await instance.post("/user/auth/verify-email", verificationData);
+};
+
 export const authService = {
     verifyUser,
     login,
@@ -65,6 +73,8 @@ export const authService = {
     forgotPassword,
     resetPassword,
     logout,
+    sendVerificationEmail,
+    verifyEmail,
 };
 
 export default authService;
