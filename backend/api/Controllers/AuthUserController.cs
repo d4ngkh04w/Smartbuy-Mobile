@@ -38,12 +38,12 @@ namespace api.Controllers
             {
                 return result.ErrorMessage switch
                 {
-                    string msg when msg.Contains("Already exists", StringComparison.OrdinalIgnoreCase) => Conflict(new { Message = "Phone number already exists" }),
+                    string msg when msg.Contains("Already exists", StringComparison.OrdinalIgnoreCase) => Conflict(new { Message = result.ErrorMessage }),
                     _ => StatusCode(500, new { Message = result.ErrorMessage })
                 };
             }
 
-            Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+            Response.Cookies.Append("token", result.token!.AccessToken, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = false,
@@ -82,7 +82,7 @@ namespace api.Controllers
                 };
             }
 
-            Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+            Response.Cookies.Append("token", result.token!.AccessToken, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = false,
@@ -119,7 +119,7 @@ namespace api.Controllers
                 };
             }
 
-            Response.Cookies.Append("token", result.token!.Token, new CookieOptions
+            Response.Cookies.Append("token", result.token!.AccessToken, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = false,

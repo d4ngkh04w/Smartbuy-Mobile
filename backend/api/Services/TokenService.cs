@@ -139,7 +139,7 @@ namespace api.Services
 
                 return (true, null, new TokenResponseDTO
                 {
-                    Token = newAccessToken,
+                    AccessToken = newAccessToken,
                     RefreshToken = newRefreshToken
                 });
             }
