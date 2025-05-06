@@ -40,7 +40,7 @@ namespace api.Controllers
                     Path = "/",
                     Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
                 });
-                Response.Cookies.Append("token", result.Token!.Token, new CookieOptions
+                Response.Cookies.Append("token", result.Token!.AccessToken, new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = false,

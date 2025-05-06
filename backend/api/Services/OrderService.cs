@@ -26,7 +26,6 @@ namespace api.Services
         {
             try
             {
-                Console.WriteLine("Test");
                 if (orderDTO.Items == null || !orderDTO.Items.Any())
                 {
                     return (false, "Order must contain at least one item", null);
@@ -39,13 +38,11 @@ namespace api.Services
                     Status = "Chờ xác nhận",
                     PaymentMethod = orderDTO.PaymentMethod,
                     OrderDate = DateTime.Now,
-                    ShippingFee = orderDTO.ShippingFee,
                     OrderItems = new List<OrderItem>()
                 };
 
-                Console.WriteLine("Test");
-
                 decimal totalAmount = 0;
+                int totalItems = 0;
 
                 foreach (var item in orderDTO.Items)
                 {
@@ -70,6 +67,7 @@ namespace api.Services
 
                     // Update total
                     totalAmount += orderItem.Price * orderItem.Quantity;
+                    totalItems += item.Quantity;
 
                     // Add item vào order
                     order.OrderItems.Add(orderItem);
@@ -78,18 +76,17 @@ namespace api.Services
                     product.Quantity -= item.Quantity;
                     product.Sold += item.Quantity;
                     await _productRepository.UpdateAsync(product);
-                    Console.WriteLine("Test1");
                 }
 
-                Console.WriteLine("Test");
+                decimal shippingFee = CalculateShippingFee(totalAmount);
+                order.ShippingFee = shippingFee;
 
                 // Set tổng tiền cho order
-                order.TotalAmount = totalAmount + orderDTO.ShippingFee;
+                order.TotalAmount = totalAmount + shippingFee;
 
                 // Lưu order
-                Console.WriteLine("Test2");
                 var createdOrder = await _orderRepository.CreateOrderAsync(order);
-                Console.WriteLine("Test3");
+
                 // Xóa item trong giỏ hàng của người dùng sau khi đặt hàng thông qua giỏ hàng
                 var cart = await _cartRepository.GetCartByUserIdAsync(userId);
                 if (cart != null)
@@ -103,6 +100,27 @@ namespace api.Services
             {
                 return (false, "Error creating order", null);
             }
+        }
+
+        private decimal CalculateShippingFee(decimal orderTotal)
+        {
+            decimal baseShippingFee = 30_000; // Phí vận chuyển cơ bản
+            decimal discountThreshold = 5_000_000; // Giảm 50% phí vận chuyển cho đơn hàng trên 5 triệu
+            decimal freeShippingThreshold = 10_000_000; // Miễn phí vận chuyển cho đơn hàng trên 10 triệu
+
+            if (orderTotal >= freeShippingThreshold)
+                return 0;
+
+            // Phí vận chuyển cơ bản
+            decimal shippingFee = baseShippingFee;
+
+            // Giảm 50% phí vận chuyển nếu đơn hàng trên ngưỡng giảm giá
+            if (orderTotal >= discountThreshold && orderTotal < freeShippingThreshold)
+            {
+                shippingFee *= 0.5m;
+            }
+
+            return shippingFee;
         }
 
         public async Task<(bool Success, string? ErrorMessage)> DeleteOrderAsync(Guid id)

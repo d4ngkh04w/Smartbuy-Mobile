@@ -23,7 +23,7 @@ namespace api.Services
 
         public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? token)> Register(RegisterDTO registerDto, string role)
         {
-            if (await _userRepository.UserExistsByPhoneNumberAsync(registerDto.PhoneNumber.Trim()))
+            if (await _userRepository.UserExistsByPhoneNumberAsync(registerDto.PhoneNumber))
                 return (false, "Phone number already exists", null);
 
             if (await _userRepository.UserExistsByEmailAsync(registerDto.Email))
@@ -33,7 +33,7 @@ namespace api.Services
             {
                 var user = new User
                 {
-                    PhoneNumber = registerDto.PhoneNumber.Trim(),
+                    PhoneNumber = registerDto.PhoneNumber,
                     Email = registerDto.Email,
                     Password = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
                     Role = role,
@@ -46,7 +46,7 @@ namespace api.Services
                 var refreshToken = await _tokenService.GenerateRefreshToken(user);
                 var token = _tokenService.CreateToken(user, role);
 
-                return (true, null, new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
+                return (true, null, new TokenResponseDTO { AccessToken = token, RefreshToken = refreshToken });
             }
             catch (Exception ex)
             {
@@ -89,7 +89,7 @@ namespace api.Services
                 var refreshToken = await _tokenService.GenerateRefreshToken(user);
                 var token = _tokenService.CreateToken(user, role);
 
-                return (true, "Login successful", new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
+                return (true, "Login successful", new TokenResponseDTO { AccessToken = token, RefreshToken = refreshToken });
             }
             catch (Exception ex)
             {
@@ -150,7 +150,7 @@ namespace api.Services
                 user.LastLogin = DateTime.Now;
                 await _userRepository.UpdateUserAsync(user);
 
-                return (true, "Login with Google successful", new TokenResponseDTO { Token = token, RefreshToken = refreshToken });
+                return (true, "Login with Google successful", new TokenResponseDTO { AccessToken = token, RefreshToken = refreshToken });
             }
             catch (Exception ex)
             {
