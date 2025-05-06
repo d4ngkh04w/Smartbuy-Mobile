@@ -191,7 +191,9 @@
 
                     <div
                         class="action-item user-dropdown"
-                        @click="isLoggedIn ? toggleUserMenu() : goToLogin()"
+                        @click="
+                            isLoggedIn ? router.push('/account') : goToLogin()
+                        "
                         ref="userDropdown"
                     >
                         <template v-if="isLoggedIn">
@@ -210,28 +212,6 @@
                                 <i class="fas fa-user"></i>
                             </div>
                         </template>
-
-                        <div
-                            class="dropdown-menu"
-                            v-if="isLoggedIn && isUserMenuOpen"
-                        >
-                            <router-link to="/account" class="dropdown-item"
-                                >Tài khoản</router-link
-                            >
-                            <router-link to="/orders" class="dropdown-item"
-                                >Đơn hàng</router-link
-                            >
-                            <router-link to="/wishlist" class="dropdown-item"
-                                >Sản phẩm yêu thích</router-link
-                            >
-                            <div class="dropdown-divider"></div>
-                            <button
-                                @click="logout"
-                                class="dropdown-item logout-btn"
-                            >
-                                Đăng xuất
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -242,6 +222,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
+import meService from "@/services/meService";
+import authService from "@/services/authService";
 
 const router = useRouter();
 const searchQuery = ref("");
@@ -252,11 +234,29 @@ const cartRef = ref(null);
 const showNotifications = ref(false);
 const showCart = ref(false);
 
-// Demo data - Thay thế bằng state thực tế trong ứng dụng của bạn
+// User data
 const isLoggedIn = ref(false);
-const notificationCount = ref(2);
+const currentUser = ref(null);
 const userAvatar = ref(null);
-const userName = ref("");
+
+// Demo data - Thay thế bằng state thực tế trong ứng dụng của bạn
+const notificationCount = ref(2);
+const cartItems = ref([
+    {
+        id: 1,
+        name: "iPhone 13",
+        image: "https://via.placeholder.com/50",
+        price: 18000000,
+        quantity: 1,
+    },
+    {
+        id: 2,
+        name: "Samsung Galaxy S21",
+        image: "https://via.placeholder.com/50",
+        price: 14000000,
+        quantity: 2,
+    },
+]);
 
 // Demo notifications data - sẽ được thay thế bằng API call
 const notifications = ref([
@@ -270,35 +270,16 @@ const notifications = ref([
     {
         id: 2,
         type: "promotion",
-        message: "Flash sale cuối tuần - Giảm giá đến 50%",
+        message: "Giảm giá 20% cho tất cả sản phẩm Samsung",
         read: false,
-        createdAt: new Date(Date.now() - 3 * 3600000), // 3 giờ trước
+        createdAt: new Date(Date.now() - 2 * 3600000), // 2 giờ trước
     },
 ]);
 
-// Demo cart data - sẽ được thay thế bằng API call
-const cartItems = ref([
-    {
-        id: 1,
-        name: "iPhone 13 Pro Max",
-        price: 28990000,
-        quantity: 1,
-        image: "https://via.placeholder.com/50x50",
-    },
-    {
-        id: 2,
-        name: "Ốp lưng iPhone 13 Pro Max",
-        price: 290000,
-        quantity: 2,
-        image: "https://via.placeholder.com/50x50",
-    },
-]);
+// Base API URL
+const baseApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-// Computed properties
-const cartCount = computed(() => {
-    return cartItems.value.reduce((total, item) => total + item.quantity, 0);
-});
-
+const cartCount = ref(cartItems.value.length);
 const cartTotal = computed(() => {
     return cartItems.value.reduce(
         (total, item) => total + item.price * item.quantity,
@@ -343,63 +324,71 @@ const toggleCart = () => {
     }
 };
 
-const closeMenus = (e) => {
-    // Đóng dropdown menu khi click bên ngoài
-    if (userDropdown.value && !userDropdown.value.contains(e.target)) {
+const closeMenus = (event) => {
+    if (
+        userDropdown.value &&
+        !userDropdown.value.contains(event.target) &&
+        isUserMenuOpen.value
+    ) {
         isUserMenuOpen.value = false;
     }
 
-    if (notificationRef.value && !notificationRef.value.contains(e.target)) {
+    if (
+        notificationRef.value &&
+        !notificationRef.value.contains(event.target) &&
+        showNotifications.value
+    ) {
         showNotifications.value = false;
     }
 
-    if (cartRef.value && !cartRef.value.contains(e.target)) {
+    if (
+        cartRef.value &&
+        !cartRef.value.contains(event.target) &&
+        showCart.value
+    ) {
         showCart.value = false;
     }
 };
 
-const markAllAsRead = () => {
-    notifications.value = notifications.value.map((notification) => {
-        return { ...notification, read: true };
-    });
-    notificationCount.value = 0;
+const removeFromCart = (id) => {
+    // Xóa sản phẩm khỏi giỏ hàng
+    cartItems.value = cartItems.value.filter((item) => item.id !== id);
 };
 
-const removeFromCart = (id) => {
-    const index = cartItems.value.findIndex((item) => item.id === id);
-    if (index !== -1) {
-        cartItems.value.splice(index, 1);
+const formatTime = (date) => {
+    // Tính thời gian tương đối
+    const now = new Date();
+    const diffInMinutes = Math.floor(
+        (now.getTime() - date.getTime()) / (1000 * 60)
+    );
+
+    if (diffInMinutes < 60) {
+        return `${diffInMinutes} phút trước`;
+    } else if (diffInMinutes < 24 * 60) {
+        return `${Math.floor(diffInMinutes / 60)} giờ trước`;
+    } else {
+        return date.toLocaleDateString("vi-VN");
     }
 };
 
 const getNotificationIcon = (type) => {
     switch (type) {
         case "order":
-            return "fas fa-box";
+            return "fas fa-shopping-bag";
         case "promotion":
-            return "fas fa-tag";
-        case "account":
-            return "fas fa-user-circle";
+            return "fas fa-percentage";
+        case "system":
+            return "fas fa-bell";
         default:
             return "fas fa-bell";
     }
 };
 
-const formatTime = (date) => {
-    const now = new Date();
-    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
-
-    if (diffInMinutes < 1) {
-        return "Vừa xong";
-    } else if (diffInMinutes < 60) {
-        return `${diffInMinutes} phút trước`;
-    } else if (diffInMinutes < 24 * 60) {
-        const hours = Math.floor(diffInMinutes / 60);
-        return `${hours} giờ trước`;
-    } else {
-        const days = Math.floor(diffInMinutes / (60 * 24));
-        return `${days} ngày trước`;
-    }
+const markAllAsRead = () => {
+    notifications.value = notifications.value.map((notification) => ({
+        ...notification,
+        read: true,
+    }));
 };
 
 const formatPrice = (price) => {
@@ -409,15 +398,51 @@ const formatPrice = (price) => {
     }).format(price);
 };
 
-const logout = () => {
-    // Xử lý đăng xuất ở đây
-    isLoggedIn.value = false;
-    isUserMenuOpen.value = false;
-    router.push("/login");
+const logout = async () => {
+    try {
+        // Xử lý đăng xuất ở đây
+        await authService.logout();
+        isLoggedIn.value = false;
+        currentUser.value = null;
+        userAvatar.value = null;
+        isUserMenuOpen.value = false;
+        router.push("/login");
+    } catch (error) {
+        console.error("Error logging out:", error);
+    }
+};
+
+// Fetch user data on component mount
+const fetchUserData = async () => {
+    try {
+        // Gọi trực tiếp API getMe để lấy thông tin người dùng
+        const userData = await meService.getMe();
+        currentUser.value = userData;
+        isLoggedIn.value = true;
+
+        // Set user avatar if available
+        if (userData.avatar) {
+            userAvatar.value = `${baseApiUrl}${userData.avatar}`;
+        } else {
+            userAvatar.value = null;
+        }
+    } catch (error) {
+        console.error("Error fetching user data:", error);
+        // Nếu API getMe trả về lỗi, xóa dữ liệu người dùng
+        isLoggedIn.value = false;
+        currentUser.value = null;
+        userAvatar.value = null;
+
+        // Nếu lỗi 401 (Unauthorized), chuyển hướng sang trang đăng nhập
+        if (error.response && error.response.status === 401) {
+            router.push("/login");
+        }
+    }
 };
 
 onMounted(() => {
     document.addEventListener("click", closeMenus);
+    fetchUserData();
 });
 
 onUnmounted(() => {

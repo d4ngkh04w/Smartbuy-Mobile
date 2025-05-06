@@ -23,7 +23,15 @@ const routes = [
                     requiresAuth: false,
                 },
             },
-            
+            {
+                path: "account",
+                name: "account",
+                component: () => import("../views/AccountPage.vue"),
+                meta: {
+                    title: "Tài khoản của tôi - SmartBuy Mobile",
+                    requiresAuth: true,
+                },
+            },
             // // Thêm các trang khác sử dụng MainLayout ở đây
             // {
             //     path: "cart",
@@ -61,24 +69,42 @@ const routes = [
                     requiresAuth: false,
                 },
             },
-            // {
-            //     path: "register",
-            //     name: "register",
-            //     component: () => import("../views/RegisterPage.vue"),
-            //     meta: {
-            //         title: "Đăng ký - SmartBuy Mobile",
-            //         requiresAuth: false,
-            //     },
-            // },
-            // {
-            //     path: "forgot-password",
-            //     name: "forgot-password",
-            //     component: () => import("../views/ForgotPasswordPage.vue"),
-            //     meta: {
-            //         title: "Quên mật khẩu - SmartBuy Mobile",
-            //         requiresAuth: false,
-            //     },
-            // },
+            {
+                path: "register",
+                name: "register",
+                component: () => import("../views/RegisterPage.vue"),
+                meta: {
+                    title: "Đăng ký - SmartBuy Mobile",
+                    requiresAuth: false,
+                },
+            },
+            {
+                path: "profile-setup",
+                name: "profile-setup",
+                component: () => import("../views/ProfileSetupPage.vue"),
+                meta: {
+                    title: "Hoàn tất thông tin - SmartBuy Mobile",
+                    requiresAuth: true,
+                },
+            },
+            {
+                path: "forgot-password",
+                name: "forgot-password",
+                component: () => import("../views/ForgotPasswordPage.vue"),
+                meta: {
+                    title: "Quên mật khẩu - SmartBuy Mobile",
+                    requiresAuth: false,
+                },
+            },
+            {
+                path: "reset-password",
+                name: "reset-password",
+                component: () => import("../views/ResetPasswordPage.vue"),
+                meta: {
+                    title: "Đặt lại mật khẩu - SmartBuy Mobile",
+                    requiresAuth: false,
+                },
+            },
             // // Có thể thêm các trang khác không cần header/footer như trang lỗi
             // {
             //     path: "/:pathMatch(.*)*",

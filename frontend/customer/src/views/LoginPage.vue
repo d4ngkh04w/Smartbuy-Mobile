@@ -3,67 +3,141 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import authService from "@/services/authService";
 import emitter from "@/utils/evenBus";
+import { GoogleLogin } from "vue3-google-login";
 
 const phoneNumber = ref("");
 const password = ref("");
 const showPassword = ref(false);
 const isLoading = ref(false);
 const errorMessage = ref("");
+const phoneNumberError = ref("");
 const router = useRouter();
 
 const handleLogin = async () => {
-    if (!validatePhoneNumber(phoneNumber.value)) {
-        errorMessage.value =
-            "Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại 10 số bắt đầu bằng 0.";
+    // Reset errors
+    errorMessage.value = "";
+    phoneNumberError.value = "";
+
+    // Validate phone number
+    if (!isValidPhoneNumber(phoneNumber.value)) {
+        errorMessage.value = "Số điện thoại không hợp lệ";
+        return;
+    }
+
+    if (!password.value) {
+        errorMessage.value = "Vui lòng nhập mật khẩu";
         return;
     }
 
     try {
         isLoading.value = true;
-        errorMessage.value = "";
 
+        // Call login API
         await authService.login(phoneNumber.value, password.value);
 
-        // If login is successful, navigate to home page
+        emitter.emit("show-notification", {
+            status: "success",
+            message: "Đăng nhập thành công",
+        });
+
+        // Reset form
+        phoneNumber.value = "";
+        password.value = "";
+        showPassword.value = false;
+
+        // Navigate to home page
         router.push("/");
     } catch (error) {
         console.error("Error logging in:", error);
 
-        // Handle different error responses
         if (error.response) {
             const { status, data } = error.response;
 
-            if (status === 401) {
-                errorMessage.value =
-                    data.message ||
-                    "Số điện thoại hoặc mật khẩu không chính xác";
-            } else if (status === 403) {
-                errorMessage.value =
-                    "Tài khoản của bạn không có quyền truy cập";
-            } else if (data && data.message) {
-                errorMessage.value = data.message;
-            } else {
-                errorMessage.value =
-                    "Đăng nhập không thành công. Vui lòng thử lại.";
-            }
+            emitter.emit("show-notification", {
+                status: "error",
+                message: data.message || "Đăng nhập thất bại",
+            });
         } else {
-            errorMessage.value =
-                "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.";
+            emitter.emit("show-notification", {
+                status: "error",
+                message: "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.",
+            });
         }
     } finally {
         isLoading.value = false;
     }
 };
 
-const loginWithGoogle = () => {
-    console.log("Login with Google");
-    // Thực hiện đăng nhập với Google
+/**
+ * Validate phone number input (only allow digits and limit to 10 characters)
+ */
+const validatePhoneInput = (event) => {
+    const input = event.target.value.replace(/\D/g, "").slice(0, 10);
+    phoneNumber.value = input;
+    phoneNumberError.value =
+        input.length != 10 ? "Số điện thoại không hợp lệ" : "";
 };
 
-const validatePhoneNumber = (phone) => {
-    // Kiểm tra số điện thoại hợp lệ (10 số và bắt đầu bằng 0)
-    const phoneRegex = /^0\d{9}$/;
-    return phoneRegex.test(phone);
+const handleGoogleLogin = async (response) => {
+    try {
+        console.log("Client ID:", import.meta.env.VITE_GOOGLE_CLIENT_ID);
+        isLoading.value = true;
+
+        // Lấy token từ Google response
+        const { credential, ...otherData } = response;
+
+        console.log("Google response data:", otherData);
+
+        // Debug: Log token information
+        console.log("Google credential received:", credential);
+        console.log("Token data to be sent:", { Token: credential });
+
+        // Gọi API đăng nhập Google từ backend với đúng định dạng yêu cầu
+        await authService.googleLogin({ Token: credential });
+
+        emitter.emit("show-notification", {
+            status: "success",
+            message: "Đăng nhập với Google thành công",
+        });
+
+        // Chuyển đến trang chủ
+        router.push("/");
+    } catch (error) {
+        console.error("Error during Google login:", error);
+
+        if (error.response) {
+            const { data } = error.response;
+            console.error("Error response data:", data);
+            emitter.emit("show-notification", {
+                status: "error",
+                message: data.message || "Đăng nhập thất bại",
+            });
+        } else {
+            emitter.emit("show-notification", {
+                status: "error",
+                message:
+                    error.message ||
+                    "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.",
+            });
+        }
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+const handleGoogleLoginError = (error) => {
+    console.error("Google login error:", error);
+    emitter.emit("show-notification", {
+        status: "error",
+        message: "Đăng nhập với Google thất bại",
+    });
+};
+
+/**
+ * Check if phone number is valid (10 digits)
+ */
+const isValidPhoneNumber = (phone) => {
+    return /^[0-9]{10}$/.test(phone);
 };
 </script>
 
@@ -81,22 +155,32 @@ const validatePhoneNumber = (phone) => {
             <div class="form-section">
                 <div class="login-card">
                     <form @submit.prevent="handleLogin" class="login-form">
+                        <h2 class="form-title">Đăng nhập</h2>
                         <div v-if="errorMessage" class="error-message">
                             {{ errorMessage }}
                         </div>
 
                         <div class="form-group">
-                            <input
-                                type="text"
-                                id="phoneNumber"
-                                v-model="phoneNumber"
-                                placeholder="Số điện thoại"
-                                required
-                            />
+                            <div class="input-container">
+                                <i class="fas fa-phone input-icon"></i>
+                                <input
+                                    type="text"
+                                    id="phoneNumber"
+                                    v-model="phoneNumber"
+                                    placeholder="Số điện thoại"
+                                    @input="validatePhoneInput"
+                                    :class="{ 'input-error': phoneNumberError }"
+                                    required
+                                />
+                            </div>
+                            <p class="error-text" v-if="phoneNumberError">
+                                {{ phoneNumberError }}
+                            </p>
                         </div>
 
                         <div class="form-group">
                             <div class="password-input">
+                                <i class="fas fa-lock input-icon"></i>
                                 <input
                                     :type="showPassword ? 'text' : 'password'"
                                     id="password"
@@ -144,22 +228,17 @@ const validatePhoneNumber = (phone) => {
                             <span>hoặc</span>
                         </div>
 
-                        <button
-                            type="button"
-                            class="btn-google"
-                            @click="loginWithGoogle"
-                        >
-                            <div class="google-icon-wrapper">
-                                <img
-                                    class="google-icon"
-                                    src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg"
-                                    alt="Google logo"
-                                />
-                            </div>
-                            <span class="btn-google-text"
-                                >Đăng nhập với Google</span
-                            >
-                        </button>
+                        <div class="google-button-container">
+                            <!-- Sử dụng nút đăng nhập của Google không có chữ -->
+                            <GoogleLogin
+                                :callback="handleGoogleLogin"
+                                :error-callback="handleGoogleLoginError"
+                                :popup-type="false"
+                                type="icon"
+                                theme="outline"
+                                size="large"
+                            />
+                        </div>
                     </form>
                 </div>
             </div>
@@ -228,6 +307,13 @@ const validatePhoneNumber = (phone) => {
     width: 396px;
 }
 
+.form-title {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #f86ed3;
+    font-size: 1.5rem;
+}
+
 .login-card {
     background-color: #fff;
     border-radius: 8px;
@@ -245,9 +331,25 @@ const validatePhoneNumber = (phone) => {
     margin-bottom: 12px;
 }
 
-input {
+/* Input styles */
+.input-container {
+    position: relative;
     width: 100%;
-    padding: 14px 16px;
+}
+
+.input-icon {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    transform: translateY(-50%);
+    color: #888;
+    font-size: 1rem;
+}
+
+.input-container input,
+.password-input input {
+    width: 100%;
+    padding: 14px 16px 14px 40px;
     font-size: 17px;
     border: 1px solid #dddfe2;
     border-radius: 6px;
@@ -339,6 +441,13 @@ input:focus {
 }
 
 /* Google Button Styling */
+.google-button-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 16px 0;
+}
+
 .btn-google {
     display: flex;
     align-items: center;
@@ -363,6 +472,11 @@ input:focus {
 
 .btn-google:active {
     background-color: #f1f1f1;
+}
+
+.btn-google:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
 }
 
 .google-icon-wrapper {
@@ -398,6 +512,17 @@ input:focus {
     margin-bottom: 16px;
     font-size: 14px;
     text-align: center;
+}
+
+.error-text {
+    color: #d32f2f;
+    font-size: 12px;
+    margin: 4px 0 0 4px;
+}
+
+.input-error {
+    border-color: #d32f2f;
+    border-width: 2px;
 }
 
 /* Responsive */
