@@ -1,4 +1,6 @@
 using api.DTOs.Cart;
+using api.Exceptions;
+using api.Helpers;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,139 +19,56 @@ namespace api.Controllers
             _cartService = cartService;
         }
 
-        private Guid GetCurrentUserId()
-        {
-            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "id")?.Value;
-            if (userIdClaim == null)
-                return Guid.Empty;
-
-            return Guid.Parse(userIdClaim);
-        }
-
         [HttpGet]
         public async Task<IActionResult> GetCart()
         {
-            var userId = GetCurrentUserId();
+            var userId = HttpContextHelper.CurrentUserId;
 
-            var result = await _cartService.GetCartAsync(userId);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new
-            {
-                Message = "Cart retrieved successfully",
-                result.Cart
-            });
+            var cart = await _cartService.GetCartAsync(userId);
+            return ApiResponseHelper.Success("Cart retrieved successfully", cart);
         }
 
         [HttpPost("add")]
         public async Task<IActionResult> AddToCart([FromBody] AddToCartDTO dto)
         {
-            var userId = GetCurrentUserId();
+            var userId = HttpContextHelper.CurrentUserId;
             if (userId == Guid.Empty)
-                return Unauthorized(new { Message = "User not authenticated" });
+                throw new UnauthorizedException();
 
-            var result = await _cartService.AddToCartAsync(userId, dto);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new
-            {
-                Message = "Product added to cart successfully",
-                result.Cart
-            });
+            var cart = await _cartService.AddToCartAsync(userId, dto);
+            return ApiResponseHelper.Success("Product added to cart successfully", cart);
         }
 
         [HttpPut("items/{itemId:guid}")]
         public async Task<IActionResult> UpdateCartItem([FromRoute] Guid itemId, [FromBody] UpdateCartItemDTO dto)
         {
-            var userId = GetCurrentUserId();
+            var userId = HttpContextHelper.CurrentUserId;
 
-            var result = await _cartService.UpdateCartItemAsync(userId, itemId, dto);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                // Trường hợp này có thể xảy ra khi số lượng sản phẩm trong kho không đủ
-                if (result.Cart != null)
-                {
-                    return Ok(new
-                    {
-                        Message = result.ErrorMessage,
-                        result.Cart
-                    });
-                }
-
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new
-            {
-                Message = "Cart item updated successfully",
-                result.Cart
-            });
+            var cart = await _cartService.UpdateCartItemAsync(userId, itemId, dto);
+            return ApiResponseHelper.Success("Cart item updated successfully", cart);
         }
 
         [HttpDelete("items/{itemId:guid}")]
         public async Task<IActionResult> RemoveCartItem([FromRoute] Guid itemId)
         {
-            var userId = GetCurrentUserId();
+            var userId = HttpContextHelper.CurrentUserId;
             if (userId == Guid.Empty)
-                return Unauthorized(new { Message = "User not authenticated" });
+                throw new UnauthorizedException();
 
-            var result = await _cartService.RemoveCartItemAsync(userId, itemId);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new { Message = "Cart item removed successfully" });
+            await _cartService.RemoveCartItemAsync(userId, itemId);
+            return NoContent();
         }
 
         [HttpDelete("clear")]
         public async Task<IActionResult> ClearCart()
         {
-            var userId = GetCurrentUserId();
+            var userId = HttpContextHelper.CurrentUserId;
             if (userId == Guid.Empty)
-                return Unauthorized(new { Message = "User not authenticated" });
+                throw new UnauthorizedException();
 
-            var result = await _cartService.ClearCartAsync(userId);
+            await _cartService.ClearCartAsync(userId);
 
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new { Message = "Cart cleared successfully" });
+            return NoContent();
         }
     }
 }

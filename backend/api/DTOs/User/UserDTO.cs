@@ -1,3 +1,5 @@
+using api.Utils;
+
 namespace api.DTOs.User
 {
     public class UserDTO
@@ -17,7 +19,10 @@ namespace api.DTOs.User
         public string LockReason { get; set; } = string.Empty;
         public DateTime? LockedAt { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string CreatedAtString => CreatedAt.ToRelativeTimeString();
         public DateTime? UpdatedAt { get; set; }
+        public string UpdatedAtString => UpdatedAt?.ToRelativeTimeString() ?? string.Empty;
         public DateTime? LastLogin { get; set; }
+        public string LastLoginString => LastLogin?.ToRelativeTimeString() ?? string.Empty;
     }
 }

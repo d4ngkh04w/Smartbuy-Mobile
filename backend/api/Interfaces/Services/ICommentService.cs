@@ -4,12 +4,12 @@ namespace api.Interfaces.Services
 {
     public interface ICommentService
     {
-        Task<(bool Success, string? ErrorMessage, CommentDTO? Comment)> GetCommentByIdAsync(int id);
-        Task<(bool Success, string? ErrorMessage, CommentResponseDTO? Comments)> GetCommentsByProductIdAsync(int productId, int page, int pageSize);
-        Task<(bool Success, string? ErrorMessage, CommentDTO? Comment)> CreateCommentAsync(CreateCommentDTO commentDTO, Guid userId);
-        Task<(bool Success, string? ErrorMessage, CommentDTO? Comment)> UpdateCommentAsync(int id, UpdateCommentDTO commentDTO, Guid userId);
-        Task<(bool Success, string? ErrorMessage)> DeleteCommentAsync(int id, Guid userId);
-        Task<(bool Success, string? ErrorMessage, CommentDTO? Comment)> AddReactionAsync(int commentId, CommentReactionDTO reactionDTO, Guid userId);
-        Task<(bool Success, string? ErrorMessage, double? Rating)> GetProductAverageRatingAsync(int productId);
+        Task<CommentDTO> GetCommentByIdAsync(int id);
+        Task<CommentResponseDTO> GetCommentsByProductIdAsync(int productId, int page, int pageSize);
+        Task<CommentDTO> CreateCommentAsync(CreateCommentDTO commentDTO, Guid userId);
+        Task<CommentDTO> UpdateCommentAsync(int id, UpdateCommentDTO commentDTO, Guid userId);
+        Task DeleteCommentAsync(int id, Guid userId);
+        Task<CommentDTO> AddReactionAsync(int commentId, CommentReactionDTO reactionDTO, Guid userId);
+        Task<double> GetProductAverageRatingAsync(int productId);
     }
 }

@@ -96,7 +96,7 @@ const fetchBrands = async () => {
             params.isActive = statusFilter.value === "active";
         }
         const response = await getBrands(params);   
-        brands.value = response.data.brands;
+        brands.value = response.data.data;
     } catch (error) {
         console.error("Error fetching brands:", error);
         // Hiển thị thông báo lỗi (có thể thêm later)
@@ -141,12 +141,11 @@ const handleFileChange = (event) => {
         "image/jpeg",
         "image/png",
         "image/jpg",
-        "image/svg+xml",
     ];
     if (!allowedTypes.includes(file.type)) {
         emitter.emit("show-notification", {
             status: "error",
-            message: "Định dạng tệp không hợp lệ. Vui lòng chọn tệp SVG, PNG, JPG.",
+            message: "Định dạng tệp không hợp lệ. Vui lòng chọn tệp PNG, JPG.",
         });
         return;
     }

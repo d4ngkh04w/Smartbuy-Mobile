@@ -1,9 +1,10 @@
 using api.DTOs.ProductLine;
-using api.Helpers;
+using api.Exceptions;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
 using api.Queries;
+using api.Utils;
 
 namespace api.Services
 {
@@ -22,281 +23,189 @@ namespace api.Services
             _env = webEnvironment;
         }
 
-        public async Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> CreateProductLineAsync(CreateProductLineDTO productLineDTO)
+        public async Task<ProductLineDTO> CreateProductLineAsync(CreateProductLineDTO productLineDTO)
         {
-            try
+            _ = await _brandRepository.GetBrandByIdAsync(productLineDTO.BrandId) ?? throw new NotFoundException("Brand not found");
+            bool exists = await _productLineRepository.ProductLineExistAsync(productLineDTO.Name.Trim());
+            if (exists)
             {
-                var brand = await _brandRepository.GetBrandByIdAsync(productLineDTO.BrandId);
-                if (brand == null)
-                {
-                    return (false, "Brand not found", null);
-                }
-                bool exists = await _productLineRepository.ProductLineExistAsync(productLineDTO.Name.Trim());
-                if (exists)
-                {
-                    return (false, "Product line already exists", null);
-                }
-
-                var productLine = productLineDTO.ToModel();
-                if (productLineDTO.Image != null)
-                {
-                    var result = await ImageHelper.SaveImageAsync(productLineDTO.Image, _env.WebRootPath, "product-lines", 5 * 1024 * 1024);
-                    if (!result.Success)
-                    {
-                        return (false, result.ErrorMessage, null);
-                    }
-                    productLine.Image = result.FilePath!;
-                }
-
-                var createdProductLine = await _productLineRepository.CreateProductLineAsync(productLine);
-
-                return (true, null, createdProductLine.ToDTO());
+                throw new AlreadyExistsException("Product line already exists");
             }
-            catch (Exception)
+
+            var productLine = productLineDTO.ToModel();
+            if (productLineDTO.Image != null)
             {
-                return (false, $"Error creating product line", null);
+                var filePath = await ImageUtils.SaveImageAsync(productLineDTO.Image, _env.WebRootPath, "product-lines", 5 * 1024 * 1024);
+                productLine.Image = filePath;
             }
+
+            var createdProductLine = await _productLineRepository.CreateProductLineAsync(productLine);
+
+            return createdProductLine.ToDTO();
         }
 
-        public async Task<(bool Success, string? ErrorMessage)> DeleteProductLineAsync(int id)
+        public async Task DeleteProductLineAsync(int id)
         {
-            try
+            var productLine = await _productLineRepository.GetProductLineByIdAsync(id) ?? throw new NotFoundException("Product line not found");
+
+            if (!string.IsNullOrEmpty(productLine.Image))
             {
-                var productLine = await _productLineRepository.GetProductLineByIdAsync(id);
-                if (productLine == null)
+                var deleted = ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);
+                if (!deleted)
                 {
-                    return (false, "Product line not found");
+                    throw new ServerException("Error deleting image");
                 }
+                productLine.Image = string.Empty;
+            }
 
-                if (!string.IsNullOrEmpty(productLine.Image))
+            var products = await _productRepository.GetProductsByProductLineIdAsync(id);
+            if (products != null && products.Any())
+            {
+                foreach (var product in products)
                 {
-                    var deleted = ImageHelper.DeleteImage(_env.WebRootPath + productLine.Image);
-                    if (!deleted)
+                    foreach (var color in product.Colors)
                     {
-                        return (false, "Error deleting image");
-                    }
-                    productLine.Image = string.Empty;
-                }
-
-                var products = await _productRepository.GetProductsByProductLineIdAsync(id);
-                if (products != null && products.Any())
-                {
-                    foreach (var product in products)
-                    {
-                        foreach (var color in product.Colors)
+                        if (color.Images != null && color.Images.Any())
                         {
-                            if (color.Images != null && color.Images.Any())
+                            foreach (var image in color.Images)
                             {
-                                foreach (var image in color.Images)
+                                if (!string.IsNullOrEmpty(image.ImagePath))
                                 {
-                                    if (!string.IsNullOrEmpty(image.ImagePath))
+                                    var deleted = ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
+                                    if (!deleted)
                                     {
-                                        var deleted = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
-                                        if (!deleted)
-                                        {
-                                            return (false, "Error deleting product color image");
-                                        }
+                                        throw new ServerException("Error deleting product color image");
                                     }
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                await _productLineRepository.DeleteProductLineAsync(productLine);
-                return (true, null);
-            }
-            catch (Exception)
-            {
-                return (false, $"Error deleting product line");
-            }
+            await _productLineRepository.DeleteProductLineAsync(productLine);
         }
 
-        public async Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> GetProductLineByIdAsync(int id, ProductLineQuery? query = null)
+        public async Task<ProductLineDTO> GetProductLineByIdAsync(int id, ProductLineQuery? query = null)
         {
-            try
-            {
-                var productLine = await _productLineRepository.GetProductLineByIdAsync(id, query);
-                if (productLine == null)
-                {
-                    return (false, "Product line not found", null);
-                }
-
-                return (true, null, productLine.ToDTO());
-            }
-            catch (Exception)
-            {
-                return (false, $"Error retrieving product line", null);
-            }
+            var productLine = await _productLineRepository.GetProductLineByIdAsync(id, query) ?? throw new NotFoundException("Product line not found");
+            return productLine.ToDTO();
         }
 
-        public async Task<(bool Success, string? ErrorMessage, IEnumerable<ProductLineDTO>? ProductLines)> GetProductLinesAsync(ProductLineQuery query)
+        public async Task<IEnumerable<ProductLineDTO>> GetProductLinesAsync(ProductLineQuery query)
         {
-            try
+            var productLines = await _productLineRepository.GetProductLinesAsync(query);
+            if (productLines == null || !productLines.Any())
             {
-                var productLines = await _productLineRepository.GetProductLinesAsync(query);
-                if (productLines == null || !productLines.Any())
-                {
-                    return (false, "Not found any product lines", null);
-                }
+                throw new NotFoundException("Not found any product lines");
+            }
 
-                return (true, null, productLines.Select(pl => pl.ToDTO()));
-            }
-            catch (Exception)
-            {
-                return (false, $"Error retrieving product lines", null);
-            }
+            return productLines.Select(pl => pl.ToDTO());
         }
 
-        public async Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> UpdateProductLineAsync(int id, UpdateProductLineDTO productLineDTO)
+        public async Task<ProductLineDTO> UpdateProductLineAsync(int id, UpdateProductLineDTO productLineDTO)
         {
-            try
+            var productLine = await _productLineRepository.GetProductLineByIdAsync(id) ?? throw new NotFoundException("Product line not found");
+
+            // Chỉ cập nhật các trường hợp có trong DTO
+            var newName = productLineDTO.Name?.Trim();
+            if (!string.IsNullOrEmpty(newName))
             {
-                var productLine = await _productLineRepository.GetProductLineByIdAsync(id);
-                if (productLine == null)
-                {
-                    return (false, "Product line not found", null);
-                }
+                productLine.Name = newName;
+            }
 
-                // Chỉ cập nhật các trường hợp có trong DTO
-                var newName = productLineDTO.Name?.Trim();
-                if (!string.IsNullOrEmpty(newName))
-                {
-                    productLine.Name = newName;
-                }
+            if (!string.IsNullOrEmpty(productLineDTO.Description?.Trim()))
+            {
+                productLine.Description = productLineDTO.Description.Trim();
+            }
 
-                if (!string.IsNullOrEmpty(productLineDTO.Description?.Trim()))
-                {
-                    productLine.Description = productLineDTO.Description.Trim();
-                }
+            if (productLineDTO.BrandId.HasValue)
+            {
+                productLine.BrandId = productLineDTO.BrandId.Value;
+            }
 
-                if (productLineDTO.BrandId.HasValue)
+            if (productLineDTO.Image != null)
+            {
+                if (!string.IsNullOrEmpty(productLine.Image))
                 {
-                    productLine.BrandId = productLineDTO.BrandId.Value;
-                }
-
-                if (productLineDTO.Image != null)
-                {
-                    if (!string.IsNullOrEmpty(productLine.Image))
+                    var deleted = ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);
+                    if (!deleted)
                     {
-                        var deleted = ImageHelper.DeleteImage(_env.WebRootPath + productLine.Image);
-                        if (!deleted)
-                        {
-                            return (false, "Error deleting old image", null);
-                        }
-                    }
-                    var res = await ImageHelper.SaveImageAsync(productLineDTO.Image, _env.WebRootPath, "product-lines", 5 * 1024 * 1024);
-                    if (!res.Success)
-                    {
-                        return (false, res.ErrorMessage, null);
-                    }
-
-                    productLine.Image = res.FilePath!;
-                }
-
-                productLine.UpdatedAt = DateTime.Now;
-
-                bool result = await _productLineRepository.UpdateProductLineAsync(productLine);
-                if (!result)
-                {
-                    return (false, "Failed to update product line", null);
-                }
-
-                return (true, null, productLine.ToDTO());
-            }
-            catch (Exception)
-            {
-                return (false, $"Error updating product line", null);
-            }
-        }
-
-        public async Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> ActivateProductLineAsync(int id)
-        {
-            try
-            {
-                var productLine = await _productLineRepository.GetProductLineByIdAsync(id);
-                if (productLine == null)
-                    return (false, "Product line not found", null);
-
-                var brand = await _brandRepository.GetBrandByIdAsync(productLine.BrandId);
-                if (brand == null)
-                    return (false, "Parent brand not found", null);
-
-                if (!brand.IsActive)
-                    return (false, "Cannot activate product line because parent brand is inactive", null);
-
-                if (productLine.IsActive)
-                    return (true, null, productLine.ToDTO());
-
-                productLine.IsActive = true;
-                productLine.ManuallyDeactivated = false;
-                productLine.UpdatedAt = DateTime.Now;
-
-                var success = await _productLineRepository.UpdateProductLineAsync(productLine);
-                if (!success)
-                    return (false, "Failed to activate product line", null);
-
-                var products = await _productRepository.GetProductsByProductLineIdAsync(id);
-                if (products != null && products.Any())
-                {
-                    foreach (var product in products)
-                    {
-                        if (!product.IsActive && !product.ManuallyDeactivated)
-                        {
-                            product.IsActive = true;
-                            product.UpdatedAt = DateTime.Now;
-                            await _productRepository.UpdateAsync(product);
-                        }
+                        throw new ServerException("Error deleting old image");
                     }
                 }
+                var filePath = await ImageUtils.SaveImageAsync(productLineDTO.Image, _env.WebRootPath, "product-lines", 5 * 1024 * 1024);
 
-                return (true, null, productLine.ToDTO());
+                productLine.Image = filePath;
             }
-            catch (Exception)
-            {
-                return (false, "Error activating product line", null);
-            }
+
+            productLine.UpdatedAt = DateTime.Now;
+
+            var result = await _productLineRepository.UpdateProductLineAsync(productLine);
+
+            return result.ToDTO();
         }
 
-        public async Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> DeactivateProductLineAsync(int id)
+        public async Task<ProductLineDTO> ActivateProductLineAsync(int id)
         {
-            try
+            var productLine = await _productLineRepository.GetProductLineByIdAsync(id) ?? throw new NotFoundException("Product line not found");
+            var brand = await _brandRepository.GetBrandByIdAsync(productLine.BrandId) ?? throw new NotFoundException("Parent brand not found");
+            if (!brand.IsActive)
+                throw new BadRequestException("Cannot activate product line because parent brand is inactive");
+
+            if (productLine.IsActive)
+                return productLine.ToDTO();
+
+            productLine.IsActive = true;
+            productLine.ManuallyDeactivated = false;
+            productLine.UpdatedAt = DateTime.Now;
+
+            await _productLineRepository.UpdateProductLineAsync(productLine);
+
+            var products = await _productRepository.GetProductsByProductLineIdAsync(id);
+            if (products != null && products.Any())
             {
-                var productLine = await _productLineRepository.GetProductLineByIdAsync(id);
-                if (productLine == null)
-                    return (false, "Product line not found", null);
-
-                if (!productLine.IsActive)
-                    return (true, null, productLine.ToDTO());
-
-                productLine.IsActive = false;
-                productLine.ManuallyDeactivated = true;
-                productLine.UpdatedAt = DateTime.Now;
-
-                var success = await _productLineRepository.UpdateProductLineAsync(productLine);
-                if (!success)
-                    return (false, "Failed to deactivate product line", null);
-
-                var products = await _productRepository.GetProductsByProductLineIdAsync(id);
-                if (products != null && products.Any())
+                foreach (var product in products)
                 {
-                    foreach (var product in products)
+                    if (!product.IsActive && !product.ManuallyDeactivated)
                     {
-                        if (product.IsActive)
-                        {
-                            product.IsActive = false;
-                            product.UpdatedAt = DateTime.Now;
-                            await _productRepository.UpdateAsync(product);
-                        }
+                        product.IsActive = true;
+                        product.UpdatedAt = DateTime.Now;
+                        await _productRepository.UpdateAsync(product);
                     }
                 }
+            }
 
-                return (true, null, productLine.ToDTO());
-            }
-            catch (Exception)
+            return productLine.ToDTO();
+        }
+
+        public async Task<ProductLineDTO> DeactivateProductLineAsync(int id)
+        {
+            var productLine = await _productLineRepository.GetProductLineByIdAsync(id) ?? throw new NotFoundException("Product line not found");
+            if (!productLine.IsActive)
+                return productLine.ToDTO();
+
+            productLine.IsActive = false;
+            productLine.ManuallyDeactivated = true;
+            productLine.UpdatedAt = DateTime.Now;
+
+            await _productLineRepository.UpdateProductLineAsync(productLine);
+
+            var products = await _productRepository.GetProductsByProductLineIdAsync(id);
+            if (products != null && products.Any())
             {
-                return (false, "Error deactivating product line", null);
+                foreach (var product in products)
+                {
+                    if (product.IsActive)
+                    {
+                        product.IsActive = false;
+                        product.UpdatedAt = DateTime.Now;
+                        await _productRepository.UpdateAsync(product);
+                    }
+                }
             }
+
+            return productLine.ToDTO();
         }
     }
 }

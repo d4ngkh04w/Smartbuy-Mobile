@@ -34,7 +34,7 @@ const fetchOrders = async () => {
 	try {
 		const response = await getOrders();
 		console.log("Order data:", response.data);
-		orders.value = response.data.orders || [];
+		orders.value = response.data.data || [];
 	} catch (error) {
 		console.error("Error fetching orders:", error);
 		emitter.emit("show-notification", {
@@ -145,7 +145,7 @@ const formatDate = (dateString) => {
 const viewOrderDetails = async (order) => {
 	try {
 		const response = await getOrderById(order.id);
-		selectedOrder.value = response.data.order;
+		selectedOrder.value = response.data.data;
 		showModal.value = true;
 	} catch (error) {
 		console.error("Error fetching order details:", error);
@@ -229,7 +229,7 @@ const updateOrder = async () => {
 
 		// Get updated order details
 		const response = await getOrderById(selectedOrder.value.id);
-		selectedOrder.value = response.data.order;
+		selectedOrder.value = response.data.data;
 
 		emitter.emit("show-notification", {
 			status: "success",

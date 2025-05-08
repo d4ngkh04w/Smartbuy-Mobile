@@ -1,4 +1,4 @@
-using System.Text;
+using api.Helpers;
 using api.Interfaces.Services;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -8,81 +8,61 @@ namespace api.Services
 {
     public class EmailService : IEmailService
     {
-        private readonly IConfiguration _config;
-        private readonly ILogger<EmailService> _logger;
-
-        public EmailService(IConfiguration config, ILogger<EmailService> logger)
-        {
-            _config = config;
-            _logger = logger;
-        }
-
         public async Task<bool> SendEmailAsync(string to, string subject, string body, bool isHtml = true)
         {
-            try
+            var email = new MimeMessage();
+
+            // Thiết lập thông tin người gửi
+            email.From.Add(new MailboxAddress(
+                ConfigHelper.EmailDisplayName,
+                ConfigHelper.EmailSender));
+
+            // Thiết lập người nhận
+            email.To.Add(MailboxAddress.Parse(to));
+
+            // Thiết lập tiêu đề email
+            email.Subject = subject;
+
+            // Thiết lập nội dung email
+            var bodyBuilder = new BodyBuilder();
+            if (isHtml)
             {
-                var email = new MimeMessage();
-
-                // Thiết lập thông tin người gửi
-                email.From.Add(new MailboxAddress(
-                    _config["EmailSettings:DisplayName"],
-                    _config["EmailSettings:From"]));
-
-                // Thiết lập người nhận
-                email.To.Add(MailboxAddress.Parse(to));
-
-                // Thiết lập tiêu đề email
-                email.Subject = subject;
-
-                // Thiết lập nội dung email
-                var bodyBuilder = new BodyBuilder();
-                if (isHtml)
-                {
-                    bodyBuilder.HtmlBody = body;
-                }
-                else
-                {
-                    bodyBuilder.TextBody = body;
-                }
-
-                email.Body = bodyBuilder.ToMessageBody();
-
-                // Cấu hình SMTP client
-                using var smtp = new SmtpClient();
-                await smtp.ConnectAsync(
-                    _config["EmailSettings:Host"],
-                    int.Parse(_config["EmailSettings:Port"]!),
-                    SecureSocketOptions.StartTls);
-
-                await smtp.AuthenticateAsync(
-                    _config["EmailSettings:Email"],
-                    _config["EmailSettings:Password"]);
-
-                // Gửi email
-                await smtp.SendAsync(email);
-                await smtp.DisconnectAsync(true);
-
-                return true;
+                bodyBuilder.HtmlBody = body;
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Error sending email");
-                return false;
+                bodyBuilder.TextBody = body;
             }
+
+            email.Body = bodyBuilder.ToMessageBody();
+
+            // Cấu hình SMTP client
+            using var smtp = new SmtpClient();
+            await smtp.ConnectAsync(
+                ConfigHelper.EmailHost,
+                ConfigHelper.EmailPort,
+                SecureSocketOptions.StartTls);
+
+            await smtp.AuthenticateAsync(
+                ConfigHelper.Email,
+                ConfigHelper.EmailPassword);
+
+            // Gửi email
+            await smtp.SendAsync(email);
+            await smtp.DisconnectAsync(true);
+
+            return true;
         }
 
         public async Task<bool> SendPasswordResetEmailAsync(string email, string resetToken)
         {
-            try
-            {
-                var frontendUrl = "http://localhost:3000";
-                var resetUrl = $"{frontendUrl}/reset-password?token={resetToken}&email={Uri.EscapeDataString(email)}";
+            var frontendUrl = "http://localhost:3000";
+            var resetUrl = $"{frontendUrl}/reset-password?token={resetToken}&email={Uri.EscapeDataString(email)}";
 
-                var subject = "SmartBuy Mobile - Đặt Lại Mật Khẩu";
-                var builder = new StringBuilder();
+            var subject = "SmartBuy Mobile - Đặt Lại Mật Khẩu";
 
-                // Tạo nội dung email HTML
-                string htmlBody = $@"
+            // Tạo nội dung email HTML
+            string htmlBody = $@"
                 <html>
                 <head>
                     <meta charset=""UTF-8"">
@@ -134,7 +114,7 @@ namespace api.Services
                                 <table role=""presentation"" cellspacing=""0"" cellpadding=""0"" border=""0"" width=""100%"">
                                     <tr>
                                         <td style=""padding: 30px 0 10px 0; text-align: center;"">
-                                            <div style=""position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 36px; line-height: 1;"">🔒</div>
+                                            <div style=""font-size: 36px; line-height: 1;"">🔒</div>
                                         </td>
                                     </tr>
                                 </table>
@@ -190,28 +170,18 @@ namespace api.Services
                 </body>
                 </html>";
 
-                builder.AppendLine(htmlBody);
-
-                return await SendEmailAsync(email, subject, builder.ToString());
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending password reset email");
-                return false;
-            }
+            return await SendEmailAsync(email, subject, htmlBody);
         }
 
         public async Task<bool> SendEmailVerificationAsync(string email, string verificationToken)
         {
-            try
-            {
-                var frontendUrl = "http://localhost:3000";
-                var verificationUrl = $"{frontendUrl}/verify-email?token={verificationToken}&email={Uri.EscapeDataString(email)}";
+            var frontendUrl = "http://localhost:3000";
+            var verificationUrl = $"{frontendUrl}/verify-email?token={verificationToken}&email={Uri.EscapeDataString(email)}";
 
-                var subject = "SmartBuy Mobile - Xác Thực Địa Chỉ Email";
+            var subject = "SmartBuy Mobile - Xác Thực Địa Chỉ Email";
 
-                // Tạo nội dung email HTML
-                string htmlBody = $@"
+            // Tạo nội dung email HTML
+            string htmlBody = $@"
                 <html>
                 <head>
                     <meta charset=""UTF-8"">
@@ -319,13 +289,7 @@ namespace api.Services
                 </body>
                 </html>";
 
-                return await SendEmailAsync(email, subject, htmlBody);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending email verification email");
-                return false;
-            }
+            return await SendEmailAsync(email, subject, htmlBody);
         }
     }
 }

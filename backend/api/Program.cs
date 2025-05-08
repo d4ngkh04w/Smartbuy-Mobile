@@ -1,8 +1,10 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using api.Database;
+using api.Helpers;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
+using api.Middlewares;
 using api.Repositories;
 using api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -15,6 +17,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpContextAccessor();
+
+ConfigHelper.Initialize(builder.Configuration);
 
 // Thiết lập DbContext với MySQL
 builder.Services.AddDbContext<AppDBContext>(options =>
@@ -37,7 +42,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     options.InvalidModelStateResponseFactory = context =>
     {
         var errors = context.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-        return new BadRequestObjectResult(new { Message = "Invalid data", Error = errors });
+        return new BadRequestObjectResult(new { Success = false, Message = "Invalid data", Error = errors });
     };
 });
 
@@ -74,78 +79,80 @@ builder.Services.AddAuthentication(
             ValidateAudience = true,
             ValidateLifetime = true,
 
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]!)),
-            ValidIssuer = builder.Configuration["JWT:Issuer"],
-            ValidAudience = builder.Configuration["JWT:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(ConfigHelper.JwtSecretKey)),
+            ValidIssuer = ConfigHelper.JwtIssuer,
+            ValidAudience = ConfigHelper.JwtAudience,
         };
     }
 );
 
-builder.Services.AddRateLimiter(options =>
-{
-    // Global limiter theo IP để bảo vệ toàn bộ hệ thống
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-    {
-        var remoteIpAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        var path = httpContext.Request.Path.ToString().ToLower();
+// builder.Services.AddRateLimiter(options =>
+// {
+//     // Global limiter theo IP để bảo vệ toàn bộ hệ thống
+//     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+//     {
+//         // Lấy địa chỉ IP từ HttpContext
+//         // var remoteIpAddress = HttpContextHelper.UserIP;
+//         var remoteIpAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+//         var path = httpContext.Request.Path.ToString().ToLower();
 
-        // Áp dụng policy khác nhau dựa trên đường dẫn
-        if (path.EndsWith("/verify"))
-        {
-            return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
-            {
-                Window = TimeSpan.FromSeconds(10),
-                PermitLimit = 35,
-                SegmentsPerWindow = 5,
-                QueueLimit = 2,
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-            });
-        }
-        else if (path.Contains("/auth/"))
-        {
-            return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
-            {
-                Window = TimeSpan.FromSeconds(10),
-                PermitLimit = 10,
-                SegmentsPerWindow = 6,
-                QueueLimit = 2,
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-            });
-        }
-        else if (path.Contains("/admin/"))
-        {
-            return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
-            {
-                Window = TimeSpan.FromSeconds(10),
-                PermitLimit = 20,
-                SegmentsPerWindow = 5,
-                QueueLimit = 2,
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-            });
-        }
-        else
-        {
-            return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
-            {
-                Window = TimeSpan.FromSeconds(10),
-                PermitLimit = 20,
-                SegmentsPerWindow = 5,
-                QueueLimit = 1,
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-            });
-        }
-    });
+//         // Áp dụng policy khác nhau dựa trên đường dẫn
+//         if (path.EndsWith("/verify"))
+//         {
+//             return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
+//             {
+//                 Window = TimeSpan.FromSeconds(10),
+//                 PermitLimit = 35,
+//                 SegmentsPerWindow = 5,
+//                 QueueLimit = 2,
+//                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+//             });
+//         }
+//         else if (path.Contains("/auth/"))
+//         {
+//             return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
+//             {
+//                 Window = TimeSpan.FromSeconds(10),
+//                 PermitLimit = 10,
+//                 SegmentsPerWindow = 6,
+//                 QueueLimit = 2,
+//                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+//             });
+//         }
+//         else if (path.Contains("/admin/"))
+//         {
+//             return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
+//             {
+//                 Window = TimeSpan.FromSeconds(10),
+//                 PermitLimit = 20,
+//                 SegmentsPerWindow = 5,
+//                 QueueLimit = 2,
+//                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+//             });
+//         }
+//         else
+//         {
+//             return RateLimitPartition.GetSlidingWindowLimiter(remoteIpAddress, _ => new SlidingWindowRateLimiterOptions
+//             {
+//                 Window = TimeSpan.FromSeconds(10),
+//                 PermitLimit = 25,
+//                 SegmentsPerWindow = 5,
+//                 QueueLimit = 1,
+//                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+//             });
+//         }
+//     });
 
-    options.OnRejected = async (context, token) =>
-    {
-        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        context.HttpContext.Response.ContentType = "application/json";
-        await context.HttpContext.Response.WriteAsJsonAsync(new
-        {
-            Message = "Too many requests. Please try again later"
-        }, cancellationToken: token);
-    };
-});
+//     options.OnRejected = async (context, token) =>
+//     {
+//         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+//         context.HttpContext.Response.ContentType = "application/json";
+//         await context.HttpContext.Response.WriteAsJsonAsync(new
+//         {
+//             Message = "Too many requests. Please try again later"
+//         }, cancellationToken: token);
+//     };
+// });
 
 // Đăng ký các repository và service
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -164,14 +171,16 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICartRepository, CartRepository>();
 builder.Services.AddScoped<ICartService, CartService>();
-builder.Services.AddScoped<ICarouselRepository, CarouselRepository>();
-builder.Services.AddScoped<ICarouselService, CarouselService>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 
 var app = builder.Build();
+
+var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
+CookieHelper.Configure(httpContextAccessor);
+HttpContextHelper.Configure(httpContextAccessor);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -186,9 +195,11 @@ else
 }
 
 app.UseStaticFiles();
-app.UseRateLimiter();
+// app.UseRateLimiter();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<ErrorHandlerMiddleware>();
+app.UseMiddleware<LoggingMiddleware>();
 app.MapControllers();
 app.Run();

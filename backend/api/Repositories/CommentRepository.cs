@@ -59,19 +59,11 @@ namespace api.Repositories
                 .FirstAsync(c => c.Id == comment.Id);
         }
 
-        public async Task<bool> UpdateCommentAsync(Comment comment)
+        public async Task<Comment> UpdateCommentAsync(Comment comment)
         {
-            _db.Entry(comment).State = EntityState.Modified;
-
-            try
-            {
-                await _db.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                return false;
-            }
+            _db.Comments.Update(comment);
+            await _db.SaveChangesAsync();
+            return comment;
         }
 
         public async Task<bool> DeleteCommentAsync(int id)

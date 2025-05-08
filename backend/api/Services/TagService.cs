@@ -1,4 +1,5 @@
 using api.DTOs.Tag;
+using api.Exceptions;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
@@ -15,110 +16,56 @@ namespace api.Services
             _tagRepository = tagRepository;
         }
 
-        public async Task<(bool Success, string? ErrorMessage, TagDTO? Tag)> CreateTagAsync(CreateTagDTO tagDTO)
+        public async Task<TagDTO> CreateTagAsync(CreateTagDTO tagDTO)
         {
-            try
+            bool exists = await _tagRepository.TagExistsAsync(tagDTO.Name);
+            if (exists)
             {
-                bool exists = await _tagRepository.TagExistsAsync(tagDTO.Name);
-                if (exists)
-                {
-                    return (false, "Tag already exists", null);
-                }
-
-                Tag tag = tagDTO.ToModel();
-                var createdTag = await _tagRepository.CreateTagAsync(tag);
-
-                return (true, null, createdTag.ToDTO());
+                throw new AlreadyExistsException("Tag already exists");
             }
-            catch (Exception)
-            {
-                return (false, $"Error creating tag", null);
-            }
+
+            Tag tag = tagDTO.ToModel();
+            var createdTag = await _tagRepository.CreateTagAsync(tag);
+
+            return createdTag.ToDTO();
         }
 
-        public async Task<(bool Success, string? ErrorMessage)> DeleteTagAsync(int id)
+        public async Task DeleteTagAsync(int id)
         {
-            try
-            {
-                var tag = await _tagRepository.GetTagByIdAsync(id);
-                if (tag == null)
-                {
-                    return (false, "Tag not found");
-                }
-
-                await _tagRepository.DeleteTagAsync(tag);
-                return (true, null);
-            }
-            catch (Exception)
-            {
-                return (false, $"Error deleting tag");
-            }
+            var tag = await _tagRepository.GetTagByIdAsync(id) ?? throw new NotFoundException("Tag not found");
+            await _tagRepository.DeleteTagAsync(tag);
         }
 
-        public async Task<(bool Success, string? ErrorMessage, IEnumerable<TagDTO>? Tags)> GetAllTagsAsync()
+        public async Task<IEnumerable<TagDTO>> GetAllTagsAsync()
         {
-            try
+            var tags = await _tagRepository.GetAllTagsAsync();
+            if (tags == null || !tags.Any())
             {
-                var tags = await _tagRepository.GetAllTagsAsync();
-                if (tags == null || !tags.Any())
-                {
-                    return (false, "Not found any tags", null);
-                }
+                throw new NotFoundException("Not found any tags");
+            }
 
-                return (true, null, tags.Select(t => t.ToDTO()));
-            }
-            catch (Exception)
-            {
-                return (false, $"Error retrieving tags", null);
-            }
+            return tags.Select(t => t.ToDTO());
         }
 
-        public async Task<(bool Success, string? ErrorMessage, TagDTO? Tag)> GetTagByIdAsync(int id)
+        public async Task<TagDTO> GetTagByIdAsync(int id)
         {
-            try
-            {
-                var tag = await _tagRepository.GetTagByIdAsync(id);
-                if (tag == null)
-                {
-                    return (false, "Tag not found", null);
-                }
-
-                return (true, null, tag.ToDTO());
-            }
-            catch (Exception)
-            {
-                return (false, $"Error retrieving tag", null);
-            }
+            var tag = await _tagRepository.GetTagByIdAsync(id) ?? throw new NotFoundException("Tag not found");
+            return tag.ToDTO();
         }
 
-        public async Task<(bool Success, string? ErrorMessage, TagDTO? Tag)> UpdateTagAsync(int id, UpdateTagDTO tagDTO)
+        public async Task<TagDTO> UpdateTagAsync(int id, UpdateTagDTO tagDTO)
         {
-            try
+            var tag = await _tagRepository.GetTagByIdAsync(id) ?? throw new NotFoundException("Tag not found");
+
+            // Only update fields that are provided in the DTO
+            if (!string.IsNullOrEmpty(tagDTO.Name))
             {
-                var tag = await _tagRepository.GetTagByIdAsync(id);
-                if (tag == null)
-                {
-                    return (false, "Tag not found", null);
-                }
-
-                // Only update fields that are provided in the DTO
-                if (!string.IsNullOrEmpty(tagDTO.Name))
-                {
-                    tag.Name = tagDTO.Name;
-                }
-
-                bool result = await _tagRepository.UpdateTagAsync(tag);
-                if (!result)
-                {
-                    return (false, "Failed to update tag", null);
-                }
-
-                return (true, null, tag.ToDTO());
+                tag.Name = tagDTO.Name;
             }
-            catch (Exception)
-            {
-                return (false, $"Error updating tag", null);
-            }
+
+            var result = await _tagRepository.UpdateTagAsync(tag);
+
+            return result.ToDTO();
         }
     }
 }

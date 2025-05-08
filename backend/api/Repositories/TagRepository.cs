@@ -18,7 +18,7 @@ namespace api.Repositories
         {
             _db.Tags.Add(tag);
             await _db.SaveChangesAsync();
-            
+
             return tag;
         }
 
@@ -43,21 +43,11 @@ namespace api.Repositories
             return await _db.Tags.AnyAsync(t => t.Name.ToLower() == name.ToLower());
         }
 
-        public async Task<bool> UpdateTagAsync(Tag tag)
+        public async Task<Tag> UpdateTagAsync(Tag tag)
         {
-            _db.Entry(tag).State = EntityState.Modified;
-            try
-            {
-                await _db.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await _db.Tags.AnyAsync(t => t.Id == tag.Id))
-                    return false;
-                else
-                    throw;
-            }
+            _db.Tags.Update(tag);
+            await _db.SaveChangesAsync();
+            return tag;
         }
     }
 }

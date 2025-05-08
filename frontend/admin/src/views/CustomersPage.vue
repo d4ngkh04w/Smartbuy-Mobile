@@ -29,7 +29,7 @@ const fetchCustomers = async () => {
 	try {
 		const response = await userService.getUsers();
 		console.log("Fetched customers:", response.data);
-		customers.value = response.data.users || [];
+		customers.value = response.data.data || [];
 	} catch (error) {
 		console.error("Error fetching customers:", error);
 		emitter.emit("show-notification", {

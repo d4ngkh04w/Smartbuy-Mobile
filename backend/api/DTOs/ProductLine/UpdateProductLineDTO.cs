@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using api.Extensions;
+using api.Annotations;
 
 namespace api.DTOs.ProductLine
 {

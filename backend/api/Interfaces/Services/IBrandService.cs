@@ -5,12 +5,12 @@ namespace api.Interfaces.Services
 {
     public interface IBrandService
     {
-        Task<(bool Success, string? ErrorMessage, IEnumerable<BrandDTO>? Brands)> GetBrandsAsync(BrandQuery query);
-        Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> GetBrandByIdAsync(int id, BrandQuery query);
-        Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> CreateBrandAsync(CreateBrandDTO brandDTO);
-        Task<(bool Success, string? ErrorMessage)> DeleteBrandAsync(int id);
-        Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> UpdateBrandAsync(int id, UpdateBrandDTO brandDTO);
-        Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> ActivateBrandAsync(int id);
-        Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> DeactivateBrandAsync(int id);
+        Task<IEnumerable<BrandDTO>> GetBrandsAsync(BrandQuery query);
+        Task<BrandDTO> GetBrandByIdAsync(int id, BrandQuery query);
+        Task<BrandDTO> CreateBrandAsync(CreateBrandDTO brandDTO);
+        Task DeleteBrandAsync(int id);
+        Task<BrandDTO> UpdateBrandAsync(int id, UpdateBrandDTO brandDTO);
+        Task<BrandDTO> ActivateBrandAsync(int id);
+        Task<BrandDTO> DeactivateBrandAsync(int id);
     }
 }

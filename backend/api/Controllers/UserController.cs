@@ -1,4 +1,5 @@
 using api.DTOs.User;
+using api.Helpers;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,66 +17,29 @@ namespace api.Controllers
             _userService = userService;
         }
 
-        private Guid GetCurrentUserId()
-        {
-            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "id")?.Value;
-            if (userIdClaim == null)
-                return Guid.Empty;
-
-            return Guid.Parse(userIdClaim);
-        }
-
         [HttpGet]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetAllUsers()
         {
-            var result = await _userService.GetAllUsersAsync();
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "No users found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new { Message = "Users retrieved successfully", result.Users });
+            var users = await _userService.GetAllUsersAsync();
+            return ApiResponseHelper.Success("Users retrieved successfully", users);
         }
 
         [HttpGet("{id:guid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetUserById([FromRoute] Guid id)
         {
-            var result = await _userService.GetUserByIdAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "User not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new { Message = "User retrieved successfully", result.User });
+            var user = await _userService.GetUserByIdAsync(id);
+            return ApiResponseHelper.Success("User retrieved successfully", user);
         }
 
         [HttpGet("me")]
         [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetCurrentUser()
         {
-            var id = GetCurrentUserId();
-            var result = await _userService.GetUserByIdAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "User not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new { Message = "User retrieved successfully", result.User });
+            var id = HttpContextHelper.CurrentUserId;
+            var user = await _userService.GetUserByIdAsync(id);
+            return ApiResponseHelper.Success("User retrieved successfully", user);
         }
 
         [HttpPut("me")]
@@ -83,38 +47,18 @@ namespace api.Controllers
         [RequestSizeLimit(15 * 1024 * 1024)]
         public async Task<IActionResult> UpdateCurrentUser([FromForm] UpdateUserDTO userDTO)
         {
-            var id = GetCurrentUserId();
-            var result = await _userService.UpdateUserAsync(id, userDTO);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new { Message = "User updated successfully", User = result.User });
+            var id = HttpContextHelper.CurrentUserId;
+            var user = await _userService.UpdateUserAsync(id, userDTO);
+            return ApiResponseHelper.Success("User updated successfully", user);
         }
 
         [HttpDelete("me")]
         [Authorize(Roles = "user")]
         public async Task<IActionResult> DeleteCurrentUser()
         {
-            var id = GetCurrentUserId();
-            var result = await _userService.DeleteUserAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            Response.Cookies.Delete("token");
-            Response.Cookies.Delete("refreshToken");
-
+            var id = HttpContextHelper.CurrentUserId;
+            await _userService.DeleteUserAsync(id);
+            CookieHelper.RemoveAuthTokens();
             return NoContent();
         }
 
@@ -122,55 +66,27 @@ namespace api.Controllers
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> LockUser([FromRoute] Guid id, [FromBody] LockUserDTO lockUserDTO)
         {
-            var result = await _userService.LockUserAsync(id, lockUserDTO, "admin");
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new { Message = "User locked successfully" });
+            await _userService.LockUserAsync(id, lockUserDTO, "admin");
+            return ApiResponseHelper.Success<object>("User locked successfully", null);
         }
 
         [HttpPut("{id:guid}/unlock")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> UnlockUser([FromRoute] Guid id)
         {
-            var result = await _userService.UnlockUserAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new { Message = "User unlocked successfully" });
+            await _userService.UnlockUserAsync(id);
+            return ApiResponseHelper.Success<object>("User unlocked successfully", null);
         }
 
         [HttpPut("me/lock")]
         [Authorize(Roles = "user")]
         public async Task<IActionResult> LockCurrentUser([FromBody] LockUserDTO lockUserDTO)
         {
-            var id = GetCurrentUserId();
-            var result = await _userService.LockUserAsync(id, lockUserDTO, "user");
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
+            var id = HttpContextHelper.CurrentUserId;
+            await _userService.LockUserAsync(id, lockUserDTO, "user");
 
-            Response.Cookies.Delete("token");
-            Response.Cookies.Delete("refreshToken");
-            return Ok(new { Message = "User locked successfully" });
+            CookieHelper.RemoveAuthTokens();
+            return ApiResponseHelper.Success<object>("User locked successfully", null);
         }
     }
 }

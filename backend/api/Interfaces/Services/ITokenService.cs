@@ -9,9 +9,9 @@ namespace api.Interfaces.Services
         Task<string> GenerateRefreshToken(User user);
         Task<string> GeneratePasswordResetToken(User user);
         Task<string> GenerateEmailVerificationToken(User user);
-        Task<(bool Success, string? ErrorMessage, TokenResponseDTO? Token)> ValidateRefreshToken(string refreshToken);
-        Task<(bool Success, string? ErrorMessage)> RevokeRefreshToken(string refreshToken);
-        Task<(bool Success, string? ErrorMessage, User? User)> ValidatePasswordResetToken(string email, string token);
-        Task<(bool Success, string? ErrorMessage, User? User)> ValidateEmailVerificationToken(string email, string token);
+        Task<TokenResponseDTO> ValidateRefreshToken(string refreshToken);
+        Task RevokeRefreshToken(string refreshToken);
+        Task<User?> ValidatePasswordResetToken(string email, string token);
+        Task<User?> ValidateEmailVerificationToken(string email, string token);
     }
 }

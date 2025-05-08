@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace api.Extensions
+namespace api.Annotations
 {
     public class AllowFileExtension : ValidationAttribute
     {

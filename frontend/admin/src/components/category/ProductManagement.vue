@@ -158,8 +158,8 @@ const fetchProducts = async () => {
 	loading.value = true;
 	try {
 		const response = await getProducts();
-		if (response.data && response.data.products) {
-			products.value = response.data.products;
+		if (response.data && response.data.data) {
+			products.value = response.data.data;
 		}
 	} catch (error) {
 		console.error("Error fetching products:", error);
@@ -182,8 +182,8 @@ const fetchProductLines = async (brandId) => {
 			isActive: true,
 		});
 
-		if (response.data && response.data.productLines) {
-			productLines.value = [...response.data.productLines];
+		if (response.data && response.data.data) {
+			productLines.value = [...response.data.data];
 		} else if (Array.isArray(response.data)) {
 			// Trong một số trường hợp API trả về mảng trực tiếp
 			productLines.value = [...response.data];
@@ -203,8 +203,8 @@ const fetchBrands = async () => {
 			includeProductLines: true,
 			isActive: true, // Only fetch active brands
 		});
-		if (response.data && response.data.brands) {
-			brands.value = response.data.brands;
+		if (response.data && response.data.data) {
+			brands.value = response.data.data;
 		} else if (Array.isArray(response.data)) {
 			brands.value = response.data;
 		}
@@ -313,8 +313,8 @@ const editProduct = async (product) => {
 		if (!product.detail || !product.colors) {
 			try {
 				const response = await getProductById(product.id);
-				if (response.data && response.data.product) {
-					fullProduct = response.data.product;
+				if (response.data && response.data.data) {
+					fullProduct = response.data.data;
 				}
 			} catch (error) {
 				console.error("Error fetching product details:", error);
@@ -387,8 +387,8 @@ const editProduct = async (product) => {
 				);
 				console.log("Product Line API response:", response);
 
-				if (response.data && response.data.productLine) {
-					const productLine = response.data.productLine;
+				if (response.data && response.data.data) {
+					const productLine = response.data.data;
 					const brandName = productLine.brandName;
 
 					console.log(
@@ -435,8 +435,8 @@ const viewProductDetail = async (product) => {
 	try {
 		// Nếu cần lấy thêm thông tin chi tiết của sản phẩm từ API
 		const response = await getProductById(product.id);
-		if (response.data && response.data.product) {
-			selectedProduct.value = response.data.product;
+		if (response.data && response.data.data) {
+			selectedProduct.value = response.data.data;
 		} else {
 			selectedProduct.value = product;
 		}
@@ -903,8 +903,8 @@ const submitForm = async () => {
 				// Instead, we need to create the product first, then add colors separately
 				const response = await createProduct(data);
 
-				if (response.data && response.data.product) {
-					const productId = response.data.product.id;
+				if (response.data && response.data.data) {
+					const productId = response.data.data.id;
 
 					// Add colors one by one
 					for (const colorData of formData.value.colorData) {
@@ -2343,9 +2343,7 @@ onMounted(async () => {
 										thước màn hình
 									</div>
 									<div class="spec-value">
-										{{
-											selectedProduct.detail.screenSize
-										}}
+										{{ selectedProduct.detail.screenSize }}
 										inch
 									</div>
 								</div>
@@ -2414,9 +2412,7 @@ onMounted(async () => {
 										hành
 									</div>
 									<div class="spec-value">
-										{{
-											selectedProduct.detail.warranty
-										}}
+										{{ selectedProduct.detail.warranty }}
 										tháng
 									</div>
 								</div>

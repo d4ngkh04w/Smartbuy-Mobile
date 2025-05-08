@@ -95,21 +95,11 @@ namespace api.Repositories
                 .FirstOrDefaultAsync(pl => pl.Id == id);
         }
 
-        public async Task<bool> UpdateProductLineAsync(ProductLine productLine)
+        public async Task<ProductLine> UpdateProductLineAsync(ProductLine productLine)
         {
-            _db.Entry(productLine).State = EntityState.Modified;
-            try
-            {
-                await _db.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await _db.ProductLines.AnyAsync(pl => pl.Id == productLine.Id))
-                    return false;
-                else
-                    throw;
-            }
+            _db.ProductLines.Update(productLine);
+            await _db.SaveChangesAsync();
+            return productLine;
         }
 
         public async Task<List<ProductLine>> GetProductLinesByBrandIdAsync(int brandId)

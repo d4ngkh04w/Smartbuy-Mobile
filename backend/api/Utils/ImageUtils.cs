@@ -1,22 +1,24 @@
-namespace api.Helpers
+using api.Exceptions;
+
+namespace api.Utils
 {
-    public static class ImageHelper
+    public static class ImageUtils
     {
-        public static async Task<(bool Success, string? ErrorMessage, string? FilePath)> SaveImageAsync(IFormFile file, string webRootPath, string folder, long maxSize)
+        public static async Task<string> SaveImageAsync(IFormFile file, string webRootPath, string folder, long maxSize)
         {
             if (file == null || file.Length == 0)
             {
-                return (false, "File is empty", null);
+                throw new BadRequestException("File is empty");
             }
 
             if (!file.ContentType.StartsWith("image/"))
             {
-                return (false, "File must be an image", null);
+                throw new BadRequestException("File must be an image");
             }
 
             if (file.Length > maxSize)
             {
-                return (false, $"File size must be less than {maxSize / 1024 / 1024} MB", null);
+                throw new BadRequestException($"File size must be less than {maxSize / 1024 / 1024} MB");
             }
 
             string fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
@@ -35,11 +37,11 @@ namespace api.Helpers
                 {
                     await file.CopyToAsync(stream);
                 }
-                return (true, null, $"/uploads/images/{folder}/{fileName}");
+                return $"/uploads/images/{folder}/{fileName}";
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return (false, "Error saving file", null);
+                throw new ServerException("Error saving image: " + ex.Message);
             }
         }
 

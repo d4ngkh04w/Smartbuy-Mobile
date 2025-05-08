@@ -1,5 +1,5 @@
-using System.Security.Claims;
 using api.DTOs.Auth;
+using api.Helpers;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,134 +12,43 @@ namespace api.Controllers
     public class AuthUserController : ControllerBase
     {
         private readonly IAuthService _authService;
-        private readonly IConfiguration _config;
 
-        public AuthUserController(IAuthService authService, IConfiguration config)
+        public AuthUserController(IAuthService authService)
         {
             _authService = authService;
-            _config = config;
-        }
-
-        private string GetCurrentUserEmail()
-        {
-            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-            if (emailClaim == null)
-                return string.Empty;
-
-            return emailClaim;
         }
 
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterDTO register)
         {
-            var result = await _authService.Register(register, "user");
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Already exists", StringComparison.OrdinalIgnoreCase) => Conflict(new { Message = result.ErrorMessage }),
-                    _ => StatusCode(500, new { Message = result.ErrorMessage })
-                };
-            }
+            var token = await _authService.Register(register, "user");
+            CookieHelper.AccessToken = token.AccessToken;
+            CookieHelper.RefreshToken = token.RefreshToken;
 
-            Response.Cookies.Append("token", result.token!.AccessToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax,
-                Path = "/",
-                Expires = DateTimeOffset.Now.AddMinutes(double.Parse(_config["JWT:Expire"]!)),
-            });
-
-            Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax,
-                Path = "/",
-                Expires = DateTimeOffset.Now.AddDays(double.Parse(_config["JWT:RefreshTokenExpiry"]!)),
-            });
-
-            return Ok(new
-            {
-                Message = "User registered successfully",
-            });
+            return ApiResponseHelper.Success<object>("User registered successfully", null);
         }
 
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginDTO login)
         {
-            var result = await _authService.Login(login, "user");
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Does not have access", StringComparison.OrdinalIgnoreCase) => Forbid(),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => Unauthorized(new { Message = result.ErrorMessage })
-                };
-            }
+            var token = await _authService.Login(login, "user");
+            CookieHelper.AccessToken = token.AccessToken;
+            CookieHelper.RefreshToken = token.RefreshToken;
 
-            Response.Cookies.Append("token", result.token!.AccessToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax,
-                Path = "/",
-                Expires = DateTimeOffset.Now.AddMinutes(double.Parse(_config["JWT:Expire"]!)),
-            });
-            Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax,
-                Path = "/",
-                Expires = DateTimeOffset.Now.AddDays(double.Parse(_config["JWT:RefreshTokenExpiry"]!)),
-            });
-
-            return Ok(new
-            {
-                Message = "Login successful",
-            });
+            return ApiResponseHelper.Success<object>("Login successful", null);
         }
 
         [HttpPost("google-login")]
         [AllowAnonymous]
         public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDTO dto)
         {
-            var result = await _authService.LoginWithGoogleAsync(dto, "user");
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => Unauthorized(new { Message = result.ErrorMessage })
-                };
-            }
+            var token = await _authService.LoginWithGoogleAsync(dto, "user");
+            CookieHelper.AccessToken = token.AccessToken;
+            CookieHelper.RefreshToken = token.RefreshToken;
 
-            Response.Cookies.Append("token", result.token!.AccessToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax,
-                Path = "/",
-                Expires = DateTimeOffset.Now.AddMinutes(double.Parse(_config["JWT:Expire"]!)),
-            });
-            Response.Cookies.Append("refreshToken", result.token!.RefreshToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax,
-                Path = "/",
-                Expires = DateTimeOffset.Now.AddDays(double.Parse(_config["JWT:RefreshTokenExpiry"]!)),
-            });
-
-            return Ok(new
-            {
-                Message = "Login successful",
-            });
+            return ApiResponseHelper.Success<object>("Login successful", null);
         }
 
         [HttpGet("verify")]
@@ -147,40 +56,29 @@ namespace api.Controllers
         {
             return Ok(new
             {
+                Success = true,
                 Message = "Token is valid",
+                UserId = HttpContextHelper.CurrentUserId,
+                Email = HttpContextHelper.CurrentUserEmail,
+                Role = HttpContextHelper.CurrentUserRole
             });
         }
 
         [HttpPost("send-verification-email")]
         public async Task<IActionResult> SendVerificationEmail()
         {
-            var email = GetCurrentUserEmail();
-            var result = await _authService.SendEmailVerificationAsync(email);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new { Message = result.ErrorMessage });
+            var email = HttpContextHelper.CurrentUserEmail;
+            await _authService.SendEmailVerificationAsync(email);
+            return ApiResponseHelper.Success<object>("Email sent successfully", null);
         }
 
         [HttpPost("verify-email")]
         [AllowAnonymous]
         public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDTO verifyDto)
         {
-            var result = await _authService.VerifyEmailAsync(verifyDto);
+            await _authService.VerifyEmailAsync(verifyDto);
 
-            if (!result.Success)
-            {
-                return BadRequest(new { Message = result.ErrorMessage ?? "Email verification failed" });
-            }
-
-            return Ok(new { Message = "Email verified successfully" });
+            return ApiResponseHelper.Success<object>("Email verified successfully", null);
         }
     }
 }

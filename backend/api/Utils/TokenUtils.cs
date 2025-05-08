@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace api.Helpers
+namespace api.Utils
 {
-    public static class TokenHelper
+    public static class TokenUtils
     {
         public static string GenerateToken(int byteLength = 64)
         {

@@ -47,10 +47,11 @@ namespace api.Repositories
             return product;
         }
 
-        public async Task<bool> UpdateAsync(Product product)
+        public async Task<Product> UpdateAsync(Product product)
         {
             _db.Products.Update(product);
-            return await _db.SaveChangesAsync() > 0;
+            await _db.SaveChangesAsync();
+            return product;
         }
 
         public async Task<bool> DeleteAsync(Product product)

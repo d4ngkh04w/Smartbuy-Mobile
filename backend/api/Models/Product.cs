@@ -13,8 +13,6 @@ namespace api.Models
         [Column(TypeName = "varchar(100)")]
         public string Name { get; set; } = string.Empty;
 
-        public int Quantity { get; set; }
-
         [Column(TypeName = "decimal(12, 2)")]
         public decimal ImportPrice { get; set; }
 

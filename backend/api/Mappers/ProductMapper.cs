@@ -11,6 +11,7 @@ namespace api.Mappers
             {
                 Id = productColor.Id,
                 Name = productColor.Name,
+                Quantity = productColor.Quantity,
                 Images = productColor.Images?.Select(i => i.ToProductImageDTO()).ToHashSet() ?? new HashSet<ProductImageDTO>(),
                 // HasMainImage = productColor.Images?.Any(i => i.IsMain) ?? false
             };
@@ -49,7 +50,7 @@ namespace api.Mappers
             {
                 Id = product.Id,
                 Name = product.Name,
-                Quantity = product.Quantity,
+                Stock = product.Colors.Sum(c => c.Quantity),
                 ImportPrice = product.ImportPrice,
                 SalePrice = product.SalePrice,
                 Description = product.Description ?? string.Empty,
@@ -75,7 +76,6 @@ namespace api.Mappers
             return new Product
             {
                 Name = productDTO.Name,
-                Quantity = productDTO.Quantity,
                 ImportPrice = productDTO.ImportPrice,
                 SalePrice = productDTO.SalePrice,
                 Description = productDTO.Description,

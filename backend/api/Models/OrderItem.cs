@@ -20,6 +20,11 @@ namespace api.Models
         [ForeignKey(nameof(ProductId))]
         public Product? Product { get; set; }
 
+        public int ColorId { get; set; }
+
+        [ForeignKey(nameof(ColorId))]
+        public ProductColor? Color { get; set; }
+
         public Guid OrderId { get; set; }
 
         [ForeignKey(nameof(OrderId))]

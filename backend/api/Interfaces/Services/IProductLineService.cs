@@ -5,12 +5,12 @@ namespace api.Interfaces.Services
 {
     public interface IProductLineService
     {
-        Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> GetProductLineByIdAsync(int id, ProductLineQuery? query = null);
-        Task<(bool Success, string? ErrorMessage, IEnumerable<ProductLineDTO>? ProductLines)> GetProductLinesAsync(ProductLineQuery query);
-        Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> CreateProductLineAsync(CreateProductLineDTO productLineDTO);
-        Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> UpdateProductLineAsync(int id, UpdateProductLineDTO productLineDTO);
-        Task<(bool Success, string? ErrorMessage)> DeleteProductLineAsync(int id);
-        Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> ActivateProductLineAsync(int id);
-        Task<(bool Success, string? ErrorMessage, ProductLineDTO? ProductLine)> DeactivateProductLineAsync(int id);
+        Task<ProductLineDTO> GetProductLineByIdAsync(int id, ProductLineQuery? query = null);
+        Task<IEnumerable<ProductLineDTO>> GetProductLinesAsync(ProductLineQuery query);
+        Task<ProductLineDTO> CreateProductLineAsync(CreateProductLineDTO productLineDTO);
+        Task<ProductLineDTO> UpdateProductLineAsync(int id, UpdateProductLineDTO productLineDTO);
+        Task DeleteProductLineAsync(int id);
+        Task<ProductLineDTO> ActivateProductLineAsync(int id);
+        Task<ProductLineDTO> DeactivateProductLineAsync(int id);
     }
 }

@@ -7,70 +7,75 @@ namespace api.Repositories
 {
     public class OrderRepository : IOrderRepository
     {
-        private readonly AppDBContext _db;
+        private readonly AppDBContext _context;
 
-        public OrderRepository(AppDBContext db)
+        public OrderRepository(AppDBContext context)
         {
-            _db = db;
+            _context = context;
+        }
+
+        public async Task<Order> CreateOrderAsync(Order order)
+        {
+            await _context.Orders.AddAsync(order);
+            await _context.SaveChangesAsync();
+            return order;
+        }
+
+        public async Task<bool> DeleteOrderAsync(Guid id)
+        {
+            var order = await _context.Orders.FindAsync(id);
+            if (order == null)
+                return false;
+
+            _context.Orders.Remove(order);
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<IEnumerable<Order>> GetAllOrdersAsync()
         {
-            return await _db.Orders
+            return await _context.Orders
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
-                        .ThenInclude(p => p!.Colors)
-                            .ThenInclude(c => c.Images)
-                .OrderByDescending(o => o.OrderDate)
-                .ToListAsync();
-        }
-
-        public async Task<IEnumerable<Order>> GetOrdersByUserIdAsync(Guid userId)
-        {
-            return await _db.Orders
-                .Include(o => o.User)
                 .Include(o => o.OrderItems)
-                    .ThenInclude(oi => oi.Product)
-                        .ThenInclude(p => p!.Colors)
-                            .ThenInclude(c => c.Images)
-                .Where(o => o.UserId == userId)
+                    .ThenInclude(oi => oi.Color)
+                        .ThenInclude(c => c!.Images)
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync();
         }
 
         public async Task<Order?> GetOrderByIdAsync(Guid id)
         {
-            return await _db.Orders
+            return await _context.Orders
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
-                        .ThenInclude(p => p!.Colors)
-                            .ThenInclude(c => c.Images)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Color)
+                        .ThenInclude(c => c!.Images)
                 .FirstOrDefaultAsync(o => o.Id == id);
         }
 
-        public async Task<Order> CreateOrderAsync(Order order)
+        public async Task<IEnumerable<Order>> GetOrdersByUserIdAsync(Guid userId)
         {
-            await _db.Orders.AddAsync(order);
-            await _db.SaveChangesAsync();
+            return await _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Color)
+                        .ThenInclude(c => c!.Images)
+                .Where(o => o.UserId == userId)
+                .OrderByDescending(o => o.OrderDate)
+                .ToListAsync();
+        }
+
+        public async Task<Order> UpdateOrderAsync(Order order)
+        {
+            _context.Orders.Update(order);
+            await _context.SaveChangesAsync();
             return order;
-        }
-
-        public async Task<bool> UpdateOrderAsync(Order order)
-        {
-            _db.Orders.Update(order);
-            return await _db.SaveChangesAsync() > 0;
-        }
-
-        public async Task<bool> DeleteOrderAsync(Guid id)
-        {
-            var order = await _db.Orders.FindAsync(id);
-            if (order == null)
-                return false;
-
-            _db.Orders.Remove(order);
-            return await _db.SaveChangesAsync() > 0;
         }
     }
 }

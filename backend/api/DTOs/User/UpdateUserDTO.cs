@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using api.Extensions;
+using api.Annotations;
 
 namespace api.DTOs.User
 {
@@ -8,7 +8,7 @@ namespace api.DTOs.User
         [RegularExpression(@"^[\p{L}\s]+$", ErrorMessage = "Name can only contain letters and spaces")]
         public string? Name { get; set; }
 
-        [RegularExpression(@"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$", ErrorMessage = "Email is not valid")]
+        [Email]
         public string? Email { get; set; }
 
         [RegularExpression(@"^[\d]{10}$", ErrorMessage = "Phone number can only contain digits and spaces")]

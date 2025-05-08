@@ -1,10 +1,11 @@
 using api.DTOs.Brand;
-using api.Helpers;
+using api.Exceptions;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
 using api.Models;
 using api.Queries;
+using api.Utils;
 
 namespace api.Services
 {
@@ -23,293 +24,213 @@ namespace api.Services
             _productLineRepo = productLineRepo;
         }
 
-        public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> CreateBrandAsync(CreateBrandDTO brandDTO)
+        public async Task<BrandDTO> CreateBrandAsync(CreateBrandDTO brandDTO)
         {
-            try
+            var newName = brandDTO.Name.Trim();
+            var existsBrand = await _repo.BrandExistsAsync(newName);
+            if (existsBrand)
+                throw new AlreadyExistsException("Brand already exists");
+
+            var brand = new Brand
             {
-                var newName = brandDTO.Name.Trim();
-                var existsBrand = await _repo.BrandExistsAsync(newName);
-                if (existsBrand)
-                    return (false, "Brand already exists", null);
+                Name = newName,
+                Description = brandDTO.Description,
+                IsActive = brandDTO.IsActive ?? true,
+            };
 
-                var brand = new Brand
-                {
-                    Name = newName,
-                    Description = brandDTO.Description,
-                    IsActive = brandDTO.IsActive ?? true,
-                };
-
-                if (brandDTO.Logo != null)
-                {
-
-                    var (success, errorMessage, path) = await ImageHelper.SaveImageAsync(brandDTO.Logo, _env.WebRootPath, "brands", 2 * 1024 * 1024);
-                    if (!success)
-                        return (false, errorMessage, null);
-
-                    brand.Logo = path!;
-                }
-
-                var createdBrand = await _repo.CreateBrandAsync(brand);
-                if (createdBrand == null)
-                    return (false, "Error creating brand", null);
-
-                return (true, null, createdBrand.ToDTO());
-            }
-            catch (Exception)
+            if (brandDTO.Logo != null)
             {
-                return (false, $"Error creating brand", null);
+
+                var filePath = await ImageUtils.SaveImageAsync(brandDTO.Logo, _env.WebRootPath, "brands", 2 * 1024 * 1024);
+
+                brand.Logo = filePath;
             }
+
+            var createdBrand = await _repo.CreateBrandAsync(brand);
+            if (createdBrand == null)
+                throw new ServerException("Error creating brand");
+
+            return createdBrand.ToDTO();
         }
 
-        public async Task<(bool Success, string? ErrorMessage)> DeleteBrandAsync(int id)
+        public async Task DeleteBrandAsync(int id)
         {
-            try
+            var brand = await _repo.GetBrandByIdAsync(id) ?? throw new NotFoundException("Brand not found");
+            if (!string.IsNullOrEmpty(brand.Logo))
             {
-                var brand = await _repo.GetBrandByIdAsync(id);
-                if (brand == null)
-                    return (false, "Brand not found");
-
-                if (!string.IsNullOrEmpty(brand.Logo))
+                var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + brand.Logo);
+                if (!deletedImg)
                 {
-                    var deletedImg = ImageHelper.DeleteImage(_env.WebRootPath + brand.Logo);
-                    if (!deletedImg)
-                    {
-                        return (false, "Error deleting old avatar image");
-                    }
-                    brand.Logo = string.Empty;
+                    throw new ServerException("Error deleting old avatar image");
                 }
+                brand.Logo = string.Empty;
+            }
 
-                var productLines = await _productLineRepo.GetProductLinesByBrandIdAsync(id);
-                if (productLines != null && productLines.Any())
+            var productLines = await _productLineRepo.GetProductLinesByBrandIdAsync(id);
+            if (productLines != null && productLines.Any())
+            {
+                foreach (var productLine in productLines)
                 {
-                    foreach (var productLine in productLines)
+                    var products = await _productRepo.GetProductsByProductLineIdAsync(productLine.Id);
+                    if (products != null && products.Any())
                     {
-                        var products = await _productRepo.GetProductsByProductLineIdAsync(productLine.Id);
-                        if (products != null && products.Any())
+                        foreach (var product in products)
                         {
-                            foreach (var product in products)
+                            foreach (var color in product.Colors)
                             {
-                                foreach (var color in product.Colors)
+                                if (color.Images != null && color.Images.Any())
                                 {
-                                    if (color.Images != null && color.Images.Any())
+                                    foreach (var image in color.Images)
                                     {
-                                        foreach (var image in color.Images)
+                                        if (!string.IsNullOrEmpty(image.ImagePath))
                                         {
-                                            if (!string.IsNullOrEmpty(image.ImagePath))
+                                            var deleted = ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
+                                            if (!deleted)
                                             {
-                                                var deleted = ImageHelper.DeleteImage(_env.WebRootPath + image.ImagePath);
-                                                if (!deleted)
-                                                {
-                                                    return (false, "Error deleting product color image");
-                                                }
+                                                throw new ServerException("Error deleting product color image");
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                        if (!string.IsNullOrEmpty(productLine.Image))
+                    }
+                    if (!string.IsNullOrEmpty(productLine.Image))
+                    {
+                        var deleted = ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);
+                        if (!deleted)
                         {
-                            var deleted = ImageHelper.DeleteImage(_env.WebRootPath + productLine.Image);
-                            if (!deleted)
-                            {
-                                return (false, "Error deleting product line image");
-                            }
+                            throw new ServerException("Error deleting product line image");
                         }
                     }
                 }
-
-                await _repo.DeleteBrandAsync(brand);
-
-                return (true, null);
             }
-            catch (Exception)
-            {
-                return (false, $"Error deleting brand");
-            }
+
+            await _repo.DeleteBrandAsync(brand);
         }
 
-        public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> GetBrandByIdAsync(int id, BrandQuery query)
+        public async Task<BrandDTO> GetBrandByIdAsync(int id, BrandQuery query)
         {
-            try
-            {
-                var brand = await _repo.GetBrandByIdAsync(id, query);
-                if (brand == null)
-                    return (false, "Brand not found", null);
-
-                return (true, null, brand.ToDTO());
-            }
-            catch (Exception)
-            {
-                return (false, $"Error retrieving brand", null);
-            }
+            var brand = await _repo.GetBrandByIdAsync(id, query) ?? throw new NotFoundException("Brand not found");
+            return brand.ToDTO();
         }
 
-        public async Task<(bool Success, string? ErrorMessage, IEnumerable<BrandDTO>? Brands)> GetBrandsAsync(BrandQuery query)
+        public async Task<IEnumerable<BrandDTO>> GetBrandsAsync(BrandQuery query)
         {
-            try
-            {
-                var brands = await _repo.GetBrandsAsync(query);
+            var brands = await _repo.GetBrandsAsync(query);
 
-                if (brands == null || !brands.Any())
-                    return (false, "Not found any brands", null);
+            if (brands == null || !brands.Any())
+                throw new NotFoundException("Not found any brands");
 
-                var brandDTOs = brands.Select(b => b.ToDTO()).ToList();
-
-                return (true, null, brandDTOs);
-            }
-            catch (Exception)
-            {
-                return (false, $"Error retrieving brands", null);
-            }
+            return brands.Select(b => b.ToDTO());
         }
 
-        public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> UpdateBrandAsync(int id, UpdateBrandDTO brandDTO)
+        public async Task<BrandDTO> UpdateBrandAsync(int id, UpdateBrandDTO brandDTO)
         {
-            try
+            if (id <= 0)
+                throw new BadRequestException("Invalid brand ID");
+
+            var brand = await _repo.GetBrandByIdAsync(id) ?? throw new NotFoundException("Brand not found");
+            if (!string.IsNullOrEmpty(brandDTO.Name))
+                brand.Name = brandDTO.Name;
+
+            brand.Description = brandDTO.Description;
+
+            if (brandDTO.Logo != null)
             {
-                if (id <= 0)
-                    return (false, "Invalid brand ID", null);
-
-                var brand = await _repo.GetBrandByIdAsync(id);
-                if (brand == null)
-                    return (false, "Brand not found", null);
-
-                if (!string.IsNullOrEmpty(brandDTO.Name))
-                    brand.Name = brandDTO.Name;
-
-                brand.Description = brandDTO.Description;
-
-                if (brandDTO.Logo != null)
+                if (!string.IsNullOrEmpty(brand.Logo))
                 {
-                    if (!string.IsNullOrEmpty(brand.Logo))
-                    {
-                        var deletedImg = ImageHelper.DeleteImage(_env.WebRootPath + brand.Logo);
-                        if (!deletedImg)
-                            return (false, "Error deleting old logo", null);
-                    }
-
-                    var (success, errorMessage, path) = await ImageHelper.SaveImageAsync(brandDTO.Logo, _env.WebRootPath, "brands", 2 * 1024 * 1024);
-                    if (!success)
-                        return (false, errorMessage, null);
-
-                    brand.Logo = path!;
+                    var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + brand.Logo);
+                    if (!deletedImg)
+                        throw new ServerException("Error deleting old logo image");
                 }
 
-                var successUpdate = await _repo.UpdateBrandAsync(brand);
-                if (!successUpdate)
-                    return (false, "Error updating brand", null);
+                var path = await ImageUtils.SaveImageAsync(brandDTO.Logo, _env.WebRootPath, "brands", 2 * 1024 * 1024);
+                brand.Logo = path!;
+            }
 
-                return (true, null, brand.ToDTO());
-            }
-            catch (Exception)
-            {
-                return (false, $"Error updating brand", null);
-            }
+            var updatedBrand = await _repo.UpdateBrandAsync(brand);
+            return updatedBrand.ToDTO();
         }
 
-        public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> ActivateBrandAsync(int id)
+        public async Task<BrandDTO> ActivateBrandAsync(int id)
         {
-            try
+            var brand = await _repo.GetBrandByIdAsync(id) ?? throw new NotFoundException("Brand not found");
+            if (brand.IsActive)
+                return brand.ToDTO();
+
+            brand.IsActive = true;
+            var updatedBrand = await _repo.UpdateBrandAsync(brand);
+
+            var productLines = await _productLineRepo.GetProductLinesByBrandIdAsync(id);
+            if (productLines != null && productLines.Any())
             {
-                var brand = await _repo.GetBrandByIdAsync(id);
-                if (brand == null)
-                    return (false, "Brand not found", null);
-
-                if (brand.IsActive)
-                    return (true, null, brand.ToDTO());
-
-                brand.IsActive = true;
-                var success = await _repo.UpdateBrandAsync(brand);
-                if (!success)
-                    return (false, "Failed to activate brand", null);
-
-                var productLines = await _productLineRepo.GetProductLinesByBrandIdAsync(id);
-                if (productLines != null && productLines.Any())
+                foreach (var productLine in productLines)
                 {
-                    foreach (var productLine in productLines)
+                    if (!productLine.IsActive && !productLine.ManuallyDeactivated)
                     {
-                        if (!productLine.IsActive && !productLine.ManuallyDeactivated)
-                        {
-                            productLine.IsActive = true;
-                            productLine.UpdatedAt = DateTime.Now;
-                            await _productLineRepo.UpdateProductLineAsync(productLine);
+                        productLine.IsActive = true;
+                        productLine.UpdatedAt = DateTime.Now;
+                        await _productLineRepo.UpdateProductLineAsync(productLine);
 
-                            var products = await _productRepo.GetProductsByProductLineIdAsync(productLine.Id);
-                            if (products != null && products.Any())
+                        var products = await _productRepo.GetProductsByProductLineIdAsync(productLine.Id);
+                        if (products != null && products.Any())
+                        {
+                            foreach (var product in products)
                             {
-                                foreach (var product in products)
+                                if (!product.IsActive && !product.ManuallyDeactivated)
                                 {
-                                    if (!product.IsActive && !product.ManuallyDeactivated)
-                                    {
-                                        product.IsActive = true;
-                                        product.UpdatedAt = DateTime.Now;
-                                        await _productRepo.UpdateAsync(product);
-                                    }
+                                    product.IsActive = true;
+                                    product.UpdatedAt = DateTime.Now;
+                                    await _productRepo.UpdateAsync(product);
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                return (true, null, brand.ToDTO());
-            }
-            catch (Exception)
-            {
-                return (false, "Error activating brand", null);
-            }
+            return updatedBrand.ToDTO();
         }
 
-        public async Task<(bool Success, string? ErrorMessage, BrandDTO? Brand)> DeactivateBrandAsync(int id)
+        public async Task<BrandDTO> DeactivateBrandAsync(int id)
         {
-            try
+            var brand = await _repo.GetBrandByIdAsync(id) ?? throw new NotFoundException("Brand not found");
+            if (!brand.IsActive)
+                return brand.ToDTO();
+
+            brand.IsActive = false;
+            var updatedBrand = await _repo.UpdateBrandAsync(brand);
+
+            var productLines = await _productLineRepo.GetProductLinesByBrandIdAsync(id);
+            if (productLines != null && productLines.Any())
             {
-                var brand = await _repo.GetBrandByIdAsync(id);
-                if (brand == null)
-                    return (false, "Brand not found", null);
-
-                if (!brand.IsActive)
-                    return (true, null, brand.ToDTO());
-
-                brand.IsActive = false;
-                var success = await _repo.UpdateBrandAsync(brand);
-                if (!success)
-                    return (false, "Failed to deactivate brand", null);
-
-                var productLines = await _productLineRepo.GetProductLinesByBrandIdAsync(id);
-                if (productLines != null && productLines.Any())
+                foreach (var productLine in productLines)
                 {
-                    foreach (var productLine in productLines)
+                    if (productLine.IsActive)
                     {
-                        if (productLine.IsActive)
-                        {
-                            productLine.IsActive = false;
-                            productLine.UpdatedAt = DateTime.Now;
-                            await _productLineRepo.UpdateProductLineAsync(productLine);
+                        productLine.IsActive = false;
+                        productLine.UpdatedAt = DateTime.Now;
+                        await _productLineRepo.UpdateProductLineAsync(productLine);
 
-                            var products = await _productRepo.GetProductsByProductLineIdAsync(productLine.Id);
-                            if (products != null && products.Any())
+                        var products = await _productRepo.GetProductsByProductLineIdAsync(productLine.Id);
+                        if (products != null && products.Any())
+                        {
+                            foreach (var product in products)
                             {
-                                foreach (var product in products)
+                                if (product.IsActive)
                                 {
-                                    if (product.IsActive)
-                                    {
-                                        product.IsActive = false;
-                                        product.UpdatedAt = DateTime.Now;
-                                        await _productRepo.UpdateAsync(product);
-                                    }
+                                    product.IsActive = false;
+                                    product.UpdatedAt = DateTime.Now;
+                                    await _productRepo.UpdateAsync(product);
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                return (true, null, brand.ToDTO());
-            }
-            catch (Exception)
-            {
-                return (false, "Error deactivating brand", null);
-            }
+            return updatedBrand.ToDTO();
         }
     }
 }
