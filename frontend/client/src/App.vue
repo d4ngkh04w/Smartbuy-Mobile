@@ -37,4 +37,15 @@ header {
 main {
 	margin-top: 60px; /* Để tránh che khuất bởi header */
 }
+@media (max-width: 960px) {
+    header{
+		position: relative;
+		top: unset;	
+	}
+	main {
+		margin-top: 0px; 
+	}
+    
+}
+
 </style>

@@ -1,34 +1,44 @@
    <template>
-    <div
+    <router-link 
+      :to="{ name: 'product-detail', params: { id: product.id } }"
       class="product-card"
-      :style="{
-        '--card-bg': cardColor,
-        '--button-bg': buttonColor,
-        '--height': height
-      }"
     >
-      <div class="product-top">
-        <img :src="getUrlImage(product.imageUrl)" alt="image" class="product-img" />
+      <div
+        class="product-card"
+        :style="{
+          '--card-bg': cardColor,
+          '--button-bg': buttonColor,
+          '--height': height
+        }"
+      >
+        <div class="product-top">
+          <img 
+            v-lazy="getUrlImg(product.imageUrl)" 
+            alt="product image" 
+            class="product-img"
+          />
+        </div>
+    
+        <div class="product-middle">
+          <h3>{{ product.name }}</h3>
+          <p>{{ formatCurrency(product.price) }}₫</p>
+        </div>
+    
+        <div class="product-bottom">
+          <button class="add-cart-btn" @click="handleAddToCart">
+            <i class="fa-solid fa-cart-plus"></i>
+          </button>
+          <button class="buy-now-btn" @click="handleBuy">
+            Mua ngay
+          </button>
+        </div>
       </div>
-  
-      <div class="product-middle">
-        <h3>{{ product.name }}</h3>
-        <p>{{ formatCurrency(product.price) }}₫</p>
-      </div>
-  
-      <div class="product-bottom">
-        <button class="add-cart-btn" @click="handleAddToCart">
-          <i class="fa-solid fa-cart-plus"></i>
-        </button>
-        <button class="buy-now-btn" @click="handleBuy">
-          Mua ngay
-        </button>
-      </div>
-    </div>
+    </router-link>
   </template>
   
   <script setup>
   import { defineProps } from 'vue'
+  import { getUrlImage } from '../services/productService'
   
   const props = defineProps({
     product: {
@@ -65,10 +75,9 @@
   }
   
   // Hàm lấy link ảnh
-  const getUrlImage = (url) => {
-      let newUrlImage = url.startsWith('http') ? url : "http://localhost:5000" + `/${url}`;
-      return newUrlImage;
-    }
+  const getUrlImg = (url) => {
+      return getUrlImage(url)
+  }
   </script>
 
   <style scoped>
@@ -177,5 +186,10 @@
 .buy-now-btn:hover {
   background-color: #e358c2; /* đậm hơn 1 chút */
   transform: scale(1.05);
+}
+.product-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
 }
 </style>

@@ -208,7 +208,7 @@ onMounted(async () => {
 }
 
 /* Responsive */
-@media (max-width: 1200px) {
+@media (max-width: 960px) {
     .header-container {
         flex-direction: column;
     }
@@ -217,6 +217,7 @@ onMounted(async () => {
         width: 80%;
         margin-bottom: 10px;
     }
+    
 }
 .user-menu {
     position: relative;

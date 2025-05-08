@@ -11,3 +11,27 @@ export const getProducts = async (page, limit) => {
         throw error;
     }
 }
+
+export const getProductById = async (id) => {
+    try{
+        const response = await axiosInstance.get(`/product/${id}`);
+        console.log("product", response.data.product);
+        if(response){
+            return response.data.product;
+        }
+        
+    }catch(error) {
+        console.error("Error fetching products:", error);
+        throw error;
+    }
+}
+
+export const getUrlImage = (url) => {
+    try{
+        let newUrlImage = url.startsWith('http') ? url : "http://localhost:5000" + `/${url}`;
+        return newUrlImage;
+    }catch(error) {
+        console.error("Error get Url Image:", error);
+        throw error;
+    }
+}

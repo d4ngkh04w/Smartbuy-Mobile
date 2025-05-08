@@ -26,7 +26,6 @@
               :product="product"
             />
           </template>
-          <p v-else class="no-products">Không có sản phẩm nào để hiển thị.</p> 
         </div>
         <Pagination
           :totalProducts="totalProducts"
