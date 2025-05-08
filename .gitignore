@@ -27,8 +27,8 @@ coverage
 *.njsproj
 *.sln
 *.sw?
-
 *.tsbuildinfo
+.vs/
 
 appsettings.json
 appsettings.Development.json
@@ -36,7 +36,6 @@ bin/
 obj/
 uploads/
 Migrations/
-
 .env
 *.ps1
 .vs/

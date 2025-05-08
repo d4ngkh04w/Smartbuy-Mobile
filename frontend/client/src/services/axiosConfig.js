@@ -1,7 +1,6 @@
 import axios from "axios";
 
 const apiUrl = import.meta.env.VITE_API_URL || "/api";
-
 const axiosInstance = axios.create({
     baseURL: apiUrl,
     timeout: 10000,
@@ -9,7 +8,6 @@ const axiosInstance = axios.create({
     headers: {
         "Content-Type": "application/json",
     }
-
 })
 
 // Request Interceptor
@@ -18,8 +16,8 @@ axiosInstance.interceptors.request.use(
     const token = "";
     if(token){
         config.headers.Authorization = `Bearer ${token}`;
-        return config;
     }
+    return config;
     },
     (error) => {
         console.error("Request error:", error);
