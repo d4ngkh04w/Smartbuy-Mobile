@@ -12,21 +12,7 @@ import Notification from "./components/Notification.vue";
 </template>
 
 <style>
-:root {
-    --primary-color: #e85db3;
-    --primary-hover: #d64da1;
-    --secondary-color: #4a5568;
-    --accent-color: #38b2ac;
-    --light-bg: #f9f9f9;
-    --border-color: #e2e8f0;
-    --text-primary: #1a202c;
-    --text-secondary: #4a5568;
-    --text-muted: #718096;
-    --danger: #e53e3e;
-    --success: #48bb78;
-    --warning: #ed8936;
-    --info: #4299e1;
-}
+
 
 * {
     margin: 0;

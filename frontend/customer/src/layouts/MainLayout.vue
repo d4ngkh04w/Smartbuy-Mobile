@@ -22,5 +22,6 @@ import TheFooter from "../components/layout/TheFooter.vue";
 
 .content {
     flex: 1;
+    margin: 20px;
 }
 </style>
