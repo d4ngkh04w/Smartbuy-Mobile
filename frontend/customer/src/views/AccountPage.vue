@@ -96,7 +96,7 @@ const fetchUserData = async () => {
 const handleLogout = async () => {
     try {
         await authService.logout();
-        router.push("/login");
+        router.push("/");
     } catch (error) {
         console.error("Error during logout:", error);
     }

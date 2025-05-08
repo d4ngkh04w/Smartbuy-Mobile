@@ -147,11 +147,13 @@ router.beforeEach(async (to, from, next) => {
     if (requiresAuth) {
         try {
             await authService.verifyUser();
-            next();
+            next(); // Thêm dòng này để tiếp tục khi xác thực thành công
         } catch (error) {
-            if (error.response?.status != 401) {
-                console.error("Lỗi xác thực:", error);
+            if (error.response?.status === 401) { // Sửa thành === 401
                 next("/login");
+            } else {
+                console.error("Lỗi xác thực:", error);
+                next(); // Vẫn cho phép tiếp tục nếu không phải lỗi 401
             }
         }
     } else {
