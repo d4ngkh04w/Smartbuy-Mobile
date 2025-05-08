@@ -1,0 +1,48 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
+
+/* Reset CSS */
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: inherit;
+}
+html, body {
+  max-width: 100vw;
+  max-height: 100vh;
+  font-size: 16px;
+  font-family: 'Lato', sans-serif;
+  line-height: 1.5;
+  scroll-behavior: smooth; /* Cuộn trang mượt mà */
+  /* padding:  0 20px; */
+  box-sizing: border-box;
+}
+
+:root {
+  --primary-color: #F86ED3;
+  --background-color: #ffffff;
+  --secondary-color: #f86ed38d;
+  --hover-color: #f045c2;
+  --text-color: black;
+  --light-bg: #f9f9f9;
+  --border-color: #e2e8f0;
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+  --text-muted: #718096;
+  --danger: #e53e3e;
+  --success: #48bb78;
+  --warning: #ed8936;
+  --info: #4299e1;
+}
+
+/* hiệu chỉnh lại màu theme tối sau */
+[data-theme="dark"] {
+  --primary-color: #1abc9c;
+  --background-color: #222;
+  --text-color: #f5f5f5;
+}
+
+body {
+  background-color: var(--background-color);
+  transition: background 0.3s ease-in-out, color 0.3s ease-in-out;
+}
