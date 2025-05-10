@@ -10,7 +10,6 @@
                         />
                     </router-link>
                 </div>
-
                 <div class="search-bar">
                     <input
                         type="text"
@@ -24,23 +23,17 @@
                 </div>
 
                 <div class="header-actions">
-                    <div
-                        class="action-item cart-icon"
-                        @click="toggleCart"
-                        ref="cartRef"
-                    >
-                        <div class="icon-container">
-                            <i class="fas fa-shopping-cart"></i>
-                            <span v-if="cartCount > 0" class="cart-badge">{{
-                                cartCount
-                            }}</span>
-                        </div>
-                        <div class="dropdown-menu cart-menu" v-if="showCart">
-                            <div class="cart-header">
-                                <h3>Giỏ hàng</h3>
+                    <router-link
+                        to = "/cart">
+                        <div class="action-item cart-icon">
+                            <div class="icon-container">
+                                <i class="fas fa-shopping-cart"></i>
+                                <span v-if="cartCount > 0" class="cart-badge">{{
+                                    cartCount
+                                }}</span>
                             </div>
                         </div>
-                    </div>
+                    </router-link>
 
 
                     <div
