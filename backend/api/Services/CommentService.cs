@@ -90,7 +90,7 @@ namespace api.Services
             }
 
             var comment = commentDTO.ToCommentModel(userId);
-            comment.Content = comment.Content.Trim();
+            comment.Content = comment.Content?.Trim();
             var createdComment = await _commentRepository.CreateCommentAsync(comment);
 
             var commentDto = createdComment.ToCommentDTO();

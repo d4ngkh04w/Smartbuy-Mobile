@@ -4,6 +4,7 @@ using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
 using api.Models;
+using api.Queries;
 using api.Utils;
 
 namespace api.Services
@@ -28,7 +29,7 @@ namespace api.Services
             var products = await _productRepository.GetAllAsync();
 
             if (!products.Any())
-                throw new NotFoundException("Not found any products");
+                return new List<ProductDTO>();
 
             return products.Select(p => p.ToProductDTO());
         }
@@ -47,10 +48,7 @@ namespace api.Services
                 productDTO.Name = productDTO.Name.Trim();
 
             // Validate that product line exists
-            var productLine = await _productLineRepository.GetProductLineByIdAsync(productDTO.ProductLineId);
-            if (productLine == null)
-                throw new NotFoundException($"Product line with ID {productDTO.ProductLineId} not found");
-
+            var productLine = await _productLineRepository.GetProductLineByIdAsync(productDTO.ProductLineId) ?? throw new NotFoundException($"Product line with ID {productDTO.ProductLineId} not found");
             if (!productLine.IsActive)
                 throw new BadRequestException($"Product line with ID {productDTO.ProductLineId} is inactive");
 
@@ -274,13 +272,12 @@ namespace api.Services
             var product = await _productRepository.GetByIdAsync(id) ?? throw new NotFoundException("Product not found");
             await _productRepository.DeleteAsync(product);
         }
-        public async Task<ProductPagiDTO> GetPagedProductsAsync(int page, int pageSize, string? search = null, string? sortBy = "newest", string? brand = null, decimal? minPrice = null, decimal? maxPrice = null)
+        public async Task<ProductPagiDTO> GetPagedProductsAsync(ProductQuery productQuery)
         {
-            var (items, totalItems) = await _productRepository.GetPagedProductsAsync(page, pageSize, search, sortBy, brand, minPrice, maxPrice);
+            var (items, totalItems) = await _productRepository.GetPagedProductsAsync(productQuery);
 
             if (items == null || !items.Any())
             {
-                // throw new NotFoundException("Not found any products");
                 return new ProductPagiDTO
                 {
                     TotalItems = 0,

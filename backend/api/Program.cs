@@ -23,14 +23,14 @@ ConfigHelper.Initialize(builder.Configuration);
 
 // Thiết lập DbContext với MySQL
 builder.Services.AddDbContext<AppDBContext>(options =>
-    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
+    options.UseMySql(ConfigHelper.ConnectionString,
     new MySqlServerVersion(new Version(9, 2, 0))));
 
 // Thiết lập CORS cho phép frontend Vue.js truy cập API
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
-        policy => policy.WithOrigins("http://localhost:3000", "http://localhost:4000")
+        policy => policy.WithOrigins(ConfigHelper.AdminUrl, ConfigHelper.CustomerUrl)
                         .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .AllowAnyHeader()
                         .AllowCredentials());
@@ -64,7 +64,7 @@ builder.Services.AddAuthentication(
         {
             OnMessageReceived = context =>
             {
-                var token = context.Request.Cookies["token"];
+                var token = CookieHelper.AccessToken;
                 if (!string.IsNullOrEmpty(token))
                 {
                     context.Token = token;

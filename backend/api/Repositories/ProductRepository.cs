@@ -1,6 +1,7 @@
 using api.Database;
 using api.Interfaces.Repositories;
 using api.Models;
+using api.Queries;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.Repositories
@@ -71,14 +72,82 @@ namespace api.Repositories
             return await _db.Products.AnyAsync(p => p.Name.ToLower() == name.ToLower());
         }
 
-        public async Task<(List<Product> Items, int TotalItems)> GetPagedProductsAsync(
-            int page,
-            int pageSize,
-            string? search = null,
-            string? sortBy = "newest",
-            string? brand = null,
-            decimal? minPrice = null,
-            decimal? maxPrice = null)
+        // public async Task<(List<Product> Items, int TotalItems)> GetPagedProductsAsync(
+        //     int page,
+        //     int pageSize,
+        //     string? search = null,
+        //     string? sortBy = "newest",
+        //     string? brand = null,
+        //     decimal? minPrice = null,
+        //     decimal? maxPrice = null)
+        // {
+        //     var query = _db.Products
+        //         .Include(p => p.Colors)
+        //             .ThenInclude(c => c.Images)
+        //         .Include(p => p.ProductLine)
+        //         .Where(p => p.IsActive)
+        //         .AsQueryable();
+
+        //     if (!string.IsNullOrWhiteSpace(search))
+        //     {
+        //         string lowerKey = search.Trim().ToLower();
+        //         query = query.Where(p =>
+        //             p.Name.ToLower().Contains(lowerKey));
+        //     }
+
+        //     if (!string.IsNullOrWhiteSpace(brand))
+        //     {
+        //         string lowerBrand = brand.Trim().ToLower();
+        //         var brandInDb = _db.Brands
+        //             .Where(b => b.Name.ToLower().Contains(lowerBrand))
+        //             .FirstOrDefault();
+
+        //         if (brandInDb != null)
+        //         {
+        //             query = query.Where(p => p.ProductLine!.BrandId == brandInDb.Id);
+        //         }
+
+        //     }
+
+
+        //     if (minPrice.HasValue)
+        //     {
+        //         query = query.Where(p => p.SalePrice >= minPrice.Value);
+        //     }
+
+        //     if (maxPrice.HasValue)
+        //     {
+        //         query = query.Where(p => p.SalePrice <= maxPrice.Value);
+        //     }
+
+        //     switch (sortBy)
+        //     {
+        //         case "oldest":
+        //             query = query.OrderBy(p => p.CreatedAt);
+        //             break;
+        //         case "priceInc":
+        //             query = query.OrderBy(p => p.SalePrice);
+        //             break;
+        //         case "priceDesc":
+        //             query = query.OrderByDescending(p => p.SalePrice);
+        //             break;
+        //         default: // newest
+        //             query = query.OrderByDescending(p => p.CreatedAt);
+        //             break;
+        //     }
+
+        //     var totalItems = await query.CountAsync();
+
+        //     var items = await query
+        //         .Skip((page - 1) * pageSize)
+        //         .Take(pageSize)
+        //         .AsNoTracking()
+        //         .ToListAsync();
+
+        //     return (items, totalItems);
+        // }
+
+        public async Task<(List<Product> Items, int TotalItems)> GetPagedProductsAsync(ProductQuery productQuery)
         {
             var query = _db.Products
                 .Include(p => p.Colors)
@@ -87,16 +156,16 @@ namespace api.Repositories
                 .Where(p => p.IsActive)
                 .AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(search))
+            if (!string.IsNullOrWhiteSpace(productQuery.Search))
             {
-                string lowerKey = search.Trim().ToLower();
+                string lowerKey = productQuery.Search.Trim().ToLower();
                 query = query.Where(p =>
-                    p.Name.ToLower().Contains(lowerKey) );
+                    p.Name.ToLower().Contains(lowerKey));
             }
 
-            if (!string.IsNullOrWhiteSpace(brand))
+            if (!string.IsNullOrWhiteSpace(productQuery.BrandName))
             {
-                string lowerBrand = brand.Trim().ToLower();
+                string lowerBrand = productQuery.BrandName.Trim().ToLower();
                 var brandInDb = _db.Brands
                     .Where(b => b.Name.ToLower().Contains(lowerBrand))
                     .FirstOrDefault();
@@ -105,21 +174,19 @@ namespace api.Repositories
                 {
                     query = query.Where(p => p.ProductLine!.BrandId == brandInDb.Id);
                 }
-              
             }
 
-
-            if (minPrice.HasValue)
+            if (productQuery.MinPrice.HasValue)
             {
-                query = query.Where(p => p.SalePrice >= minPrice.Value);
+                query = query.Where(p => p.SalePrice >= productQuery.MinPrice.Value);
             }
 
-            if (maxPrice.HasValue)
+            if (productQuery.MaxPrice.HasValue)
             {
-                query = query.Where(p => p.SalePrice <= maxPrice.Value);
+                query = query.Where(p => p.SalePrice <= productQuery.MaxPrice.Value);
             }
 
-            switch (sortBy)
+            switch (productQuery.SortBy)
             {
                 case "oldest":
                     query = query.OrderBy(p => p.CreatedAt);
@@ -138,8 +205,8 @@ namespace api.Repositories
             var totalItems = await query.CountAsync();
 
             var items = await query
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
+                .Skip(((productQuery.Page ?? 1) - 1) * (productQuery.PageSize ?? 10))
+                .Take(productQuery.PageSize ?? 10)
                 .AsNoTracking()
                 .ToListAsync();
 

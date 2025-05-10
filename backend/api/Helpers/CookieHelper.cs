@@ -13,7 +13,7 @@ namespace api.Helpers
 
         public static string AccessToken
         {
-            get => GetCookie("token") ?? string.Empty;
+            get => GetCookie("token");
             set
             {
                 SetCookie("token", value, ConfigHelper.JwtExpireTime);
@@ -22,7 +22,7 @@ namespace api.Helpers
 
         public static string RefreshToken
         {
-            get => GetCookie("refreshToken") ?? string.Empty;
+            get => GetCookie("refreshToken");
             set
             {
                 Current.Response.Cookies.Append("refreshToken", value, new CookieOptions

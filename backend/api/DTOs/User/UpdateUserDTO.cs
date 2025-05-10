@@ -20,5 +20,7 @@ namespace api.DTOs.User
 
         [RegularExpression(@"^(Nam|Nữ|Khác)$", ErrorMessage = "Gender must be male, female, or other")]
         public string? Gender { get; set; }
+
+        public DateTime? DateOfBirth { get; set; }
     }
 }

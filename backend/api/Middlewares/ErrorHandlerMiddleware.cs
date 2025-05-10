@@ -55,7 +55,7 @@ public class ErrorHandlerMiddleware
 
             response = new
             {
-                Success = (exception is NotFoundException) ? true : false,
+                Success = false,
                 apiException.Message,
             };
         }

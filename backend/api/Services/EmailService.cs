@@ -56,7 +56,7 @@ namespace api.Services
 
         public async Task<bool> SendPasswordResetEmailAsync(string email, string resetToken)
         {
-            var frontendUrl = "http://localhost:3000";
+            var frontendUrl = ConfigHelper.CustomerUrl;
             var resetUrl = $"{frontendUrl}/reset-password?token={resetToken}&email={Uri.EscapeDataString(email)}";
 
             var subject = "SmartBuy Mobile - Đặt Lại Mật Khẩu";
@@ -175,7 +175,7 @@ namespace api.Services
 
         public async Task<bool> SendEmailVerificationAsync(string email, string verificationToken)
         {
-            var frontendUrl = "http://localhost:3000";
+            var frontendUrl = ConfigHelper.CustomerUrl;
             var verificationUrl = $"{frontendUrl}/verify-email?token={verificationToken}&email={Uri.EscapeDataString(email)}";
 
             var subject = "SmartBuy Mobile - Xác Thực Địa Chỉ Email";

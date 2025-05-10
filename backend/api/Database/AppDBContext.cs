@@ -1,3 +1,4 @@
+using api.Helpers;
 using api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -129,6 +130,21 @@ namespace api.Database
                 .WithMany()
                 .HasForeignKey(c => c.ParentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Thêm tài khoản admin
+            builder.Entity<User>().HasData(
+                new User
+                {
+                    Email = ConfigHelper.Email,
+                    EmailConfirmed = true,
+                    PhoneNumber = ConfigHelper.AdminPhoneNumber,
+                    PhoneNumberConfirmed = true,
+                    Password = BCrypt.Net.BCrypt.HashPassword(ConfigHelper.AdminPassword),
+                    Name = ConfigHelper.AdminName,
+                    Role = "admin",
+                    CreatedAt = DateTime.Now,
+                }
+            );
 
             base.OnModelCreating(builder);
         }

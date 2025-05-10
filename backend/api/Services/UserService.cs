@@ -106,6 +106,7 @@ namespace api.Services
             user.PhoneNumber = userDTO.PhoneNumber ?? user.PhoneNumber;
             user.Address = userDTO.Address?.Trim() ?? user.Address;
             user.Gender = userDTO.Gender?.Trim() ?? user.Gender;
+            user.DateOfBirth = userDTO.DateOfBirth ?? user.DateOfBirth;
 
             if (userDTO.Avatar != null)
             {

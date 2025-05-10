@@ -1,6 +1,7 @@
 using api.DTOs.Product;
 using api.Helpers;
 using api.Interfaces.Services;
+using api.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -59,9 +60,9 @@ namespace api.Controllers
         }
         [HttpGet("page")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetPagedProducts([FromQuery] int page, int pageSize, string? search = null, string? sortBy = "newest", string? brand = null, decimal? minPrice = null, decimal? maxPrice = null)
+        public async Task<IActionResult> GetPagedProducts([FromQuery] ProductQuery productQuery)
         {
-            var product = await _productService.GetPagedProductsAsync(page, pageSize, search, sortBy, brand, minPrice, maxPrice);
+            var product = await _productService.GetPagedProductsAsync(productQuery);
             return ApiResponseHelper.Success("Products retrieved successfully", product);
         }
 

@@ -23,11 +23,20 @@
     "EmailSettings": {
         "DisplayName": "YOUR_DISPLAY_NAME",
         "From": "YOUR_EMAIL_FROM",
-        "Host": "smtp.your-email-provider.com",
+        "Host": "smtp.YOUR_EMAIL_PROVIDER.com",
         "Port": 587,
         "Email": "YOUR_EMAIL",
         "Password": "YOUR_PASSWORD",
         "EnableSsl": true,
         "UseDefaultCredentials": false
-    }
+    },
+    "Admin": {
+        "Password": "YOUR_ADMIN_PASSWORD",
+        "Name": "YOUR_ADMIN_NAME",
+        "PhoneNumber": "YOUR_ADMIN_PHONE_NUMBER"
+    },
+    "Frontend": {
+		"AdminUrl": "YOUR_ADMIN_URL",
+		"CustomerUrl": "YOUR_CUSTOMER_URL"
+	}
 }
