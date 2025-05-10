@@ -15,7 +15,7 @@ export const routes = [
         name: "home",
         component: HomePage,
         meta: {
-          title: "Trang chủ - SmartBuy Mobile",
+          title: "SmartBuy Mobile - Hệ thống bán lẻ điện thoại di động",
           requiresAuth: false,
         },
       },

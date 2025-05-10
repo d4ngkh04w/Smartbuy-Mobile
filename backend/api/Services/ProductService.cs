@@ -274,13 +274,18 @@ namespace api.Services
             var product = await _productRepository.GetByIdAsync(id) ?? throw new NotFoundException("Product not found");
             await _productRepository.DeleteAsync(product);
         }
-        public async Task<ProductPagiDTO> GetPagedProductsAsync(int page, int pageSize)
+        public async Task<ProductPagiDTO> GetPagedProductsAsync(int page, int pageSize, string? search = null, string? sortBy = "newest", string? brand = null, decimal? minPrice = null, decimal? maxPrice = null)
         {
-            var (items, totalItems) = await _productRepository.GetPagedProductsAsync(page, pageSize);
+            var (items, totalItems) = await _productRepository.GetPagedProductsAsync(page, pageSize, search, sortBy, brand, minPrice, maxPrice);
 
             if (items == null || !items.Any())
             {
-                throw new NotFoundException("Not found any products");
+                // throw new NotFoundException("Not found any products");
+                return new ProductPagiDTO
+                {
+                    TotalItems = 0,
+                    Items = new List<ProductSummaryDTO>()
+                };
             }
             var productSummaries = items.Select(ProductMapper.ToSummaryDTO).ToList();
             var result = new ProductPagiDTO

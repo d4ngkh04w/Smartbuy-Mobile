@@ -3,7 +3,7 @@
         <div class="container">
             <div class="header-content">
                 <div class="logo">
-                    <router-link to="/">
+                    <router-link to="/" @click="resetSearchText">
                         <img
                             src="../../assets/logo_letter.png"
                             alt="SmartBuy Mobile"
@@ -25,83 +25,6 @@
 
                 <div class="header-actions">
                     <div
-                        class="action-item notification-icon"
-                        @click="toggleNotifications"
-                        ref="notificationRef"
-                    >
-                        <div class="icon-container">
-                            <i class="fas fa-bell"></i>
-                            <span
-                                v-if="notificationCount > 0"
-                                class="notification-badge"
-                                >{{ notificationCount }}</span
-                            >
-                        </div>
-
-                        <div
-                            class="dropdown-menu notifications-menu"
-                            v-if="showNotifications"
-                        >
-                            <div class="notifications-header">
-                                <h3>Thông báo</h3>
-                                <button
-                                    class="mark-all-read"
-                                    @click.stop="markAllAsRead"
-                                >
-                                    Đánh dấu đã đọc
-                                </button>
-                            </div>
-
-                            <div
-                                class="notifications-list"
-                                v-if="notifications.length"
-                            >
-                                <div
-                                    v-for="notification in notifications"
-                                    :key="notification.id"
-                                    class="notification-item"
-                                    :class="{ unread: !notification.read }"
-                                >
-                                    <div class="notification-icon">
-                                        <i
-                                            :class="
-                                                getNotificationIcon(
-                                                    notification.type
-                                                )
-                                            "
-                                        ></i>
-                                    </div>
-                                    <div class="notification-content">
-                                        <p class="notification-text">
-                                            {{ notification.message }}
-                                        </p>
-                                        <p class="notification-time">
-                                            {{
-                                                formatTime(
-                                                    notification.createdAt
-                                                )
-                                            }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="no-notifications" v-else>
-                                <p>Không có thông báo mới</p>
-                            </div>
-
-                            <div class="notifications-footer">
-                                <router-link
-                                    to="/notifications"
-                                    @click="showNotifications = false"
-                                >
-                                    Xem tất cả thông báo
-                                </router-link>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div
                         class="action-item cart-icon"
                         @click="toggleCart"
                         ref="cartRef"
@@ -112,82 +35,13 @@
                                 cartCount
                             }}</span>
                         </div>
-
                         <div class="dropdown-menu cart-menu" v-if="showCart">
                             <div class="cart-header">
                                 <h3>Giỏ hàng</h3>
                             </div>
-
-                            <div class="cart-items" v-if="cartItems.length">
-                                <div
-                                    v-for="item in cartItems"
-                                    :key="item.id"
-                                    class="cart-item"
-                                >
-                                    <div class="cart-item-image">
-                                        <img
-                                            :src="item.image"
-                                            :alt="item.name"
-                                        />
-                                    </div>
-                                    <div class="cart-item-content">
-                                        <p class="cart-item-name">
-                                            {{ item.name }}
-                                        </p>
-                                        <p class="cart-item-price">
-                                            {{ formatPrice(item.price) }} x
-                                            {{ item.quantity }}
-                                        </p>
-                                    </div>
-                                    <button
-                                        class="remove-item"
-                                        @click.stop="removeFromCart(item.id)"
-                                    >
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="empty-cart" v-else>
-                                <p>Không có sản phẩm nào trong giỏ hàng</p>
-                            </div>
-
-                            <div class="cart-footer" v-if="cartItems.length">
-                                <div class="cart-total">
-                                    <span>Tổng tiền:</span>
-                                    <span class="total-price">{{
-                                        formatPrice(cartTotal)
-                                    }}</span>
-                                </div>
-                                <div class="cart-actions">
-                                    <router-link
-                                        to="/cart"
-                                        class="view-cart-btn"
-                                        @click="showCart = false"
-                                    >
-                                        Xem giỏ hàng
-                                    </router-link>
-                                    <router-link
-                                        to="/checkout"
-                                        class="checkout-btn"
-                                        @click="showCart = false"
-                                    >
-                                        Thanh toán
-                                    </router-link>
-                                </div>
-                            </div>
-
-                            <div class="cart-footer" v-else>
-                                <router-link
-                                    to="/products"
-                                    class="continue-shopping"
-                                    @click="showCart = false"
-                                >
-                                    Tiếp tục mua sắm
-                                </router-link>
-                            </div>
                         </div>
                     </div>
+
 
                     <div
                         class="action-item user-dropdown"
@@ -229,52 +83,15 @@ const router = useRouter();
 const searchQuery = ref("");
 const isUserMenuOpen = ref(false);
 const userDropdown = ref(null);
-const notificationRef = ref(null);
 const cartRef = ref(null);
-const showNotifications = ref(false);
 const showCart = ref(false);
+const cartItems = ref([]);
 
 // User data
 const isLoggedIn = ref(false);
 const currentUser = ref(null);
 const userAvatar = ref(null);
-
-// Demo data - Thay thế bằng state thực tế trong ứng dụng của bạn
-const notificationCount = ref(2);
-const cartItems = ref([
-    {
-        id: 1,
-        name: "iPhone 13",
-        image: "https://via.placeholder.com/50",
-        price: 18000000,
-        quantity: 1,
-    },
-    {
-        id: 2,
-        name: "Samsung Galaxy S21",
-        image: "https://via.placeholder.com/50",
-        price: 14000000,
-        quantity: 2,
-    },
-]);
-
-// Demo notifications data - sẽ được thay thế bằng API call
-const notifications = ref([
-    {
-        id: 1,
-        type: "order",
-        message: "Đơn hàng #12345 đã được giao thành công",
-        read: false,
-        createdAt: new Date(Date.now() - 30 * 60000), // 30 phút trước
-    },
-    {
-        id: 2,
-        type: "promotion",
-        message: "Giảm giá 20% cho tất cả sản phẩm Samsung",
-        read: false,
-        createdAt: new Date(Date.now() - 2 * 3600000), // 2 giờ trước
-    },
-]);
+const isReload = ref(0);
 
 // Base API URL
 const baseApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -286,14 +103,17 @@ const cartTotal = computed(() => {
         0
     );
 });
+const resetSearchText = () => {
+    searchQuery.value = "";
+    isReload.value = 1 - isReload.value;
+    handleSearch();
+};
 
 const handleSearch = () => {
-    if (searchQuery.value.trim()) {
         router.push({
-            path: "/search",
-            query: { q: searchQuery.value },
+            path: "/",
+            query: { search: searchQuery.value, reload: isReload.value },
         });
-    }
 };
 
 const goToLogin = () => {
@@ -325,13 +145,6 @@ const closeMenus = (event) => {
         isUserMenuOpen.value = false;
     }
 
-    if (
-        notificationRef.value &&
-        !notificationRef.value.contains(event.target) &&
-        showNotifications.value
-    ) {
-        showNotifications.value = false;
-    }
 
     if (
         cartRef.value &&

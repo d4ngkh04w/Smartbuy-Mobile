@@ -1,5 +1,5 @@
 <template>
-    <div v-if="productData" class="product-detail-container">
+    <div v-if="productData" class="product-detail-container" :class="{ 'out-of-stock-disable': getQuanity <= 0 }">
       <h2 class="product-title">{{ productData.name }}</h2>
       <div class="product-main-content">
         <!-- Phần ảnh sản phẩm -->
@@ -8,7 +8,7 @@
             <!-- Ảnh chính -->
             <div class="main-image">
               <img 
-                :src="getCurrentMainImage()" 
+                :src="getCurrentMainImage" 
                 :alt="productData.name"
                 class="active-image"
               />
@@ -17,15 +17,15 @@
             <!-- Danh sách thumbnail -->
             <div class="thumbnail-container">
               <div
-                v-for="(image, index) in getAllImages()"
-                :key="index"
+                v-for="(image) in getAllImages()"
+                :key="image.id"
                 class="thumbnail"
-                :class="{ active: currentImageIndex === index }"
-                @click="changeImage(index)"
+                :class="{ active: currentImageId === image.id }"
+                @click="selectedImgId = image.id"
               >
                 <img 
                   :src="getImageUrl(image.imagePath)" 
-                  :alt="`${productData.name} thumbnail ${index + 1}`"
+                  :alt="`${productData.name} thumbnail`"
                 />
               </div>
             </div>
@@ -37,9 +37,9 @@
           <div class="product-info-buy">
             <!-- Thông tin giá -->
             <div class="price-section">
-              <span class="current-price">{{ formatPrice(productData.salePrice) }}₫</span>
+              <span class="current-price">{{ format.formatPrice(productData.salePrice) }}₫</span>
               <span v-if="productData.discounts.length > 0" class="original-price">
-                {{ formatPrice(productData.importPrice) }}₫
+                {{ format.formatPrice(productData.importPrice) }}₫
               </span>
               <span v-if="productData.discounts.length > 0" class="discount-badge">
                 -{{ calculateDiscountPercentage() }}%
@@ -71,12 +71,13 @@
                   type="number" 
                   v-model="quantity" 
                   min="1" 
-                  :max="productData.quantity"
+                  :max="getQuanity"
+                  @input="validateQuantity"
                 />
                 <button @click="increaseQuantity">+</button>
               </div>
-              <span class="stock-info" v-if="productData.quantity > 0">
-                Còn {{ productData.quantity }} sản phẩm
+              <span class="stock-info" v-if="getQuanity > 0">
+                Còn {{ getQuanity }} sản phẩm
               </span>
               <span class="stock-info out-of-stock" v-else>
                 Hết hàng
@@ -214,7 +215,7 @@
                     </span>
                   </div>
                 </div>
-                <span class="review-date">{{ formatDate(review.date) }}</span>
+                <span class="review-date">{{ format.formatDate(review.date) }}</span>
               </div>
               <div class="review-content">
                 <p>{{ review.content }}</p>
@@ -250,55 +251,73 @@
   import { getProductById } from '../../services/productService.js'
   import { ref, onMounted, computed } from 'vue';
   import { getUrlImage } from '../../services/productService.js'
+  import emitter from '../../utils/evenBus.js'
+  import format from '../../utils/format.js';
   
   const route = useRoute()
   const productId = route.params.id
   const productData = ref(null)
   const selectedColorId = ref(null)
-  const currentImageIndex = ref(0)
-  const firstIndex = ref(0)
+  const selectedImgId = ref(null)
+  const currentImageId = ref(null)
   const quantity = ref(1)
   const fetchProduct = async(productId) => {
     const data = await getProductById(productId);
+    
     if(data) {
       productData.value = data;
+        console.log('Product data:', productData.value);
       // Chọn màu đầu tiên làm mặc định nếu có
       if (data.colors && data.colors.length > 0) {
         selectedColorId.value = data.colors[0].id;
-        firstIndex.value = data.colors[0].id;
       }
     } else {
       console.error('Product not found');
     }
   }
   
-  // Lấy danh sách ảnh của màu đang chọn
-  const getCurrentImages = () => {
-    if (!productData.value || !productData.value.colors) return [];
-    
-    const selectedColor = productData.value.colors.find(
-      color => color.id === selectedColorId.value
-    );
-    
-    return selectedColor ? selectedColor.images : [];
-  }
+
   const getAllImages = () => {
     if (!productData.value || !productData.value.colors) return [];
+    console.log(productData.value.colors.flatMap(color => color.images));
     return productData.value.colors.flatMap(color => color.images);
   }
-  
-  // Lấy ảnh chính hiện tại
-  const getCurrentMainImage = () => {
-    const images = getCurrentImages();
-    if (images.length === 0) return '';
-    const imageIndex = Math.min(currentImageIndex.value, images.length - 1);
-    return getImageUrl(images[imageIndex].imagePath);
+
+  const findColorIdByImageId = (colorsArray, imageId)  => {
+      const foundColor = colorsArray.find(color => 
+      color.images.some(img => img.id === imageId)
+    );
+    return foundColor ? foundColor.id : null;
   }
+  const getQuanity = computed(() => {
+    const color = productData.value.colors.find(color => color.id === selectedColorId.value);
+    if (color) {
+      const quantity = color.quantity;
+      return quantity ? quantity : 0;
+    }
+    return 0;
+  })
+  const getCurrentMainImage = computed(() => {
+    selectedColorId.value = findColorIdByImageId(productData.value.colors, selectedImgId.value);
+    if(selectedImgId.value === null){
+      selectedImgId.value = productData.value.colors[0].images[0].id; 
+  }
+  const images = getAllImages();
+  if (!images?.length) return '';
+  
+  const foundImage = images.find(img => img.id === selectedImgId.value);
+  if (!foundImage) return '';
+  
+  currentImageId.value = selectedImgId.value;
+  console.log('Current image URL:', foundImage.imagePath);
+  
+  return getImageUrl(foundImage.imagePath) || '';
+});
+  
   
   // Chọn màu
   const selectColor = (color) => {
-    selectedColorId.value = color.id;
-    currentImageIndex.value = color.id - firstIndex.value; 
+    selectedImgId.value = color.images[0].id;
   }
   
   // Helper functions
@@ -306,11 +325,20 @@
     return getUrlImage(imgPath);
   }
   
-  
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN').format(price);
+  const validateQuantity = (event) => {
+    const value = parseInt(event.target.value)
+    const maxQuantity = getQuanity.value
+
+    if (isNaN(value) || value < 1) {
+      quantity.value = 1
+    } else if (value > maxQuantity) {
+      quantity.value = maxQuantity
+    } else {
+      quantity.value = value
+    }
   }
-  
+
+
   const calculateDiscountPercentage = () => {
     if (!productData.value) return 0;
     return Math.round(
@@ -320,17 +348,25 @@
   }
   
   const increaseQuantity = () => {
-    if (quantity.value < productData.value.quantity) quantity.value++;
+    if (quantity.value < getQuanity.value) quantity.value++;
+    else{
+      emitter.emit('show-notification', {
+      status: 'error', 
+      message: 'Đạt đến số lượng tối đa'
+    });
+    }
   }
   
   const decreaseQuantity = () => {
     if (quantity.value > 1) quantity.value--;
+    else{
+      emitter.emit('show-notification', {
+      status: 'error', 
+      message: 'Đạt đến số lượng tối thiểu'
+    });
+    }
   }
-  const changeImage = (index) => {
-    currentImageIndex.value = index;
-    selectedColorId.value = index + firstIndex.value;
-  
-  }
+
   
   const addToCart = () => {
     console.log('Added to cart:', {
@@ -347,11 +383,16 @@
     // router.push('/checkout')
   }
   
-  onMounted(() => {
-    fetchProduct(productId);
+  onMounted(async() => {
+    await fetchProduct(productId);
+    document.title = `${productData.value.name} - SmartBuy Mobile`;
+    if (productData.value?.colors?.length > 0 && !selectedColorId.value) {
+    selectedColorId.value = productData.value.colors[0].id;
+    selectedImgId.value = productData.value.colors[0].images[0]?.id;
+  }
   });
   
-  
+
   
   
   
@@ -373,11 +414,7 @@
     return (count / reviews.value.length) * 100;
   };
   
-  // Định dạng ngày tháng
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('vi-VN', options);
-  };
+
   
   // Xem ảnh lớn
   const openImagePreview = (imgUrl) => {
@@ -392,36 +429,39 @@
   };
   
   // Lấy dữ liệu đánh giá từ API (giả lập)
-  onMounted(() => {
-    // Giả lập dữ liệu đánh giá
-    reviews.value = [
-      {
-        id: 1,
-        user: {
-          name: 'Nguyễn Văn A',
-          avatar: ''
-        },
-        rating: 5,
-        content: 'Sản phẩm rất tốt, màn hình đẹp, pin trâu. Nhân viên tư vấn nhiệt tình, giao hàng nhanh. Mình rất hài lòng với sản phẩm này.',
-        images: [
-          'https://via.placeholder.com/150',
-          'https://via.placeholder.com/150'
-        ],
-        date: '2023-05-15'
-      },
-      {
-        id: 2,
-        user: {
-          name: 'Trần Thị B',
-          avatar: 'https://randomuser.me/api/portraits/women/44.jpg'
-        },
-        rating: 4,
-        content: 'Sản phẩm tốt nhưng giá hơi cao so với mặt bằng chung. Camera chụp ảnh đẹp, thiết kế sang trọng.',
-        images: [],
-        date: '2023-05-10'
-      }
-    ];
-  });
+  // onMounted(() => {
+  // //   if (product.value?.name) {
+  // //   document.title = `${productData.value.name} - SmartBuy Mobile`
+  // // }
+  //   // Giả lập dữ liệu đánh giá
+  //   reviews.value = [
+  //     {
+  //       id: 1,
+  //       user: {
+  //         name: 'Nguyễn Văn A',
+  //         avatar: ''
+  //       },
+  //       rating: 5,
+  //       content: 'Sản phẩm rất tốt, màn hình đẹp, pin trâu. Nhân viên tư vấn nhiệt tình, giao hàng nhanh. Mình rất hài lòng với sản phẩm này.',
+  //       images: [
+  //         'https://via.placeholder.com/150',
+  //         'https://via.placeholder.com/150'
+  //       ],
+  //       date: '2023-05-15'
+  //     },
+  //     {
+  //       id: 2,
+  //       user: {
+  //         name: 'Trần Thị B',
+  //         avatar: 'https://randomuser.me/api/portraits/women/44.jpg'
+  //       },
+  //       rating: 4,
+  //       content: 'Sản phẩm tốt nhưng giá hơi cao so với mặt bằng chung. Camera chụp ảnh đẹp, thiết kế sang trọng.',
+  //       images: [],
+  //       date: '2023-05-10'
+  //     }
+  //   ];
+  // });
   
   
   
@@ -625,8 +665,8 @@
   }
   
   .stock-info {
-    font-size: 13px;
-    color: #666;
+    font-size: 18px;
+    color: #f2b0db;
   }
   
   .stock-info.out-of-stock {
@@ -958,5 +998,9 @@
       margin-top: 5px;
       padding-left: 65px;
     }
+  }
+  .out-of-stock-disable{
+    pointer-events: none;
+    opacity: 0.5;
   }
   </style>

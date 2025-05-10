@@ -71,15 +71,73 @@ namespace api.Repositories
             return await _db.Products.AnyAsync(p => p.Name.ToLower() == name.ToLower());
         }
 
-        public async Task<(List<Product> Items, int TotalItems)> GetPagedProductsAsync(int page, int pageSize)
+        public async Task<(List<Product> Items, int TotalItems)> GetPagedProductsAsync(
+            int page,
+            int pageSize,
+            string? search = null,
+            string? sortBy = "newest",
+            string? brand = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null)
         {
-            var totalItems = await _db.Products.CountAsync(p => p.IsActive);
-
-            var items = await _db.Products
+            var query = _db.Products
                 .Include(p => p.Colors)
                     .ThenInclude(c => c.Images)
+                .Include(p => p.ProductLine)
                 .Where(p => p.IsActive)
-                .OrderBy(p => p.Id)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                string lowerKey = search.Trim().ToLower();
+                query = query.Where(p =>
+                    p.Name.ToLower().Contains(lowerKey) );
+            }
+
+            if (!string.IsNullOrWhiteSpace(brand))
+            {
+                string lowerBrand = brand.Trim().ToLower();
+                var brandInDb = _db.Brands
+                    .Where(b => b.Name.ToLower().Contains(lowerBrand))
+                    .FirstOrDefault();
+
+                if (brandInDb != null)
+                {
+                    query = query.Where(p => p.ProductLine!.BrandId == brandInDb.Id);
+                }
+              
+            }
+
+
+            if (minPrice.HasValue)
+            {
+                query = query.Where(p => p.SalePrice >= minPrice.Value);
+            }
+
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(p => p.SalePrice <= maxPrice.Value);
+            }
+
+            switch (sortBy)
+            {
+                case "oldest":
+                    query = query.OrderBy(p => p.CreatedAt);
+                    break;
+                case "priceInc":
+                    query = query.OrderBy(p => p.SalePrice);
+                    break;
+                case "priceDesc":
+                    query = query.OrderByDescending(p => p.SalePrice);
+                    break;
+                default: // newest
+                    query = query.OrderByDescending(p => p.CreatedAt);
+                    break;
+            }
+
+            var totalItems = await query.CountAsync();
+
+            var items = await query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .AsNoTracking()

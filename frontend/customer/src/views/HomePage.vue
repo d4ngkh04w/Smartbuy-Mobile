@@ -1,4 +1,4 @@
- <template>
+<template>
   <div class="home-container">
     <!-- Slide hình ảnh thu nhỏ -->
     <div class="promotion-carousel">
@@ -18,64 +18,76 @@
     <!-- Nội dung trang -->
     <div class="home-content">
       <!-- Sidebar mới -->
-      <div class="sideBar " ref="sidebarRef">
+      <div class="sideBar" >
         <div class="filter-section">
           <h3>Thương hiệu</h3>
           <div class="brand-list">
             <div 
-              v-for="brand in brands" 
+              v-for="brand in activeBrands" 
               :key="brand.id"
               class="brand-item"
-              :class="{ active: selectedBrand === brand.id }"
-              @click="selectBrand(brand.id)"
+              :class="{ active: selectedBrand === brand.name }"
+              @click="selectBrand(brand.name)"
             >
               {{ brand.name }}
             </div>
           </div>
-            <label class="label">Mức giá</label>
 
-            <Slider
-              v-model="priceRange"
-              :min="0"
-              :max="6000000"
-              :step="1000000"
-              :tooltip="false"
-              :lazy="true"
-              :format="(val) => val.toLocaleString('vi-VN')"
-              class="price-slider flat"
-            />
+          <label class="label">Mức giá</label>
+          <Slider
+            v-model="priceRange"
+            :min="0"
+            :max="60000000"
+            :step="1000000"
+            :tooltip="false"
+            :lazy="true"
+            :format="(val) => val.toLocaleString('vi-VN')"
+            class="price-slider flat"
+          />
 
-            <div class="input-boxes">
-              <input type="text" :value="priceRange[0].toLocaleString('vi-VN')" readonly />
-              <input type="text" :value="priceRange[1].toLocaleString('vi-VN')" readonly />
-            </div>
-
-            <button class="apply-btn" @click="applyPriceFilter">ÁP DỤNG</button>
+          <div class="input-boxes">
+            <input type="text" :value="priceRange[0].toLocaleString('vi-VN')" readonly />
+            <input type="text" :value="priceRange[1].toLocaleString('vi-VN')" readonly />
           </div>
+
+          <button class="apply-btn" @click="applyPriceFilter">ÁP DỤNG</button>
+        </div>
       </div>
 
       <div class="main-content">
         <!-- Phần sắp xếp -->
-        <div class="sort-options">
+        <div class="sort-options" >
           <div class="sort-title">Sắp xếp theo:</div>
           <div 
             v-for="option in sortOptions" 
             :key="option.value"
             class="sort-option"
-            :class="{ active: sortBy === option.value }"
+            :class="{ 
+              active: sortBy === option.value,
+              'price-asc': option.value === 'price' && sortBy === 'priceInc',
+              'price-desc': option.value === 'price' && sortBy === 'priceDesc'
+            }"
             @click="changeSort(option.value)"
           >
             {{ option.label }}
+            <span v-if="option.value === 'price'" class="sort-arrow">
+              <span v-if="sortBy === 'priceInc'">↑</span>
+              <span v-else-if="sortBy === 'priceDesc'">↓</span>
+            </span>
           </div>
         </div>
 
         <!-- Danh sách sản phẩm -->
         <div class="products-container">
-          <template v-if="hasProducts">
+            <div v-if="isLoading" class="loading">
+              Đang tải...
+            </div>
+          <template v-else-if="hasProducts">
             <ProductCard
-              v-for="product in filteredProducts"
+              v-for="product in products"
               :key="product.id"
               :product="product"
+              class="product-card"
             />
           </template>
           <div v-else class="no-products">
@@ -95,113 +107,126 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import ProductCard from '../components/product/ProductCard.vue'
 import Pagi from '../components/Pagination.vue'
-import { getProducts } from '../services/productService.js'
+import { getProducts, getBrands } from '../services/productService.js'
 import { Carousel, Slide, Pagination, Navigation } from 'vue3-carousel'
 import '@vueform/slider/themes/default.css'
 import Slider from '@vueform/slider'
 import 'vue3-carousel/dist/carousel.css'
+import { useRoute } from 'vue-router'
 
-const priceRange = ref([0, 60000000])
-const sidebarRef = ref(null)
-
-// Dữ liệu slides
+const route = useRoute()
+const searchKeyword = ref(route.query.search || null)
 const slides = ref([
   { image: 'https://cdn.hoanghamobile.com/i/home/Uploads/2025/04/02/iphone-16-series-w.png' },
   { image: 'https://cdn.hoanghamobile.com/i/home/Uploads/2025/05/05/a06-a16-a26-5g-1200x375.jpg' },
   { image: 'https://cdnv2.tgdd.vn/mwg-static/tgdd/Banner/bb/8d/bb8dfe11adb6e77d6383d7cbea2e12ab.png' }
 ])
 
-// State quản lý sản phẩm
+const priceRange = ref([0, 60000000])
 const products = ref([])
 const currentPage = ref(1)
 const pageSize = ref(20)
 const totalProducts = ref(0)
-const selectedBrand = ref('')
-const sortBy = ref('relevant')
+const selectedBrand = ref(null)
+const sortBy = ref('newest')
+const clickCount = ref(0)
+const isLoading = ref(true)
 
-// Dữ liệu filter
-const brands = ref([
-  { id: 'samsung', name: 'SAMSUNG' },
-  { id: 'apple', name: 'Apple' },
-  { id: 'xiaomi', name: 'Xiaomi' },
-  { id: 'oppo', name: 'OPPO' }
-])
+
+const brands = ref([])
+
 
 const sortOptions = ref([
-  { value: 'relevant', label: 'Liên quan' },
   { value: 'newest', label: 'Mới nhất' },
   { value: 'bestselling', label: 'Bán chạy' },
   { value: 'price', label: 'Giá tiền' }
 ])
+
 const applyPriceFilter = () => {
-  console.log('Khoảng giá đã chọn:', priceRange.value)
-  fetchProducts(1) // hoặc gọi API có kèm priceRange.value[0], priceRange.value[1]
+  fetchProducts()
 }
-
-
-// Computed properties
-const hasProducts = computed(() => products.value?.length > 0)
-const filteredProducts = computed(() => {
-  let result = [...products.value]
-  
-  // Lọc theo thương hiệu
-  if (selectedBrand.value) {
-    result = result.filter(p => p.brand === selectedBrand.value)
-  }
-  
-  // Sắp xếp
-  switch (sortBy.value) {
-    case 'newest':
-      return result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    case 'bestselling':
-      return result.sort((a, b) => b.sold - a.sold)
-    case 'price':
-      return result.sort((a, b) => a.price - b.price)
-    default:
-      return result
-  }
+watch(() => route.query.search, async (newVal) => {
+  searchKeyword.value = newVal
+  fetchProducts()
+})
+watch(() => route.query.reload, async () => {
+  selectedBrand.value = null
+  priceRange.value = [0, 60000000]
+  sortBy.value = 'newest'
+  searchKeyword.value = null
+  fetchProducts()
 })
 
-// Methods
+const hasProducts = computed(() => products.value?.length > 0)
+
+const activeBrands = computed(() => {
+  return brands.value.filter(brand => brand.isActive == true)
+})
+const fetchBrands = async () => {
+  const data = await getBrands()
+  if (!data) {
+    alert('Không thể tải thương hiệu. Vui lòng thử lại sau!')
+    return
+  }
+  brands.value = data.data
+}
+
 const fetchProducts = async (page = 1) => {
+  isLoading.value = true;
   currentPage.value = page
-  const data = await getProducts(currentPage.value, pageSize.value)
+  const data = await getProducts(currentPage.value, pageSize.value, {
+    brand: selectedBrand.value,
+    minPrice: priceRange.value[0],
+    maxPrice: priceRange.value[1],
+    sortBy: sortBy.value,
+    search: searchKeyword.value
+  })
   if (!data) {
     alert('Không thể tải sản phẩm. Vui lòng thử lại sau!')
     return
   }
-  products.value = data.products.items
-  totalProducts.value = data.products.totalItems
+  products.value = data.data.items
+  totalProducts.value = data.data.totalItems
+  isLoading.value = false
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-const selectBrand = (brandId) => {
-  selectedBrand.value = selectedBrand.value === brandId ? '' : brandId
+const selectBrand = (brandName) => {
+  selectedBrand.value = selectedBrand.value === brandName ? null : brandName
+  fetchProducts()
 }
 
 const changeSort = (option) => {
   sortBy.value = option
-}
-
-onMounted(fetchProducts)
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
-
-const handleClickOutside = (event) => {
-  if (sidebarRef.value && !sidebarRef.value.contains(event.target)) {
-    selectedBrand.value = ''
+  if(option === 'price') {
+    switch (clickCount.value) {
+      case 0:
+        sortBy.value = 'priceInc'
+        clickCount.value++
+        break
+      case 1:
+        sortBy.value = 'priceDesc'
+        clickCount.value = 0
+        break
+    }
   }
+  else {
+    clickCount.value = 0
+  }
+  fetchProducts()
 }
+
+onMounted(() => {
+  fetchBrands()
+  fetchProducts()
+})
+
 
 </script>
+
 
 <style scoped>
 .home-container {
@@ -239,6 +264,8 @@ const handleClickOutside = (event) => {
   border-radius: 8px;
   padding: 15px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  height: 500px;
+  overflow-y: auto;
 }
 
 .filter-section {
@@ -281,6 +308,7 @@ const handleClickOutside = (event) => {
 .sort-options {
   display: flex;
   align-items: center;
+  justify-content: end;
   gap: 15px;
   margin-bottom: 20px;
   padding: 15px;
@@ -312,9 +340,10 @@ const handleClickOutside = (event) => {
 
 .products-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
   margin-bottom: 30px;
+  
 }
 
 .no-products {
@@ -331,9 +360,11 @@ const handleClickOutside = (event) => {
   
   .sideBar {
     width: 100%;
+    height: 100px;
   }
   
   .sort-options {
+    justify-content:center;
     flex-wrap: wrap;
   }
   
@@ -424,4 +455,54 @@ const handleClickOutside = (event) => {
 :deep(.slider-tooltip) {
   display: none !important;
 }
+.sort-option {
+  position: relative;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sort-option.price-asc, .sort-option.price-desc {
+  background: var(--primary-color);
+  
+  color: white;
+}
+
+
+.sort-arrow {
+  font-size: 12px;
+  margin-left: 4px;
+}
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px; /* hoặc 100vh nếu bạn muốn phủ cả màn */
+  font-size: 1.2rem;
+  color: #555;
+  position: relative;
+}
+
+/* Thêm spinner */
+.loading::before {
+  content: "";
+  width: 24px;
+  height: 24px;
+  border: 3px solid #ccc;
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  margin-right: 10px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 </style>

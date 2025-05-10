@@ -27,6 +27,14 @@ namespace api.Controllers
             return ApiResponseHelper.Success("Brands retrieved successfully", brands);
         }
 
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetActiveBrands([FromQuery] BrandQuery query)
+        {
+            var activebrands = await _brandService.GetActiveBrandsAsync(query);
+            return ApiResponseHelper.Success("Brands retrieved successfully", brands);
+        }
+
         [HttpGet("{id:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetBrandById([FromRoute] int id, [FromQuery] BrandQuery query)

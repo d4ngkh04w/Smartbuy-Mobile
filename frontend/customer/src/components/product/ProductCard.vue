@@ -21,7 +21,7 @@
     
         <div class="product-middle">
           <h3>{{ product.name }}</h3>
-          <p>{{ formatCurrency(product.price) }}₫</p>
+          <p>{{ format.formatPrice(product.price) }}₫</p>
         </div>
     
         <div class="product-bottom">
@@ -39,6 +39,7 @@
   <script setup>
   import { defineProps } from 'vue'
   import { getUrlImage } from '../../services/productService.js'
+  import format from '@/utils/format.js'
   
   const props = defineProps({
     product: {
@@ -69,10 +70,6 @@
     console.log('Thêm vào giỏ:', props.product.name)
   }
   
-  // Hàm format tiền tệ
-  function formatCurrency(value) {
-    return value.toLocaleString('vi-VN')
-  }
   
   // Hàm lấy link ảnh
   const getUrlImg = (url) => {

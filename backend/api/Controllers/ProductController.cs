@@ -59,11 +59,12 @@ namespace api.Controllers
         }
         [HttpGet("page")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetPagedProducts([FromQuery] int page, int pageSize)
+        public async Task<IActionResult> GetPagedProducts([FromQuery] int page, int pageSize, string? search = null, string? sortBy = "newest", string? brand = null, decimal? minPrice = null, decimal? maxPrice = null)
         {
-            var product = await _productService.GetPagedProductsAsync(page, pageSize);
+            var product = await _productService.GetPagedProductsAsync(page, pageSize, search, sortBy, brand, minPrice, maxPrice);
             return ApiResponseHelper.Success("Products retrieved successfully", product);
         }
+
 
         [HttpPost("{productId:int}/color")]
         [Authorize(Roles = "admin")]
