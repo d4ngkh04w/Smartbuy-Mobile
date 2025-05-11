@@ -9,7 +9,7 @@ namespace api.Controllers
 {
     [Route("api/v1/comment")]
     [ApiController]
-    [Authorize(Roles = "admin,user")]
+    [Authorize(AuthenticationSchemes = "smart", Roles = "admin,user")]
     public class CommentController : ControllerBase
     {
         private readonly ICommentService _commentService;
@@ -24,12 +24,7 @@ namespace api.Controllers
         public async Task<IActionResult> GetCommentById(int id)
         {
             var comment = await _commentService.GetCommentByIdAsync(id);
-
-            return Ok(new
-            {
-                Message = "Comment retrieved successfully",
-                Comment = comment
-            });
+            return ApiResponseHelper.Success("Comment retrieved successfully", comment);
         }
 
         [HttpGet("product/{productId:int}")]
@@ -37,12 +32,7 @@ namespace api.Controllers
         public async Task<IActionResult> GetCommentsByProductId(int productId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             var comments = await _commentService.GetCommentsByProductIdAsync(productId, page, pageSize);
-
-            return Ok(new
-            {
-                Message = "Comments retrieved successfully",
-                Comments = comments
-            });
+            return ApiResponseHelper.Success("Comments retrieved successfully", comments);
         }
 
         [HttpGet("product/{productId:int}/rating")]
@@ -50,12 +40,7 @@ namespace api.Controllers
         public async Task<IActionResult> GetProductAverageRating(int productId)
         {
             var rating = await _commentService.GetProductAverageRatingAsync(productId);
-
-            return Ok(new
-            {
-                Message = "Product rating retrieved successfully",
-                Rating = rating
-            });
+            return ApiResponseHelper.Success("Product rating retrieved successfully", rating);
         }
 
         [HttpPost]
@@ -66,14 +51,7 @@ namespace api.Controllers
                 throw new UnauthorizedException();
 
             var comment = await _commentService.CreateCommentAsync(commentDTO, userId);
-
-            return CreatedAtAction(nameof(GetCommentById),
-                            new { id = comment.Id },
-                            new
-                            {
-                                Message = "Comment created successfully",
-                                Comment = comment
-                            });
+            return ApiResponseHelper.Created("Comment created successfully", comment);
         }
 
         [HttpPut("{id:int}")]
@@ -85,11 +63,7 @@ namespace api.Controllers
 
             var comment = await _commentService.UpdateCommentAsync(id, commentDTO, userId);
 
-            return Ok(new
-            {
-                Message = "Comment updated successfully",
-                Comment = comment
-            });
+            return ApiResponseHelper.Success("Comment updated successfully", comment);
         }
 
         [HttpDelete("{id:int}")]
@@ -101,7 +75,7 @@ namespace api.Controllers
 
             await _commentService.DeleteCommentAsync(id, userId);
 
-            return Ok(new { Message = "Comment deleted successfully" });
+            return NoContent();
         }
 
         [HttpPost("{id:int}/reaction")]
@@ -113,11 +87,7 @@ namespace api.Controllers
 
             var comment = await _commentService.AddReactionAsync(id, reactionDTO, userId);
 
-            return Ok(new
-            {
-                Message = "Reaction added successfully",
-                Comment = comment
-            });
+            return ApiResponseHelper.Success("Comment reaction added successfully", comment);
         }
     }
 }

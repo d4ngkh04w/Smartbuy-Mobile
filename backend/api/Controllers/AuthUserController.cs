@@ -1,4 +1,5 @@
 using api.DTOs.Auth;
+using api.Exceptions;
 using api.Helpers;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +9,7 @@ namespace api.Controllers
 {
     [Route("api/v1/user/auth")]
     [ApiController]
-    [Authorize(Roles = "user")]
+    [Authorize(AuthenticationSchemes = "user", Roles = "user")]
     public class AuthUserController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -23,8 +24,8 @@ namespace api.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterDTO register)
         {
             var token = await _authService.Register(register, "user");
-            CookieHelper.AccessToken = token.AccessToken;
-            CookieHelper.RefreshToken = token.RefreshToken;
+            CookieHelper.UserRefreshToken = token.RefreshToken;
+            CookieHelper.UserAccessToken = token.AccessToken;
 
             return ApiResponseHelper.Success<object>("User registered successfully", null);
         }
@@ -34,8 +35,8 @@ namespace api.Controllers
         public async Task<IActionResult> Login([FromBody] LoginDTO login)
         {
             var token = await _authService.Login(login, "user");
-            CookieHelper.AccessToken = token.AccessToken;
-            CookieHelper.RefreshToken = token.RefreshToken;
+            CookieHelper.UserAccessToken = token.AccessToken;
+            CookieHelper.UserRefreshToken = token.RefreshToken;
 
             return ApiResponseHelper.Success<object>("Login successful", null);
         }
@@ -45,8 +46,8 @@ namespace api.Controllers
         public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDTO dto)
         {
             var token = await _authService.LoginWithGoogleAsync(dto, "user");
-            CookieHelper.AccessToken = token.AccessToken;
-            CookieHelper.RefreshToken = token.RefreshToken;
+            CookieHelper.UserAccessToken = token.AccessToken;
+            CookieHelper.UserRefreshToken = token.RefreshToken;
 
             return ApiResponseHelper.Success<object>("Login successful", null);
         }
@@ -54,6 +55,9 @@ namespace api.Controllers
         [HttpGet("verify")]
         public IActionResult VerifyToken()
         {
+            if (!HttpContextHelper.UserOrigin.Contains(ConfigHelper.UserUrl))
+                throw new UnauthorizedException();
+
             return Ok(new
             {
                 Success = true,

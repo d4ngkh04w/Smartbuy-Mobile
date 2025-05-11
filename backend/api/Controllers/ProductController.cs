@@ -9,7 +9,7 @@ namespace api.Controllers
 {
     [Route("api/v1/product")]
     [ApiController]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
     public class ProductController : ControllerBase
     {
         private readonly IProductService _productService;
@@ -36,7 +36,6 @@ namespace api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateProduct([FromForm] CreateProductDTO productDTO)
         {
             var product = await _productService.CreateProductAsync(productDTO);
@@ -44,7 +43,6 @@ namespace api.Controllers
         }
 
         [HttpPut("{id:int}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdateProduct([FromRoute] int id, [FromForm] UpdateProductDTO productDTO)
         {
             var product = await _productService.UpdateProductAsync(id, productDTO);
@@ -52,12 +50,12 @@ namespace api.Controllers
         }
 
         [HttpDelete("{id:int}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
             await _productService.DeleteProductAsync(id);
             return NoContent();
         }
+
         [HttpGet("page")]
         [AllowAnonymous]
         public async Task<IActionResult> GetPagedProducts([FromQuery] ProductQuery productQuery)
@@ -68,7 +66,6 @@ namespace api.Controllers
 
 
         [HttpPost("{productId:int}/color")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateProductColor([FromRoute] int productId, [FromForm] CreateColorDTO productColorDTO)
         {
             var color = await _productService.CreateProductColorAsync(productId, productColorDTO);
@@ -76,7 +73,6 @@ namespace api.Controllers
         }
 
         [HttpPut("{id:int}/activate")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> ActivateProduct([FromRoute] int id)
         {
             var product = await _productService.ActivateProductAsync(id);
@@ -84,7 +80,6 @@ namespace api.Controllers
         }
 
         [HttpPut("{id:int}/deactivate")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeactivateProduct([FromRoute] int id)
         {
             var product = await _productService.DeactivateProductAsync(id);

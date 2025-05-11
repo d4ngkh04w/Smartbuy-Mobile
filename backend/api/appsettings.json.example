@@ -37,6 +37,6 @@
     },
     "Frontend": {
 		"AdminUrl": "YOUR_ADMIN_URL",
-		"CustomerUrl": "YOUR_CUSTOMER_URL"
+		"UserUrl": "YOUR_USER_URL"
 	}
 }

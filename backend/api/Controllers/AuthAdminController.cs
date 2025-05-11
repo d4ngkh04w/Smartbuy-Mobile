@@ -1,4 +1,5 @@
 using api.DTOs.Auth;
+using api.Exceptions;
 using api.Helpers;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +9,7 @@ namespace api.Controllers
 {
     [Route("api/v1/admin/auth")]
     [ApiController]
-    [Authorize(Roles = "admin")]
+    [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
     public class AuthAdminController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -17,30 +18,24 @@ namespace api.Controllers
             _authService = authService;
         }
 
-        [HttpPost("register")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] RegisterDTO register)
-        {
-            var token = await _authService.Register(register, "admin");
-            CookieHelper.AccessToken = token.AccessToken;
-            CookieHelper.RefreshToken = token.RefreshToken;
-
-            return ApiResponseHelper.Success<object>("Admin registered successfully", null);
-        }
-
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginDTO login)
         {
             var token = await _authService.Login(login, "admin");
-            CookieHelper.AccessToken = token.AccessToken;
-            CookieHelper.RefreshToken = token.RefreshToken;
+            CookieHelper.AdminAccessToken = token.AccessToken;
+            CookieHelper.AdminRefreshToken = token.RefreshToken;
+            Console.WriteLine(CookieHelper.AdminAccessToken);
+            Console.WriteLine(CookieHelper.AdminRefreshToken);
             return ApiResponseHelper.Success<object>("Login successful", null);
         }
 
         [HttpGet("verify")]
         public IActionResult VerifyToken()
         {
+            if (!HttpContextHelper.UserOrigin.Contains(ConfigHelper.AdminUrl))
+                throw new UnauthorizedException();
+
             return Ok(new
             {
                 Message = "Token is valid",

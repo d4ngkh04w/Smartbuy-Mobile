@@ -8,7 +8,7 @@ namespace api.Controllers
 {
     [Route("api/v1/user")]
     [ApiController]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "smart", Roles = "admin,user")]
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
@@ -18,7 +18,7 @@ namespace api.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "admin")]
+        [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
         public async Task<IActionResult> GetAllUsers()
         {
             var users = await _userService.GetAllUsersAsync();
@@ -26,7 +26,6 @@ namespace api.Controllers
         }
 
         [HttpGet("{id:guid}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetUserById([FromRoute] Guid id)
         {
             var user = await _userService.GetUserByIdAsync(id);
@@ -34,7 +33,6 @@ namespace api.Controllers
         }
 
         [HttpGet("me")]
-        [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetCurrentUser()
         {
             var id = HttpContextHelper.CurrentUserId;
@@ -43,7 +41,6 @@ namespace api.Controllers
         }
 
         [HttpPut("me")]
-        [Authorize(Roles = "admin,user")]
         [RequestSizeLimit(15 * 1024 * 1024)]
         public async Task<IActionResult> UpdateCurrentUser([FromForm] UpdateUserDTO userDTO)
         {
@@ -53,17 +50,17 @@ namespace api.Controllers
         }
 
         [HttpDelete("me")]
-        [Authorize(Roles = "user")]
+        [Authorize(AuthenticationSchemes = "user", Roles = "user")]
         public async Task<IActionResult> DeleteCurrentUser()
         {
             var id = HttpContextHelper.CurrentUserId;
             await _userService.DeleteUserAsync(id);
-            CookieHelper.RemoveAuthTokens();
+            CookieHelper.RemoveAuthUserTokens();
             return NoContent();
         }
 
         [HttpPut("{id:guid}/lock")]
-        [Authorize(Roles = "admin")]
+        [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
         public async Task<IActionResult> LockUser([FromRoute] Guid id, [FromBody] LockUserDTO lockUserDTO)
         {
             await _userService.LockUserAsync(id, lockUserDTO, "admin");
@@ -71,7 +68,7 @@ namespace api.Controllers
         }
 
         [HttpPut("{id:guid}/unlock")]
-        [Authorize(Roles = "admin")]
+        [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
         public async Task<IActionResult> UnlockUser([FromRoute] Guid id)
         {
             await _userService.UnlockUserAsync(id);
@@ -79,13 +76,13 @@ namespace api.Controllers
         }
 
         [HttpPut("me/lock")]
-        [Authorize(Roles = "user")]
+        [Authorize(AuthenticationSchemes = "user", Roles = "user")]
         public async Task<IActionResult> LockCurrentUser([FromBody] LockUserDTO lockUserDTO)
         {
             var id = HttpContextHelper.CurrentUserId;
             await _userService.LockUserAsync(id, lockUserDTO, "user");
 
-            CookieHelper.RemoveAuthTokens();
+            CookieHelper.RemoveAuthUserTokens();
             return ApiResponseHelper.Success<object>("User locked successfully", null);
         }
     }

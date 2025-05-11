@@ -9,7 +9,7 @@ namespace api.Controllers
 {
     [Route("api/v1/auth")]
     [ApiController]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "smart", Roles = "admin,user")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -25,13 +25,24 @@ namespace api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> RefreshToken()
         {
-            var refreshToken = CookieHelper.RefreshToken;
-            if (string.IsNullOrEmpty(refreshToken))
-                throw new UnauthorizedException("Refresh token is missing");
-
-            var token = await _tokenService.ValidateRefreshToken(refreshToken);
-            CookieHelper.AccessToken = token.AccessToken;
-            CookieHelper.RefreshToken = token.RefreshToken;
+            if (HttpContextHelper.UserOrigin.Contains(ConfigHelper.AdminUrl))
+            {
+                var adminRefreshToken = CookieHelper.AdminRefreshToken;
+                if (string.IsNullOrEmpty(adminRefreshToken))
+                    throw new UnauthorizedException("Refresh token is missing");
+                var token = await _tokenService.ValidateRefreshToken(adminRefreshToken, "admin");
+                CookieHelper.AdminAccessToken = token.AccessToken;
+                CookieHelper.AdminRefreshToken = token.RefreshToken;
+            }
+            else if (HttpContextHelper.UserOrigin.Contains(ConfigHelper.UserUrl))
+            {
+                var userRefreshToken = CookieHelper.UserRefreshToken;
+                if (string.IsNullOrEmpty(userRefreshToken))
+                    throw new UnauthorizedException("Refresh token is missing");
+                var token = await _tokenService.ValidateRefreshToken(userRefreshToken, "user");
+                CookieHelper.UserAccessToken = token.AccessToken;
+                CookieHelper.UserRefreshToken = token.RefreshToken;
+            }
 
             return ApiResponseHelper.Success<object>("Token refreshed successfully", null);
         }
@@ -39,14 +50,29 @@ namespace api.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
-            var refreshToken = CookieHelper.RefreshToken;
-            if (!string.IsNullOrEmpty(refreshToken))
+            if (HttpContextHelper.UserOrigin.Contains(ConfigHelper.AdminUrl))
             {
-                await _tokenService.RevokeRefreshToken(refreshToken);
+                var adminRefreshToken = CookieHelper.AdminRefreshToken;
+                if (!string.IsNullOrEmpty(adminRefreshToken))
+                {
+                    await _tokenService.RevokeRefreshToken(adminRefreshToken);
+                    CookieHelper.RemoveAuthAdminTokens();
+                }
             }
-
-            CookieHelper.RemoveAuthTokens();
-
+            else if (HttpContextHelper.UserOrigin.Contains(ConfigHelper.UserUrl))
+            {
+                var userRefreshToken = CookieHelper.UserRefreshToken;
+                if (!string.IsNullOrEmpty(userRefreshToken))
+                {
+                    await _tokenService.RevokeRefreshToken(userRefreshToken);
+                    CookieHelper.RemoveAuthUserTokens();
+                }
+            }
+            else
+            {
+                CookieHelper.RemoveAuthAdminTokens();
+                CookieHelper.RemoveAuthUserTokens();
+            }
             return ApiResponseHelper.Success<object>("Logged out successfully", null);
         }
 
