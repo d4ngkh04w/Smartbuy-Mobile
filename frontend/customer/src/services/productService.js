@@ -67,3 +67,16 @@ export const getUrlImage = (url) => {
         throw error;
     }
 }
+
+export const getCarts = async () => {
+    try{
+        const response = await axiosInstance.get("/cart");
+        if(response){
+            console.log("carts", response.data);
+            return response.data;
+        }
+    }catch(error) {
+        console.error("Error fetching carts:", error);
+        throw error;
+    }
+}
