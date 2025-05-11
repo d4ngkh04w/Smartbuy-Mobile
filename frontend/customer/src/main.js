@@ -8,7 +8,6 @@ const app = createApp(App);
 app.use(VueLazyload, {
     preLoad: 1.3,
     error: '/error-image.png', // Đường dẫn ảnh lỗi
-    loading: '/loading-spinner.gif', // Ảnh loading
     attempt: 3, // Số lần thử tải
     observer: true, // Sử dụng IntersectionObserver
     observerOptions: {
