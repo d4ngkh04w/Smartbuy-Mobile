@@ -1,3 +1,70 @@
+<script setup>
+import { ref } from "vue";
+import meService from "@/services/meService";
+import emitter from "@/utils/evenBus";
+
+const loading = ref(false);
+const errorMessage = ref("");
+
+// Password form data
+const passwordForm = ref({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+});
+
+// Toggle password visibility
+const showPassword = ref({
+    current: false,
+    new: false,
+    confirm: false,
+});
+
+// Change password function
+const changePassword = async () => {
+    loading.value = true;
+    errorMessage.value = "";
+
+    // Validate passwords
+    if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
+        errorMessage.value = "Mật khẩu xác nhận không khớp";
+        loading.value = false;
+        return;
+    }
+
+    try {
+        await meService.changePassword({
+            oldPassword: passwordForm.value.currentPassword,
+            newPassword: passwordForm.value.newPassword,
+            confirmNewPassword: passwordForm.value.confirmPassword,
+        });
+
+        // Show success notification
+        emitter.emit("show-notification", {
+            status: "success",
+            message: "Đổi mật khẩu thành công",
+        });
+
+        // Reset form
+        passwordForm.value = {
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+        };
+    } catch (error) {
+        console.error("Error changing password:", error);
+        errorMessage.value =
+            error.response?.data?.message || "Đã xảy ra lỗi khi đổi mật khẩu";
+
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Đã xảy ra lỗi khi đổi mật khẩu",
+        });
+    } finally {
+        loading.value = false;
+    }
+};
+</script>
 <template>
     <div class="password-content">
         <div class="back-header">
@@ -103,79 +170,6 @@
         </form>
     </div>
 </template>
-
-<script setup>
-import { ref } from "vue";
-import meService from "@/services/meService";
-import emitter from "@/utils/evenBus";
-
-defineEmits(["back"]);
-
-const loading = ref(false);
-const errorMessage = ref("");
-
-// Password form data
-const passwordForm = ref({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-});
-
-// Toggle password visibility
-const showPassword = ref({
-    current: false,
-    new: false,
-    confirm: false,
-});
-
-// Change password function
-const changePassword = async () => {
-    loading.value = true;
-    errorMessage.value = "";
-
-    // Validate passwords
-    if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-        errorMessage.value = "Mật khẩu xác nhận không khớp";
-        loading.value = false;
-        return;
-    }
-
-    try {
-        await meService.changePassword({
-            oldPassword: passwordForm.value.currentPassword,
-            newPassword: passwordForm.value.newPassword,
-            confirmNewPassword: passwordForm.value.confirmPassword,
-        });
-
-        // Show success notification
-        emitter.emit("show-notification", {
-            status: "success",
-            message: "Đổi mật khẩu thành công",
-        });
-
-        // Reset form
-        passwordForm.value = {
-            currentPassword: "",
-            newPassword: "",
-            confirmPassword: "",
-        };
-
-        // Go back to profile
-        emit("back");
-    } catch (error) {
-        console.error("Error changing password:", error);
-        errorMessage.value =
-            error.response?.data?.message || "Đã xảy ra lỗi khi đổi mật khẩu";
-
-        emitter.emit("show-notification", {
-            status: "error",
-            message: errorMessage.value,
-        });
-    } finally {
-        loading.value = false;
-    }
-};
-</script>
 
 <style scoped>
 .password-content {

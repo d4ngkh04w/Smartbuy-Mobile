@@ -23,7 +23,6 @@ namespace api.Helpers
                     SameSite = SameSiteMode.Lax,
                     Expires = DateTimeOffset.Now.AddMinutes(ConfigHelper.JwtExpireTime),
                     Path = "/",
-                    Domain = ".smartbuy.com"
                 });
             }
         }
@@ -40,7 +39,6 @@ namespace api.Helpers
                     SameSite = SameSiteMode.Lax,
                     Expires = DateTimeOffset.Now.AddMinutes(ConfigHelper.JwtExpireTime),
                     Path = "/",
-                    Domain = ".smartbuy.com"
                 });
             }
         }
@@ -57,7 +55,6 @@ namespace api.Helpers
                     SameSite = SameSiteMode.Lax,
                     Expires = DateTimeOffset.Now.AddDays(ConfigHelper.JwtRefreshTokenExpiry),
                     Path = "/",
-                    Domain = ".smartbuy.com"
                 });
             }
         }
@@ -74,7 +71,6 @@ namespace api.Helpers
                     SameSite = SameSiteMode.Lax,
                     Expires = DateTimeOffset.Now.AddDays(ConfigHelper.JwtRefreshTokenExpiry),
                     Path = "/",
-                    Domain = ".smartbuy.com"
                 });
             }
         }
@@ -106,7 +102,6 @@ namespace api.Helpers
                     Secure = false,
                     SameSite = SameSiteMode.Lax,
                     Path = "/",
-                    Domain = ".smartbuy.com"
                 });
             }
         }

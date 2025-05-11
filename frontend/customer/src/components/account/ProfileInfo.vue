@@ -1,3 +1,210 @@
+<script setup>
+import { ref, computed } from "vue";
+import UserAvatar from "./UserAvatar.vue";
+import AddressForm from "./AddressForm.vue";
+import meService from "@/services/meService";
+import emitter from "@/utils/evenBus";
+
+const props = defineProps({
+    userData: {
+        type: Object,
+        required: true,
+    },
+});
+
+const emit = defineEmits(["update:userData", "change-password"]);
+
+const isEditing = ref(false);
+const errorMessage = ref("");
+const loading = ref(false);
+const avatarPreview = ref(null);
+const avatarComponent = ref(null);
+const addressFormRef = ref(null);
+const verificationEmailSending = ref(false);
+// Lưu trữ dữ liệu gốc để khôi phục khi hủy chỉnh sửa
+const originalUserData = ref(null);
+
+// Giới hạn ngày tối đa là ngày hôm nay
+const maxDate = new Date().toISOString().split("T")[0];
+
+// Format date for display
+const formatDate = (dateString) => {
+    if (!dateString) return "";
+
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "";
+
+    return date.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+    });
+};
+
+// Toggle edit mode
+const enableEditing = () => {
+    // Lưu trữ dữ liệu gốc trước khi chỉnh sửa
+    originalUserData.value = JSON.parse(JSON.stringify(props.userData));
+
+    // Format date properly for input type="date"
+    if (props.userData.dateOfBirth) {
+        const date = new Date(props.userData.dateOfBirth);
+        if (!isNaN(date.getTime())) {
+            props.userData.dateOfBirth = date.toISOString().split("T")[0];
+        }
+    }
+
+    isEditing.value = true;
+};
+
+// Update address from AddressForm component
+const updateAddress = (address) => {
+    emit("update:userData", {
+        ...props.userData,
+        address: address,
+    });
+};
+
+// Cancel editing
+const cancelEditing = () => {
+    isEditing.value = false;
+    avatarPreview.value = null;
+    errorMessage.value = "";
+
+    // Reset avatar preview
+    if (avatarComponent.value) {
+        avatarComponent.value.resetFileInput();
+    }
+
+    // Khôi phục dữ liệu gốc từ khi bắt đầu chỉnh sửa
+    if (originalUserData.value) {
+        emit("update:userData", {
+            ...originalUserData.value,
+            avatarFile: null,
+        });
+    }
+};
+
+// Handle avatar upload
+const handleFileChange = (file) => {
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        avatarPreview.value = e.target.result;
+    };
+    reader.readAsDataURL(file);
+
+    // Update avatar file in user data
+    emit("update:userData", {
+        ...props.userData,
+        avatarFile: file,
+    });
+};
+
+// Save profile changes
+const saveProfile = async () => {
+    loading.value = true;
+    errorMessage.value = "";
+
+    try {
+        console.log("Saving profile...");
+        // Create FormData object
+        const formData = new FormData();
+
+        // Add user info to FormData
+        if (props.userData.name) {
+            formData.append("name", props.userData.name);
+        }
+
+        if (props.userData.email) {
+            formData.append("email", props.userData.email);
+        }
+
+        if (props.userData.phoneNumber) {
+            formData.append("phoneNumber", props.userData.phoneNumber);
+        }
+
+        if (props.userData.gender) {
+            formData.append("gender", props.userData.gender);
+        }
+
+        if (props.userData.address) {
+            formData.append("address", props.userData.address);
+        }
+
+        // Add date of birth if provided
+        if (props.userData.dateOfBirth) {
+            formData.append("dateOfBirth", props.userData.dateOfBirth);
+        }
+
+        // Add avatar if changed
+        if (props.userData.avatarFile) {
+            formData.append("avatar", props.userData.avatarFile);
+        }
+
+        // Call API to update user profile
+        const updatedUser = await meService.updateUserProfile(formData);
+        console.log("Profile updated:", updatedUser);
+       
+        // Update local user data with response from server
+        if (updatedUser) {
+            emit("update:userData", {
+                ...updatedUser,
+                avatarFile: null,
+                // Preserve formatted date
+                dateOfBirth: props.userData.dateOfBirth,
+            });
+
+            // Show success notification
+            emitter.emit("show-notification", {
+                status: "success",
+                message: "Cập nhật thông tin cá nhân thành công",
+            });
+
+            // Exit edit mode
+            isEditing.value = false;
+            avatarPreview.value = null;
+
+            // Reset avatar preview
+            if (avatarComponent.value) {
+                avatarComponent.value.resetFileInput();
+            }
+        }
+    } catch (error) {
+        console.error("Error updating profile:", error);
+        errorMessage.value =
+            error.response?.data?.message ||
+            "Đã xảy ra lỗi khi cập nhật thông tin";
+
+        emitter.emit("show-notification", {
+            status: "error",
+            message: errorMessage.value,
+        });
+    } finally {
+        loading.value = false;
+    }
+};
+
+// Send verification email
+const sendVerificationEmail = async () => {
+    verificationEmailSending.value = true;
+    try {
+        await meService.sendVerificationEmail();
+        emitter.emit("show-notification", {
+            status: "success",
+            message: "Email xác thực đã được gửi. Vui lòng kiểm tra hộp thư.",
+        });
+    } catch (error) {
+        console.error("Error sending verification email:", error);
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Đã xảy ra lỗi khi gửi email xác thực.",
+        });
+    } finally {
+        verificationEmailSending.value = false;
+    }
+};
+</script>
 <template>
     <div class="profile-content">
         <div class="profile-header">
@@ -203,211 +410,7 @@
     </div>
 </template>
 
-<script setup>
-import { ref, computed } from "vue";
-import UserAvatar from "./UserAvatar.vue";
-import AddressForm from "./AddressForm.vue";
-import meService from "@/services/meService";
-import emitter from "@/utils/evenBus";
 
-const props = defineProps({
-    userData: {
-        type: Object,
-        required: true,
-    },
-});
-
-const emit = defineEmits(["update:userData", "change-password"]);
-
-const isEditing = ref(false);
-const errorMessage = ref("");
-const loading = ref(false);
-const avatarPreview = ref(null);
-const avatarComponent = ref(null);
-const addressFormRef = ref(null);
-const verificationEmailSending = ref(false);
-// Lưu trữ dữ liệu gốc để khôi phục khi hủy chỉnh sửa
-const originalUserData = ref(null);
-
-// Giới hạn ngày tối đa là ngày hôm nay
-const maxDate = new Date().toISOString().split("T")[0];
-
-// Format date for display
-const formatDate = (dateString) => {
-    if (!dateString) return "";
-
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "";
-
-    return date.toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    });
-};
-
-// Toggle edit mode
-const enableEditing = () => {
-    // Lưu trữ dữ liệu gốc trước khi chỉnh sửa
-    originalUserData.value = JSON.parse(JSON.stringify(props.userData));
-
-    // Format date properly for input type="date"
-    if (props.userData.dateOfBirth) {
-        const date = new Date(props.userData.dateOfBirth);
-        if (!isNaN(date.getTime())) {
-            props.userData.dateOfBirth = date.toISOString().split("T")[0];
-        }
-    }
-
-    isEditing.value = true;
-};
-
-// Update address from AddressForm component
-const updateAddress = (address) => {
-    emit("update:userData", {
-        ...props.userData,
-        address: address,
-    });
-};
-
-// Cancel editing
-const cancelEditing = () => {
-    isEditing.value = false;
-    avatarPreview.value = null;
-    errorMessage.value = "";
-
-    // Reset avatar preview
-    if (avatarComponent.value) {
-        avatarComponent.value.resetFileInput();
-    }
-
-    // Khôi phục dữ liệu gốc từ khi bắt đầu chỉnh sửa
-    if (originalUserData.value) {
-        emit("update:userData", {
-            ...originalUserData.value,
-            avatarFile: null,
-        });
-    }
-};
-
-// Handle avatar upload
-const handleFileChange = (file) => {
-    // Create preview URL
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        avatarPreview.value = e.target.result;
-    };
-    reader.readAsDataURL(file);
-
-    // Update avatar file in user data
-    emit("update:userData", {
-        ...props.userData,
-        avatarFile: file,
-    });
-};
-
-// Save profile changes
-const saveProfile = async () => {
-    loading.value = true;
-    errorMessage.value = "";
-
-    try {
-        // Create FormData object
-        const formData = new FormData();
-
-        // Add user info to FormData
-        if (props.userData.name) {
-            formData.append("name", props.userData.name);
-        }
-
-        if (props.userData.email) {
-            formData.append("email", props.userData.email);
-        }
-
-        if (props.userData.phoneNumber) {
-            formData.append("phoneNumber", props.userData.phoneNumber);
-        }
-
-        if (props.userData.gender) {
-            formData.append("gender", props.userData.gender);
-        }
-
-        if (props.userData.address) {
-            formData.append("address", props.userData.address);
-        }
-
-        // Add date of birth if provided
-        if (props.userData.dateOfBirth) {
-            formData.append("dateOfBirth", props.userData.dateOfBirth);
-        }
-
-        // Add avatar if changed
-        if (props.userData.avatarFile) {
-            formData.append("avatar", props.userData.avatarFile);
-        }
-
-        // Call API to update user profile
-        const updatedUser = await meService.updateUserProfile(formData);
-
-        // Update local user data with response from server
-        if (updatedUser) {
-            emit("update:userData", {
-                ...updatedUser,
-                avatarFile: null,
-                // Preserve formatted date
-                dateOfBirth: props.userData.dateOfBirth,
-            });
-
-            // Show success notification
-            emitter.emit("show-notification", {
-                status: "success",
-                message: "Cập nhật thông tin cá nhân thành công",
-            });
-
-            // Exit edit mode
-            isEditing.value = false;
-            avatarPreview.value = null;
-
-            // Reset avatar preview
-            if (avatarComponent.value) {
-                avatarComponent.value.resetFileInput();
-            }
-        }
-    } catch (error) {
-        console.error("Error updating profile:", error);
-        errorMessage.value =
-            error.response?.data?.message ||
-            "Đã xảy ra lỗi khi cập nhật thông tin";
-
-        emitter.emit("show-notification", {
-            status: "error",
-            message: errorMessage.value,
-        });
-    } finally {
-        loading.value = false;
-    }
-};
-
-// Send verification email
-const sendVerificationEmail = async () => {
-    verificationEmailSending.value = true;
-    try {
-        await meService.sendVerificationEmail();
-        emitter.emit("show-notification", {
-            status: "success",
-            message: "Email xác thực đã được gửi. Vui lòng kiểm tra hộp thư.",
-        });
-    } catch (error) {
-        console.error("Error sending verification email:", error);
-        emitter.emit("show-notification", {
-            status: "error",
-            message: "Đã xảy ra lỗi khi gửi email xác thực.",
-        });
-    } finally {
-        verificationEmailSending.value = false;
-    }
-};
-</script>
 
 <style scoped>
 .profile-content {
