@@ -15,10 +15,11 @@ namespace api.Middlewares
 
         public async Task InvokeAsync(HttpContext context)
         {
-            _logger.LogInformation("Request: {requestMethod} {requestPath} | User: {userEmail} | IP: {userIP} | User-Agent: {userAgent}",
+            _logger.LogInformation("Request: {requestMethod} {requestPath} | User: {userEmail} | Origin: {userOrigin} | IP: {userIP} | User-Agent: {userAgent}",
                 context.Request.Method,
-                context.Request.Path,
+                context.Request.Path + context.Request.QueryString,
                 HttpContextHelper.CurrentUserEmail,
+                HttpContextHelper.UserOrigin,
                 HttpContextHelper.UserIP,
                 HttpContextHelper.UserAgent);
 

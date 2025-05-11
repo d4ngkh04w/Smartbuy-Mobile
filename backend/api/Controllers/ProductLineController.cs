@@ -9,7 +9,7 @@ namespace api.Controllers
 {
     [Route("api/v1/product-line")]
     [ApiController]
-    [Authorize(Roles = "admin")]
+    [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
     public class ProductLineController : ControllerBase
     {
         private readonly IProductLineService _productLineService;

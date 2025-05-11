@@ -9,7 +9,6 @@ namespace api.Controllers
 {
     [Route("api/v1/order")]
     [ApiController]
-    [Authorize]
     public class OrderController : ControllerBase
     {
         private readonly IOrderService _orderService;
@@ -20,7 +19,7 @@ namespace api.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "admin")]
+        [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
         public async Task<IActionResult> GetAllOrders()
         {
             var orders = await _orderService.GetAllOrdersAsync();
@@ -28,7 +27,7 @@ namespace api.Controllers
         }
 
         [HttpGet("me")]
-        [Authorize(Roles = "user")]
+        [Authorize(AuthenticationSchemes = "user", Roles = "user")]
         public async Task<IActionResult> GetUserOrders()
         {
             var userId = HttpContextHelper.CurrentUserId;
@@ -40,6 +39,7 @@ namespace api.Controllers
         }
 
         [HttpGet("{id:guid}")]
+        [Authorize(AuthenticationSchemes = "smart", Roles = "admin,user")]
         public async Task<IActionResult> GetOrderById([FromRoute] Guid id)
         {
             // Kiểm tra xem người dùng có phải là admin hay không hoặc nếu người dùng đang truy cập đơn hàng của chính họ
@@ -57,7 +57,7 @@ namespace api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "user")]
+        [Authorize(AuthenticationSchemes = "user", Roles = "user")]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDTO createOrderDTO)
         {
             var userId = HttpContextHelper.CurrentUserId;
@@ -69,7 +69,7 @@ namespace api.Controllers
         }
 
         [HttpPut("{id:guid}/status")]
-        [Authorize(Roles = "admin")]
+        [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
         public async Task<IActionResult> UpdateOrderStatus([FromRoute] Guid id, [FromBody] UpdateOrderStatusDTO updateOrderStatusDTO)
         {
             var order = await _orderService.UpdateOrderStatusAsync(id, updateOrderStatusDTO);
@@ -77,7 +77,7 @@ namespace api.Controllers
         }
 
         [HttpDelete("{id:guid}")]
-        [Authorize(Roles = "admin")]
+        [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
         public async Task<IActionResult> DeleteOrder([FromRoute] Guid id)
         {
             await _orderService.DeleteOrderAsync(id);

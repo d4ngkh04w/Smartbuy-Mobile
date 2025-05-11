@@ -115,13 +115,20 @@ namespace api.Services
             return token;
         }
 
-        public async Task<TokenResponseDTO> ValidateRefreshToken(string refreshToken)
+        public async Task<TokenResponseDTO> ValidateRefreshToken(string refreshToken, string role)
         {
             string tokenHash = TokenUtils.HashToken(refreshToken);
             var storedToken = await _userTokenRepository.FindTokenByHashAsync(tokenHash, "RefreshToken");
 
             if (storedToken == null || storedToken.User == null)
                 throw new BadRequestException("Invalid refresh token");
+
+            if (role != storedToken.User.Role)
+                return new TokenResponseDTO
+                {
+                    AccessToken = "",
+                    RefreshToken = ""
+                };
 
             if (storedToken.IsRevoked)
                 throw new BadRequestException("Token has been revoked");

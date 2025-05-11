@@ -20,7 +20,7 @@ namespace api.Helpers
         private static string? _adminPhoneNumber;
         private static string? _adminName;
         private static string? _adminUrl;
-        private static string? _customerUrl;
+        private static string? _userUrl;
 
         public static void Initialize(IConfiguration configuration)
         {
@@ -42,7 +42,7 @@ namespace api.Helpers
             _adminPhoneNumber = configuration["Admin:PhoneNumber"] ?? throw new InvalidOperationException("Admin Phone Number not found in configuration");
             _adminName = configuration["Admin:Name"] ?? throw new InvalidOperationException("Admin Name not found in configuration");
             _adminUrl = configuration["Frontend:AdminUrl"] ?? "http://localhost:4000";
-            _customerUrl = configuration["Frontend:CustomerUrl"] ?? "http://localhost:3000";
+            _userUrl = configuration["Frontend:UserUrl"] ?? "http://localhost:3000";
         }
 
         public static string GoogleClientId => _googleClientId!;
@@ -63,6 +63,6 @@ namespace api.Helpers
         public static string AdminPhoneNumber => _adminPhoneNumber!;
         public static string AdminName => _adminName!;
         public static string AdminUrl => _adminUrl!;
-        public static string CustomerUrl => _customerUrl!;
+        public static string UserUrl => _userUrl!;
     }
 }

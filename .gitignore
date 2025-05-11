@@ -37,5 +37,4 @@ obj/
 uploads/
 Migrations/
 .env
-*.ps1
 .vs/

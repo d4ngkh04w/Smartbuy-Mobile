@@ -21,7 +21,6 @@ router.beforeEach(async (to, from, next) => {
 	document.title = to.meta.title || "SmartBuy Mobile";
 	if (requiresAuth) {
 		try {
-			alert(1);
 			await authService.verifyUser();
 			next(); // Tiếp tục khi xác thực thành công
 		} catch (error) {
@@ -29,7 +28,8 @@ router.beforeEach(async (to, from, next) => {
 				error.response?.status === 401 ||
 				error.response?.status === 403
 			) {
-				await authService.logout();
+				// await authService.logout();
+				next();
 			} else {
 				console.error("Lỗi xác thực:", error);
 				next(); // Vẫn cho phép tiếp tục nếu không phải lỗi 401

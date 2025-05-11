@@ -8,7 +8,7 @@ namespace api.Controllers
 {
     [Route("api/v1/tags")]
     [ApiController]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
     public class TagController : ControllerBase
     {
         private readonly ITagService _tagService;
@@ -35,7 +35,6 @@ namespace api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateTag([FromBody] CreateTagDTO tagDTO)
         {
             var tag = await _tagService.CreateTagAsync(tagDTO);
@@ -43,7 +42,6 @@ namespace api.Controllers
         }
 
         [HttpPut("{id:int}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdateTag([FromRoute] int id, [FromBody] UpdateTagDTO tagDTO)
         {
             var tag = await _tagService.UpdateTagAsync(id, tagDTO);
@@ -51,7 +49,6 @@ namespace api.Controllers
         }
 
         [HttpDelete("{id:int}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteTag([FromRoute] int id)
         {
             await _tagService.DeleteTagAsync(id);

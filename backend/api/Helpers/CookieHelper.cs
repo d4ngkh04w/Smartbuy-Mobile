@@ -11,69 +11,80 @@ namespace api.Helpers
             _httpContextAccessor = httpContextAccessor;
         }
 
-        public static string AccessToken
+        public static string AdminAccessToken
         {
-            get => GetCookie("token");
+            get => GetCookie("admin_token");
             set
             {
-                SetCookie("token", value, ConfigHelper.JwtExpireTime);
+                Current.Response.Cookies.Append("admin_token", value, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Expires = DateTimeOffset.Now.AddMinutes(ConfigHelper.JwtExpireTime),
+                    Path = "/",
+                });
             }
         }
 
-        public static string RefreshToken
+        public static string UserAccessToken
         {
-            get => GetCookie("refreshToken");
+            get => GetCookie("user_token");
             set
             {
-                Current.Response.Cookies.Append("refreshToken", value, new CookieOptions
+                Current.Response.Cookies.Append("user_token", value, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Expires = DateTimeOffset.Now.AddMinutes(ConfigHelper.JwtExpireTime),
+                    Path = "/",
+                });
+            }
+        }
+
+        public static string AdminRefreshToken
+        {
+            get => GetCookie("admin_refresh_token");
+            set
+            {
+                Current.Response.Cookies.Append("admin_refresh_token", value, new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = false,
                     SameSite = SameSiteMode.Lax,
                     Expires = DateTimeOffset.Now.AddDays(ConfigHelper.JwtRefreshTokenExpiry),
-                    Path = "/"
+                    Path = "/",
                 });
             }
         }
 
-        public static void RemoveAuthTokens()
+        public static string UserRefreshToken
         {
-            RemoveAccessToken();
-            RemoveRefreshToken();
+            get => GetCookie("user_refresh_token");
+            set
+            {
+                Current.Response.Cookies.Append("user_refresh_token", value, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Expires = DateTimeOffset.Now.AddDays(ConfigHelper.JwtRefreshTokenExpiry),
+                    Path = "/",
+                });
+            }
         }
 
-        public static void RemoveAccessToken()
+        public static void RemoveAuthUserTokens()
         {
-            Current.Response.Cookies.Delete("token", new CookieOptions
-            {
-                Path = "/",
-                HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax
-            });
+            RemoveCookie("user_token");
+            RemoveCookie("user_refresh_token");
         }
 
-        public static void RemoveRefreshToken()
+        public static void RemoveAuthAdminTokens()
         {
-            Current.Response.Cookies.Delete("refreshToken", new CookieOptions
-            {
-                Path = "/",
-                HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax
-            });
-        }
-
-        public static void SetCookie(string key, string value, double expirationMinutes = 30)
-        {
-            Current.Response.Cookies.Append(key, value, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax,
-                Expires = DateTimeOffset.Now.AddMinutes(expirationMinutes),
-                Path = "/"
-            });
+            RemoveCookie("admin_token");
+            RemoveCookie("admin_refresh_token");
         }
 
         public static string GetCookie(string key)
@@ -83,7 +94,16 @@ namespace api.Helpers
 
         public static void RemoveCookie(string key)
         {
-            Current.Response.Cookies.Delete(key);
+            if (Current.Request.Cookies.ContainsKey(key))
+            {
+                Current.Response.Cookies.Delete(key, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/",
+                });
+            }
         }
     }
 }

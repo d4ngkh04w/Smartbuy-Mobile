@@ -17,5 +17,6 @@ namespace api.Helpers
         public static string CurrentUserEmail => Current?.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value ?? string.Empty;
         public static string UserIP => Current?.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         public static string UserAgent => Current?.Request.Headers.UserAgent.ToString() ?? "unknown";
+        public static string UserOrigin => Current?.Request.Headers.Origin.ToString() ?? "unknown";
     }
 }

@@ -30,7 +30,7 @@ builder.Services.AddDbContext<AppDBContext>(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
-        policy => policy.WithOrigins(ConfigHelper.AdminUrl, ConfigHelper.CustomerUrl)
+        policy => policy.WithOrigins(ConfigHelper.AdminUrl, ConfigHelper.UserUrl)
                         .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .AllowAnyHeader()
                         .AllowCredentials());
@@ -47,24 +47,65 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 });
 
 // Thiết lập JWT Authentication
-builder.Services.AddAuthentication(
-    options =>
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = "smart";
+    options.DefaultChallengeScheme = "smart";
+    options.DefaultScheme = "smart";
+    options.DefaultForbidScheme = "smart";
+    options.DefaultSignInScheme = "smart";
+    options.DefaultSignOutScheme = "smart";
+})
+.AddPolicyScheme("smart", "Smart Auth Selector", options =>
+{
+    options.ForwardDefaultSelector = context =>
     {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultForbidScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultSignInScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultSignOutScheme = JwtBearerDefaults.AuthenticationScheme;
-    }
-).AddJwtBearer(
+        // string origin = context.Request.Headers.Origin.ToString();
+        string origin = HttpContextHelper.UserOrigin;
+
+        if (!string.IsNullOrEmpty(origin) && origin.Contains(ConfigHelper.AdminUrl))
+        {
+            return "admin";
+        }
+
+        return "user";
+    };
+})
+.AddJwtBearer("admin",
     options =>
     {
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
             {
-                var token = CookieHelper.AccessToken;
+                var token = CookieHelper.AdminAccessToken;
+                if (!string.IsNullOrEmpty(token))
+                {
+                    context.Token = token;
+                }
+                return Task.CompletedTask;
+            },
+        };
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(ConfigHelper.JwtSecretKey)),
+            ValidIssuer = ConfigHelper.JwtIssuer,
+            ValidAudience = ConfigHelper.JwtAudience,
+        };
+    }
+).AddJwtBearer("user",
+    options =>
+    {
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var token = CookieHelper.UserAccessToken;
                 if (!string.IsNullOrEmpty(token))
                 {
                     context.Token = token;

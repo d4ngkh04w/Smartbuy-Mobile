@@ -9,7 +9,7 @@ namespace api.Controllers
 {
     [Route("api/v1/brand")]
     [ApiController]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
     public class BrandController : ControllerBase
     {
         private readonly IBrandService _brandService;
@@ -36,7 +36,6 @@ namespace api.Controllers
         }
 
         [HttpDelete("{id:int}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteBrand(int id)
         {
             await _brandService.DeleteBrandAsync(id);
@@ -44,7 +43,6 @@ namespace api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateBrand([FromForm] CreateBrandDTO brandDTO)
         {
             var brand = await _brandService.CreateBrandAsync(brandDTO);
@@ -52,7 +50,6 @@ namespace api.Controllers
         }
 
         [HttpPut("{id:int}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdateBrand([FromRoute] int id, [FromForm] UpdateBrandDTO brandDTO)
         {
             var brand = await _brandService.UpdateBrandAsync(id, brandDTO);
@@ -60,7 +57,6 @@ namespace api.Controllers
         }
 
         [HttpPut("{id:int}/activate")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> ActivateBrand([FromRoute] int id)
         {
             var brand = await _brandService.ActivateBrandAsync(id);
@@ -68,7 +64,6 @@ namespace api.Controllers
         }
 
         [HttpPut("{id:int}/deactivate")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeactivateBrand([FromRoute] int id)
         {
             var brand = await _brandService.DeactivateBrandAsync(id);
