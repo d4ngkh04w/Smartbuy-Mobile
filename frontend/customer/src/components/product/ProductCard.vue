@@ -1,40 +1,41 @@
 <template>
+  <div
+    class="product-card"
+    :style="{
+      '--card-bg': cardColor,
+      '--button-bg': buttonColor,
+      '--height': height
+    }"
+  >
     <router-link 
       :to="{ name: 'product-detail', params: { id: product.id } }"
-      class="product-card"
+      class="product-top-link"
     >
-      <div
-        class="product-card"
-        :style="{
-          '--card-bg': cardColor,
-          '--button-bg': buttonColor,
-          '--height': height
-        }"
-      >
-        <div class="product-top">
-          <img 
-            v-lazy="getUrlImg(product.imageUrl)" 
-            alt="product image" 
-            class="product-img"
-          />
-        </div>
-    
-        <div class="product-middle">
-          <h3>{{ product.name }}</h3>
-          <p>{{ format.formatPrice(product.price) }}₫</p>
-        </div>
-    
-        <div class="product-bottom">
-          <button class="add-cart-btn" @click="handleAddToCart">
-            <i class="fa-solid fa-cart-plus"></i>
-          </button>
-          <button class="buy-now-btn" @click="handleBuy">
-            Mua ngay
-          </button>
-        </div>
+      <div class="product-top">
+        <img 
+          v-lazy="getUrlImg(product.imageUrl)" 
+          alt="product image" 
+          class="product-img"
+        />
+      </div>
+
+      <div class="product-middle">
+        <h3>{{ product.name }}</h3>
+        <p>{{ format.formatPrice(product.price) }}₫</p>
       </div>
     </router-link>
-  </template>
+
+    <div class="product-bottom">
+      <button class="add-cart-btn" @click.stop="handleAddToCart">
+        <i class="fa-solid fa-cart-plus"></i>
+      </button>
+      <button class="buy-now-btn" @click.stop="handleBuy">
+        Mua ngay
+      </button>
+    </div>
+  </div>
+</template>
+
   
   <script setup>
   import { defineProps } from 'vue'
@@ -56,7 +57,7 @@
     },
     height: {
       type: String,
-      default: '400px'
+      default: '370px'
     }
   })
   

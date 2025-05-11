@@ -3,6 +3,7 @@ import MainLayout from "../layouts/MainLayout.vue";
 import BlankLayout from "../layouts/BlankLayout.vue";
 import HomePage from "../views/HomePage.vue";
 import ProductDetail from '../components/product/ProductDetail.vue'
+import Cart from '../components/product/Cart.vue'
 
 export const routes = [
   // Routes với MainLayout (có header và footer)
@@ -37,8 +38,16 @@ export const routes = [
           title: "Chi tiết sản phẩm - SmartBuy Mobile",
           requiresAuth: false,
         },
+      },
+      {
+        path: "cart",
+        name: "cart",
+        component: Cart,
+        meta: {
+          title: "Giỏ hàng - SmartBuy Mobile",
+          requiresAuth: false,
+        },
       }
-      // Các route khác với MainLayout...
     ],
   },
 

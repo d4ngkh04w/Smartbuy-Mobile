@@ -1,20 +1,19 @@
-
-@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&display=swap');
 
 /* Reset CSS */
-*{
+* {
   margin: 0;
   padding: 0;
   box-sizing: inherit;
 }
+
 html, body {
   max-width: 100vw;
   max-height: 100vh;
   font-size: 16px;
-  font-family: 'Lato', sans-serif;
+  font-family: 'Be Vietnam Pro', sans-serif;
   line-height: 1.5;
   scroll-behavior: smooth; /* Cuộn trang mượt mà */
-  /* padding:  0 20px; */
   box-sizing: border-box;
 }
 
@@ -35,7 +34,7 @@ html, body {
   --info: #4299e1;
 }
 
-/* hiệu chỉnh lại màu theme tối sau */
+/* Hiệu chỉnh màu cho theme tối */
 [data-theme="dark"] {
   --primary-color: #1abc9c;
   --background-color: #222;
@@ -45,4 +44,27 @@ html, body {
 body {
   background-color: var(--background-color);
   transition: background 0.3s ease-in-out, color 0.3s ease-in-out;
+}
+
+/* === Empty cart style === */
+.cart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.cart-empty img {
+  width: 250px;
+  max-width: 80%;
+  margin-bottom: 20px;
+}
+
+.cart-empty p {
+  font-size: 18px;
+  color: var(--text-secondary);
+  margin: 5px 0;
 }
