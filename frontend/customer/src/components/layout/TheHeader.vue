@@ -42,7 +42,6 @@
                         </div>
                     </div>
 
-
                     <div
                         class="action-item user-dropdown"
                         @click="
@@ -110,10 +109,10 @@ const resetSearchText = () => {
 };
 
 const handleSearch = () => {
-        router.push({
-            path: "/",
-            query: { search: searchQuery.value, reload: isReload.value },
-        });
+    router.push({
+        path: "/",
+        query: { search: searchQuery.value, reload: isReload.value },
+    });
 };
 
 const goToLogin = () => {
@@ -144,7 +143,6 @@ const closeMenus = (event) => {
     ) {
         isUserMenuOpen.value = false;
     }
-
 
     if (
         cartRef.value &&
@@ -206,8 +204,13 @@ const formatPrice = (price) => {
 // Fetch user data on component mount
 const fetchUserData = async () => {
     try {
-        // Gọi trực tiếp API getMe để lấy thông tin người dùng
-        const userData = await meService.getMe();
+        // Gọi API getMe với cờ isHeaderRequest để tránh vòng lặp chuyển hướng
+        const userData = await meService.getMe({
+            headers: {
+                "X-From-Header": "true",
+            },
+            skipAuthRedirect: true,
+        });
         currentUser.value = userData;
         isLoggedIn.value = true;
 
@@ -243,10 +246,8 @@ const fetchUserData = async () => {
         currentUser.value = null;
         userAvatar.value = null;
 
-        // Nếu lỗi 401 (Unauthorized), chuyển hướng sang trang đăng nhập
-        if (error.response && error.response.status === 401) {
-            router.push("/login");
-        }
+        // Không chuyển hướng sang trang đăng nhập khi gọi từ header
+        // Hiển thị UI cho trạng thái chưa đăng nhập
     }
 };
 

@@ -8,7 +8,7 @@ namespace api.Annotations
         public override bool IsValid(object? value)
         {
             if (value == null)
-                return false;
+                return true;
 
             string email = value.ToString()!;
             string pattern = @"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$";

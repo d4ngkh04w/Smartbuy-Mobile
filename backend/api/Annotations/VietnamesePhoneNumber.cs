@@ -16,7 +16,7 @@ namespace api.Annotations
         public override bool IsValid(object? value)
         {
             if (value == null)
-                return false;
+                return true;
 
             string phoneNumber = value.ToString()!;
             string pattern = @"^(0[\d]{9})$";

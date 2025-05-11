@@ -1,6 +1,7 @@
 import instance from "./axiosConfig";
-export const getMe = async () => {
-    return (await instance.get("/user/me")).data.data; // Trả về thông tin người dùng
+export const getMe = async (options = {}) => {
+    const config = { ...options };
+    return (await instance.get("/user/me", config)).data.data; // Trả về thông tin người dùng
 };
 export const changePassword = async (passwordData) => {
     return await instance.post("/auth/change-password", passwordData);
@@ -30,7 +31,7 @@ export const meService = {
     getMe,
     updateUserProfile,
     changePassword,
-    sendVerificationEmail,    
+    sendVerificationEmail,
     deleteMyAccount,
 };
 
