@@ -29,12 +29,32 @@ const fetchCustomers = async () => {
 	try {
 		const response = await userService.getUsers();
 		console.log("Fetched customers:", response.data);
-		customers.value = response.data.users || [];
+		customers.value = response.data.data || [];
 	} catch (error) {
 		console.error("Error fetching customers:", error);
 		emitter.emit("show-notification", {
 			status: "error",
 			message: "Không thể tải danh sách khách hàng",
+		});
+	} finally {
+		loading.value = false;
+	}
+};
+
+// Refresh data
+const refreshData = async () => {
+	try {
+		loading.value = true;
+		await fetchCustomers();
+		emitter.emit("show-notification", {
+			status: "success",
+			message: "Dữ liệu khách hàng đã được cập nhật",
+		});
+	} catch (error) {
+		console.error("Error refreshing data:", error);
+		emitter.emit("show-notification", {
+			status: "error",
+			message: "Không thể làm mới dữ liệu khách hàng",
 		});
 	} finally {
 		loading.value = false;
@@ -240,8 +260,8 @@ onMounted(async () => {
 					<i class="fas fa-arrow-left"></i> Quay lại Dashboard
 				</button>
 				<h1>Quản lý Khách hàng</h1>
-				<button class="invisible-button" style="visibility: hidden">
-					<i class="fas fa-sync-alt"></i> Nút ẩn
+				<button class="refresh-button" @click="refreshData">
+					<i class="fas fa-sync-alt"></i> Làm mới
 				</button>
 			</div>
 		</div>
@@ -746,6 +766,29 @@ onMounted(async () => {
 	color: var(--primary-color);
 }
 
+.refresh-button {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem 1rem;
+	background-color: white;
+	color: #666;
+	border: 1px solid #e9ecef;
+	border-radius: 6px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.refresh-button i {
+	color: var(--primary-color);
+}
+
+.refresh-button:hover {
+	background-color: #f8f0f4;
+	color: var(--primary-color);
+}
+
 .page-header h1 {
 	margin: 0;
 	font-size: 1.8rem;
@@ -929,8 +972,6 @@ onMounted(async () => {
 	padding: 1.5rem;
 }
 
-
-
 .loading-indicator {
 	display: flex;
 	flex-direction: column;
@@ -1017,7 +1058,6 @@ onMounted(async () => {
 .customer-row {
 	border-bottom: 1px solid #e5e7eb;
 	transition: background-color 0.2s;
-	
 }
 
 .customer-row:hover {
@@ -1096,7 +1136,7 @@ onMounted(async () => {
 }
 
 .view-button i,
-.lock-button i,
+lock-button i,
 .unlock-button i {
 	display: flex; /* Căn chỉnh biểu tượng */
 	align-items: center;

@@ -51,10 +51,11 @@ namespace api.Repositories
             return await db.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber);
         }
 
-        public async Task UpdateUserAsync(User user)
+        public async Task<User> UpdateUserAsync(User user)
         {
             db.Users.Update(user);
             await db.SaveChangesAsync();
+            return user;
         }
 
         public async Task<bool> UserExistsByEmailAsync(string email)

@@ -1,4 +1,5 @@
 using api.DTOs.Tag;
+using api.Helpers;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +8,7 @@ namespace api.Controllers
 {
     [Route("api/v1/tags")]
     [ApiController]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
     public class TagController : ControllerBase
     {
         private readonly ITagService _tagService;
@@ -21,104 +22,36 @@ namespace api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetAllTags()
         {
-            var result = await _tagService.GetAllTagsAsync();
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new
-            {
-                Message = "Tags retrieved successfully",
-                Tags = result.Tags
-            });
+            var tags = await _tagService.GetAllTagsAsync();
+            return ApiResponseHelper.Success("Tags retrieved successfully", tags);
         }
 
         [HttpGet("{id:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetTagById([FromRoute] int id)
         {
-            var result = await _tagService.GetTagByIdAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Tag not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new
-            {
-                Message = "Tag retrieved successfully",
-                result.Tag
-            });
+            var tag = await _tagService.GetTagByIdAsync(id);
+            return ApiResponseHelper.Success("Tag retrieved successfully", tag);
         }
 
         [HttpPost]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateTag([FromBody] CreateTagDTO tagDTO)
         {
-            var result = await _tagService.CreateTagAsync(tagDTO);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Already exists", StringComparison.OrdinalIgnoreCase) => Conflict(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return CreatedAtAction(nameof(GetTagById),
-                            new { id = result.Tag!.Id },
-                            new
-                            {
-                                Message = "Tag created successfully",
-                                result.Tag
-                            });
+            var tag = await _tagService.CreateTagAsync(tagDTO);
+            return ApiResponseHelper.Created("Tag created successfully", tag);
         }
 
         [HttpPut("{id:int}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdateTag([FromRoute] int id, [FromBody] UpdateTagDTO tagDTO)
         {
-            var result = await _tagService.UpdateTagAsync(id, tagDTO);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Tag not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new
-            {
-                Message = "Tag updated successfully",
-                result.Tag
-            });
+            var tag = await _tagService.UpdateTagAsync(id, tagDTO);
+            return ApiResponseHelper.Success("Tag updated successfully", tag);
         }
 
         [HttpDelete("{id:int}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteTag([FromRoute] int id)
         {
-            var result = await _tagService.DeleteTagAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Tag not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
+            await _tagService.DeleteTagAsync(id);
             return NoContent();
         }
     }

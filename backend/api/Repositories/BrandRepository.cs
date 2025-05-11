@@ -107,21 +107,11 @@ namespace api.Repositories
             return await baseQuery.FirstOrDefaultAsync();
         }
 
-        public async Task<bool> UpdateBrandAsync(Brand brand)
+        public async Task<Brand> UpdateBrandAsync(Brand brand)
         {
-            _db.Entry(brand).State = EntityState.Modified;
-            try
-            {
-                await _db.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await _db.Brands.AnyAsync(b => b.Id == brand.Id))
-                    return false;
-                else
-                    throw;
-            }
+            _db.Brands.Update(brand);
+            await _db.SaveChangesAsync();
+            return brand;
         }
     }
 }

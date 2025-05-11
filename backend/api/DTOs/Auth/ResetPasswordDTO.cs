@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using api.Annotations;
 
 namespace api.DTOs.Auth
 {
@@ -8,7 +9,7 @@ namespace api.DTOs.Auth
         public string Token { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Email is required")]
-        [EmailAddress(ErrorMessage = "Invalid email format")]
+        [Email]
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Password is required")]

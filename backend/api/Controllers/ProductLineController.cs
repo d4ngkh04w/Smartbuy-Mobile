@@ -1,4 +1,5 @@
 using api.DTOs.ProductLine;
+using api.Helpers;
 using api.Interfaces.Services;
 using api.Queries;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +9,7 @@ namespace api.Controllers
 {
     [Route("api/v1/product-line")]
     [ApiController]
-    [Authorize(Roles = "admin")]
+    [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
     public class ProductLineController : ControllerBase
     {
         private readonly IProductLineService _productLineService;
@@ -22,23 +23,8 @@ namespace api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetProductLines([FromQuery] ProductLineQuery query)
         {
-            var result = await _productLineService.GetProductLinesAsync(query);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new
-            {
-                Message = "Product lines retrieved successfully",
-                result.ProductLines
-            });
+            var productLines = await _productLineService.GetProductLinesAsync(query);
+            return ApiResponseHelper.Success("Product lines retrieved successfully", productLines);
         }
 
         [HttpGet("by-brand/{brandId:int}")]
@@ -47,142 +33,51 @@ namespace api.Controllers
         {
             query.BrandId = brandId;
 
-            var result = await _productLineService.GetProductLinesAsync(query);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new
-            {
-                Message = "Product lines for brand retrieved successfully",
-                result.ProductLines
-            });
+            var productLines = await _productLineService.GetProductLinesAsync(query);
+            return ApiResponseHelper.Success("Product lines for brand retrieved successfully", productLines);
         }
 
         [HttpGet("{id:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetProductLineById([FromRoute] int id, [FromQuery] ProductLineQuery query)
         {
-            var result = await _productLineService.GetProductLineByIdAsync(id, query);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Product line not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new
-            {
-                Message = "Product line retrieved successfully",
-                result.ProductLine
-            });
+            var productLine = await _productLineService.GetProductLineByIdAsync(id, query);
+            return ApiResponseHelper.Success("Product line retrieved successfully", productLine);
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateProductLine([FromForm] CreateProductLineDTO productLineDTO)
         {
-            var result = await _productLineService.CreateProductLineAsync(productLineDTO);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Already exists", StringComparison.OrdinalIgnoreCase) => Conflict(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return CreatedAtAction(nameof(GetProductLineById),
-                            new { id = result.ProductLine!.Id },
-                            new
-                            {
-                                Message = "Product line created successfully",
-                                result.ProductLine
-                            });
+            var productLine = await _productLineService.CreateProductLineAsync(productLineDTO);
+            return ApiResponseHelper.Created("Product line created successfully", productLine);
         }
 
         [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateProductLine([FromRoute] int id, [FromForm] UpdateProductLineDTO productLineDTO)
         {
-            var result = await _productLineService.UpdateProductLineAsync(id, productLineDTO);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Product line not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new
-            {
-                Message = "Product line updated successfully",
-                result.ProductLine
-            });
+            var productLine = await _productLineService.UpdateProductLineAsync(id, productLineDTO);
+            return ApiResponseHelper.Success("Product line updated successfully", productLine);
         }
 
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteProductLine([FromRoute] int id)
         {
-            var result = await _productLineService.DeleteProductLineAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Product line not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
+            await _productLineService.DeleteProductLineAsync(id);
             return NoContent();
         }
 
         [HttpPut("{id:int}/activate")]
         public async Task<IActionResult> ActivateProductLine([FromRoute] int id)
         {
-            var result = await _productLineService.ActivateProductLineAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Product line not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new
-            {
-                Message = "Product line activated successfully",
-                result.ProductLine
-            });
+            var productLine = await _productLineService.ActivateProductLineAsync(id);
+            return ApiResponseHelper.Success("Product line activated successfully", productLine);
         }
 
         [HttpPut("{id:int}/deactivate")]
         public async Task<IActionResult> DeactivateProductLine([FromRoute] int id)
         {
-            var result = await _productLineService.DeactivateProductLineAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Product line not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new
-            {
-                Message = "Product line deactivated successfully",
-                result.ProductLine
-            });
+            var productLine = await _productLineService.DeactivateProductLineAsync(id);
+            return ApiResponseHelper.Success("Product line deactivated successfully", productLine);
         }
     }
 }

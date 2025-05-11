@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using api.Utils;
 
 namespace api.DTOs.Comment
 {
@@ -16,6 +17,8 @@ namespace api.DTOs.Comment
         public int Dislikes { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public string CreatedAtString => CreatedAt.ToRelativeTimeString();
+        public string UpdatedAtString => UpdatedAt.ToRelativeTimeString();
         public bool IsDeleted { get; set; }
         public List<CommentDTO>? Replies { get; set; }
     }

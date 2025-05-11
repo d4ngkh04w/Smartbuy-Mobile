@@ -10,7 +10,7 @@ namespace api.Mappers
             var dto = new CommentDTO
             {
                 Id = comment.Id,
-                Content = comment.IsDeleted ? "[This comment has been deleted]" : comment.Content,
+                Content = comment.IsDeleted ? "This comment has been deleted" : comment.Content ?? "",
                 UserId = comment.UserId,
                 UserName = comment.User?.Name ?? "Anonymous",
                 UserAvatar = comment.User?.Avatar ?? "",
@@ -32,7 +32,7 @@ namespace api.Mappers
         {
             return new Comment
             {
-                Content = dto.Content.Trim(),
+                Content = dto.Content?.Trim(),
                 UserId = userId,
                 ProductId = dto.ProductId,
                 Rating = dto.Rating,

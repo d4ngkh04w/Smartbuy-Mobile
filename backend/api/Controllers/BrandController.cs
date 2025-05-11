@@ -1,14 +1,15 @@
 using api.DTOs.Brand;
+using api.Helpers;
 using api.Interfaces.Services;
 using api.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.Brand
+namespace api.Controllers
 {
     [Route("api/v1/brand")]
     [ApiController]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
     public class BrandController : ControllerBase
     {
         private readonly IBrandService _brandService;
@@ -22,147 +23,51 @@ namespace api.Controllers.Brand
         [AllowAnonymous]
         public async Task<IActionResult> GetBrands([FromQuery] BrandQuery query)
         {
-            var result = await _brandService.GetBrandsAsync(query);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new
-            {
-                Message = "Brands retrieved successfully",
-                result.Brands
-            });
+            var brands = await _brandService.GetBrandsAsync(query);
+            return ApiResponseHelper.Success("Brands retrieved successfully", brands);
         }
 
         [HttpGet("{id:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetBrandById([FromRoute] int id, [FromQuery] BrandQuery query)
         {
-            var result = await _brandService.GetBrandByIdAsync(id, query);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Brand not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new
-            {
-                Message = "Brand retrieved successfully",
-                result.Brand
-            });
+            var brand = await _brandService.GetBrandByIdAsync(id, query);
+            return ApiResponseHelper.Success("Brand retrieved successfully", brand);
         }
 
         [HttpDelete("{id:int}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteBrand(int id)
         {
-            var result = await _brandService.DeleteBrandAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Brand not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
+            await _brandService.DeleteBrandAsync(id);
             return NoContent();
         }
 
         [HttpPost]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateBrand([FromForm] CreateBrandDTO brandDTO)
         {
-            var result = await _brandService.CreateBrandAsync(brandDTO);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Already exists", StringComparison.OrdinalIgnoreCase) => Conflict(new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return CreatedAtAction(nameof(GetBrandById),
-                                new { id = result.Brand!.Id },
-                                new
-                                {
-                                    Message = "Brand created successfully",
-                                    result.Brand
-                                });
+            var brand = await _brandService.CreateBrandAsync(brandDTO);
+            return ApiResponseHelper.Created("Brand created successfully", brand);
         }
 
         [HttpPut("{id:int}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdateBrand([FromRoute] int id, [FromForm] UpdateBrandDTO brandDTO)
         {
-            var result = await _brandService.UpdateBrandAsync(id, brandDTO);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Brand not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new
-            {
-                Message = "Brand updated successfully",
-                result.Brand
-            });
+            var brand = await _brandService.UpdateBrandAsync(id, brandDTO);
+            return ApiResponseHelper.Success("Brand updated successfully", brand);
         }
 
         [HttpPut("{id:int}/activate")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> ActivateBrand([FromRoute] int id)
         {
-            var result = await _brandService.ActivateBrandAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Brand not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new
-            {
-                Message = "Brand activated successfully",
-                result.Brand
-            });
+            var brand = await _brandService.ActivateBrandAsync(id);
+            return ApiResponseHelper.Success("Brand activated successfully", brand);
         }
 
         [HttpPut("{id:int}/deactivate")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeactivateBrand([FromRoute] int id)
         {
-            var result = await _brandService.DeactivateBrandAsync(id);
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Brand not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-            return Ok(new
-            {
-                Message = "Brand deactivated successfully",
-                result.Brand
-            });
+            var brand = await _brandService.DeactivateBrandAsync(id);
+            return ApiResponseHelper.Success("Brand deactivated successfully", brand);
         }
     }
 }

@@ -11,25 +11,20 @@ namespace api.Models
         [Key]
         public Guid Id { get; set; } = Guid.NewGuid();
 
-        [Required]
         public Guid UserId { get; set; }
 
         [ForeignKey("UserId")]
         public User? User { get; set; }
 
-        [Required]
         [Column(TypeName = "varchar(255)")]
         public string TokenHash { get; set; } = string.Empty;
 
-        [Required]
         [Column(TypeName = "enum('RefreshToken', 'PasswordResetToken', 'EmailVerificationToken')")]
         public string TokenType { get; set; } = string.Empty;
 
-        [Required]
         [Column(TypeName = "timestamp")]
         public DateTime ExpiryDate { get; set; }
 
-        [Required]
         [Column(TypeName = "timestamp")]
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 

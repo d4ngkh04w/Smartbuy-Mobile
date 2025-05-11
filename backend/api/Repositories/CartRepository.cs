@@ -21,6 +21,9 @@ namespace api.Repositories
                     .ThenInclude(ci => ci.Product!)
                         .ThenInclude(p => p.Colors!)
                             .ThenInclude(c => c.Images!)
+                .Include(c => c.Items!)
+                    .ThenInclude(ci => ci.Color!)
+                        .ThenInclude(c => c.Images!)
                 .FirstOrDefaultAsync(c => c.UserId.ToString() == userId.ToString());
         }
 
@@ -55,6 +58,8 @@ namespace api.Repositories
                 .Include(ci => ci.Product!)
                     .ThenInclude(p => p.Colors!)
                         .ThenInclude(c => c.Images!)
+                .Include(ci => ci.Color!)
+                    .ThenInclude(c => c.Images!)
                 .FirstOrDefaultAsync(ci => ci.Id == itemId);
         }
 

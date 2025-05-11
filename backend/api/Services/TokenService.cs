@@ -2,27 +2,29 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using api.DTOs.Auth;
+using api.Exceptions;
 using api.Helpers;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Models;
+using api.Utils;
 using Microsoft.IdentityModel.Tokens;
 
 namespace api.Services
 {
     public class TokenService : ITokenService
     {
-        private readonly IConfiguration _config;
         private readonly SymmetricSecurityKey _key;
         private readonly IUserRepository _userRepository;
         private readonly IUserTokenRepository _userTokenRepository;
+        private readonly IWebHostEnvironment _env;
 
-        public TokenService(IUserRepository userRepository, IUserTokenRepository userTokenRepository, IConfiguration config)
+        public TokenService(IUserRepository userRepository, IUserTokenRepository userTokenRepository, IWebHostEnvironment env)
         {
-            _config = config;
-            _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:Key"]!));
+            _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(ConfigHelper.JwtSecretKey!));
             _userRepository = userRepository;
             _userTokenRepository = userTokenRepository;
+            _env = env;
         }
 
         public string CreateToken(User user, string role)
@@ -35,13 +37,13 @@ namespace api.Services
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
-            var creds = new SigningCredentials(_key, _config["JWT:Algorithm"]!);
+            var creds = new SigningCredentials(_key, ConfigHelper.JwtAlgorithm);
 
             var tokenDescriptor = new JwtSecurityToken(
-                audience: _config["JWT:Audience"],
-                issuer: _config["JWT:Issuer"],
+                audience: ConfigHelper.JwtAudience,
+                issuer: ConfigHelper.JwtIssuer,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(double.Parse(_config["JWT:Expire"]!)),
+                expires: DateTime.Now.AddMinutes(ConfigHelper.JwtExpireTime),
                 signingCredentials: creds
             );
 
@@ -50,10 +52,10 @@ namespace api.Services
 
         public async Task<string> GenerateRefreshToken(User user)
         {
-            string token = TokenHelper.GenerateToken();
-            string tokenHash = TokenHelper.HashToken(token);
+            string token = TokenUtils.GenerateToken();
+            string tokenHash = TokenUtils.HashToken(token);
 
-            DateTime expiryDate = DateTime.Now.AddDays(double.Parse(_config["JWT:RefreshTokenExpiry"]!));
+            var expiryDate = DateTime.Now.AddDays(ConfigHelper.JwtRefreshTokenExpiry);
 
             var userToken = new UserToken
             {
@@ -71,9 +73,9 @@ namespace api.Services
 
         public async Task<string> GeneratePasswordResetToken(User user)
         {
-            string token = TokenHelper.GenerateToken();
+            string token = TokenUtils.GenerateToken();
             Console.WriteLine($"[INF] Password reset token: {token}");
-            string tokenHash = TokenHelper.HashToken(token);
+            string tokenHash = TokenUtils.HashToken(token);
 
             DateTime expiryDate = DateTime.Now.AddMinutes(15);
 
@@ -93,9 +95,9 @@ namespace api.Services
 
         public async Task<string> GenerateEmailVerificationToken(User user)
         {
-            string token = TokenHelper.GenerateToken();
+            string token = TokenUtils.GenerateToken();
             Console.WriteLine($"[INF] Email verification token: {token}");
-            string tokenHash = TokenHelper.HashToken(token);
+            string tokenHash = TokenUtils.HashToken(token);
 
             DateTime expiryDate = DateTime.Now.AddHours(24);
 
@@ -113,129 +115,124 @@ namespace api.Services
             return token;
         }
 
-        public async Task<(bool Success, string? ErrorMessage, TokenResponseDTO? Token)> ValidateRefreshToken(string refreshToken)
+        public async Task<TokenResponseDTO> ValidateRefreshToken(string refreshToken, string role)
         {
-            try
-            {
-                string tokenHash = TokenHelper.HashToken(refreshToken);
-                var storedToken = await _userTokenRepository.FindTokenByHashAsync(tokenHash, "RefreshToken");
+            string tokenHash = TokenUtils.HashToken(refreshToken);
+            var storedToken = await _userTokenRepository.FindTokenByHashAsync(tokenHash, "RefreshToken");
 
-                if (storedToken == null || storedToken.User == null)
-                    return (false, "Invalid refresh token", null);
+            if (storedToken == null || storedToken.User == null)
+                throw new BadRequestException("Invalid refresh token");
 
-                if (storedToken.IsRevoked)
-                    return (false, "Token has been revoked", null);
-
-                if (storedToken.IsUsed)
-                    return (false, "Token has been used", null);
-
-                if (storedToken.ExpiryDate <= DateTime.Now)
-                    return (false, "Refresh token expired", null);
-
-                await _userTokenRepository.MarkTokenAsUsedAsync(storedToken);
-
-                string newAccessToken = CreateToken(storedToken.User, storedToken.User.Role);
-                string newRefreshToken = await GenerateRefreshToken(storedToken.User);
-
-                return (true, null, new TokenResponseDTO
+            if (role != storedToken.User.Role)
+                return new TokenResponseDTO
                 {
-                    Token = newAccessToken,
-                    RefreshToken = newRefreshToken
-                });
-            }
-            catch (Exception)
+                    AccessToken = "",
+                    RefreshToken = ""
+                };
+
+            if (storedToken.IsRevoked)
+                throw new BadRequestException("Token has been revoked");
+
+            if (storedToken.IsUsed)
+                throw new BadRequestException("Token has been used");
+
+            if (storedToken.ExpiryDate <= DateTime.Now)
+                throw new BadRequestException("Refresh token expired");
+
+            await _userTokenRepository.MarkTokenAsUsedAsync(storedToken);
+
+            string newAccessToken = CreateToken(storedToken.User, storedToken.User.Role);
+            string newRefreshToken = await GenerateRefreshToken(storedToken.User);
+
+            return new TokenResponseDTO
             {
-                return (false, $"Error validating refresh token", null);
-            }
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken
+            };
         }
 
-        public async Task<(bool Success, string? ErrorMessage)> RevokeRefreshToken(string refreshToken)
+        public async Task RevokeRefreshToken(string refreshToken)
         {
-            try
-            {
-                string tokenHash = TokenHelper.HashToken(refreshToken);
-                var result = await _userTokenRepository.RevokeTokenAsync(tokenHash, "RefreshToken");
+            string tokenHash = TokenUtils.HashToken(refreshToken);
+            var result = await _userTokenRepository.RevokeTokenAsync(tokenHash, "RefreshToken");
 
-                if (!result)
-                    return (false, "Invalid refresh token");
-
-                return (true, null);
-            }
-            catch (Exception)
-            {
-                return (false, $"Error revoking refresh token");
-            }
+            if (!result)
+                throw new BadRequestException("Invalid refresh token");
         }
 
-        public async Task<(bool Success, string? ErrorMessage, User? User)> ValidatePasswordResetToken(string email, string token)
+        public async Task<User?> ValidatePasswordResetToken(string email, string token)
         {
-            try
+            var user = await _userRepository.GetUserByEmailAsync(email);
+            if (user == null)
             {
-                var user = await _userRepository.GetUserByEmailAsync(email);
-                if (user == null)
-                    return (false, "User not found", null);
-
-                string tokenHash = TokenHelper.HashToken(token);
-                var storedToken = await _userTokenRepository.FindTokenByUserIdAndTypeAsync(
-                    user.Id, "PasswordResetToken", tokenHash);
-
-                if (storedToken == null)
-                    return (false, "Invalid password reset token", null);
-
-                if (storedToken.IsRevoked)
-                    return (false, "Token has been revoked", null);
-
-                if (storedToken.IsUsed)
-                    return (false, "Token has been used", null);
-
-                if (storedToken.ExpiryDate <= DateTime.Now)
-                    return (false, "Password reset token has expired", null);
-
-                await _userTokenRepository.MarkTokenAsUsedAsync(storedToken);
-
-                return (true, null, user);
+                if (_env.IsDevelopment())
+                {
+                    throw new NotFoundException($"User not found for email: {email}");
+                }
+                Console.WriteLine($"[INF] User not found for email: {email}");
+                return null;
             }
-            catch (Exception)
+            string tokenHash = TokenUtils.HashToken(token);
+            var storedToken = await _userTokenRepository.FindTokenByUserIdAndTypeAsync(
+                user.Id, "PasswordResetToken", tokenHash);
+            if (storedToken == null)
             {
-                return (false, $"Error validating password reset token", null);
+                if (_env.IsDevelopment())
+                {
+                    throw new BadRequestException("Invalid password reset token");
+                }
+                Console.WriteLine($"[INF] Invalid password reset token for email: {email}");
+                return null;
             }
+
+            if (storedToken.IsRevoked)
+                throw new BadRequestException("Token has been revoked");
+
+            if (storedToken.IsUsed)
+                throw new BadRequestException("Token has been used");
+
+            if (storedToken.ExpiryDate <= DateTime.Now)
+                throw new BadRequestException("Password reset token has expired");
+
+            await _userTokenRepository.MarkTokenAsUsedAsync(storedToken);
+
+            return user;
         }
 
-        public async Task<(bool Success, string? ErrorMessage, User? User)> ValidateEmailVerificationToken(string email, string token)
+        public async Task<User?> ValidateEmailVerificationToken(string email, string token)
         {
-            try
+            var user = await _userRepository.GetUserByEmailAsync(email);
+            if (user == null)
             {
-                var user = await _userRepository.GetUserByEmailAsync(email);
-                if (user == null)
-                    return (false, "User not found", null);
-
-                if (user.EmailConfirmed)
-                    return (true, "Email already verified", user);
-
-                string tokenHash = TokenHelper.HashToken(token);
-                var storedToken = await _userTokenRepository.FindTokenByUserIdAndTypeAsync(
-                    user.Id, "EmailVerificationToken", tokenHash);
-
-                if (storedToken == null)
-                    return (false, "Invalid email verification token", null);
-
-                if (storedToken.IsRevoked)
-                    return (false, "Token has been revoked", null);
-
-                if (storedToken.IsUsed)
-                    return (false, "Token has been used", null);
-
-                if (storedToken.ExpiryDate <= DateTime.Now)
-                    return (false, "Email verification token has expired", null);
-
-                await _userTokenRepository.MarkTokenAsUsedAsync(storedToken);
-
-                return (true, null, user);
+                Console.WriteLine($"[INF] User not found for email: {email}");
+                return null;
             }
-            catch (Exception)
+
+            if (user.EmailConfirmed)
+                return user;
+
+            string tokenHash = TokenUtils.HashToken(token);
+            var storedToken = await _userTokenRepository.FindTokenByUserIdAndTypeAsync(
+                user.Id, "EmailVerificationToken", tokenHash);
+
+            if (storedToken == null)
             {
-                return (false, $"Error validating email verification token", null);
+                Console.WriteLine($"[INF] Invalid email verification token for email: {email}");
+                return null;
             }
+
+            if (storedToken.IsRevoked)
+                throw new BadRequestException("Token has been revoked");
+
+            if (storedToken.IsUsed)
+                throw new BadRequestException("Token has been used");
+
+            if (storedToken.ExpiryDate <= DateTime.Now)
+                throw new BadRequestException("Email verification token has expired");
+
+            await _userTokenRepository.MarkTokenAsUsedAsync(storedToken);
+
+            return user;
         }
     }
 }

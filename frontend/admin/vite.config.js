@@ -1,16 +1,18 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import path from "path";
+import vueDevTools from "vite-plugin-vue-devtools";
+import { fileURLToPath, URL } from "node:url";
 
-// https://vite.dev/config/
-export default defineConfig({
-    server: {
-        port: 4000,
-    },
-    plugins: [vue()],
-    resolve: {
-        alias: {
-            "@": path.resolve(__dirname, "./src"),
-        },
-    },
+export default defineConfig(() => {
+	return {
+		server: {
+			port: 4000,
+		},
+		plugins: [vue(), vueDevTools()],
+		resolve: {
+			alias: {
+				"@": fileURLToPath(new URL("./src", import.meta.url)),
+			},
+		},
+	};
 });

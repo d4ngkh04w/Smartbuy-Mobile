@@ -1,5 +1,4 @@
 using api.DTOs.Brand;
-using api.DTOs.ProductLine;
 using api.Models;
 
 namespace api.Mappers

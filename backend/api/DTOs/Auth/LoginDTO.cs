@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using api.Annotations;
 
 namespace api.DTOs.Auth
 {
     public class LoginDTO
     {
         [Required(ErrorMessage = "Phone number is required")]
-        [RegularExpression(@"^[0-9]{10}$", ErrorMessage = "Invalid phone number")]
+        [VietnamesePhoneNumber]
         public string PhoneNumber { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Password is required")]

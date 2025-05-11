@@ -1,4 +1,6 @@
 using api.DTOs.Order;
+using api.Exceptions;
+using api.Helpers;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +9,6 @@ namespace api.Controllers
 {
     [Route("api/v1/order")]
     [ApiController]
-    [Authorize]
     public class OrderController : ControllerBase
     {
         private readonly IOrderService _orderService;
@@ -17,164 +18,69 @@ namespace api.Controllers
             _orderService = orderService;
         }
 
-        private Guid GetCurrentUserId()
-        {
-            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "id")?.Value;
-            if (userIdClaim == null)
-                return Guid.Empty;
-
-            return Guid.Parse(userIdClaim);
-        }
-
         [HttpGet]
-        [Authorize(Roles = "admin")]
+        [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
         public async Task<IActionResult> GetAllOrders()
         {
-            var result = await _orderService.GetAllOrdersAsync();
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new
-            {
-                Message = "Orders retrieved successfully",
-                result.Orders
-            });
+            var orders = await _orderService.GetAllOrdersAsync();
+            return ApiResponseHelper.Success("Orders retrieved successfully", orders);
         }
 
         [HttpGet("me")]
-        [Authorize(Roles = "user")]
+        [Authorize(AuthenticationSchemes = "user", Roles = "user")]
         public async Task<IActionResult> GetUserOrders()
         {
-            var userId = GetCurrentUserId();
+            var userId = HttpContextHelper.CurrentUserId;
             if (userId == Guid.Empty)
-                return Unauthorized(new { Message = "User not authenticated" });
+                throw new UnauthorizedException();
 
-            var result = await _orderService.GetOrdersByUserIdAsync(userId);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new
-            {
-                Message = "User orders retrieved successfully",
-                result.Orders
-            });
+            var orders = await _orderService.GetOrdersByUserIdAsync(userId);
+            return ApiResponseHelper.Success("User orders retrieved successfully", orders);
         }
 
         [HttpGet("{id:guid}")]
+        [Authorize(AuthenticationSchemes = "smart", Roles = "admin,user")]
         public async Task<IActionResult> GetOrderById([FromRoute] Guid id)
         {
             // Kiểm tra xem người dùng có phải là admin hay không hoặc nếu người dùng đang truy cập đơn hàng của chính họ
-            bool isAdmin = User.IsInRole("admin");
-            Guid userId = GetCurrentUserId();
+            bool isAdmin = HttpContextHelper.CurrentUserRole == "admin";
+            Guid userId = HttpContextHelper.CurrentUserId;
 
-            var result = await _orderService.GetOrderByIdAsync(id);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Order not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
+            var order = await _orderService.GetOrderByIdAsync(id);
 
             // Xác minh người dùng có quyền truy cập vào đơn hàng này hay không
-            if (!isAdmin && result.Order?.UserId != userId)
+            if (!isAdmin && order.UserId != userId)
             {
-                return Forbid();
+                throw new ForbiddenException();
             }
-
-            return Ok(new
-            {
-                Message = "Order retrieved successfully",
-                result.Order
-            });
+            return ApiResponseHelper.Success("Order retrieved successfully", order);
         }
 
         [HttpPost]
-        [Authorize(Roles = "user")]
+        [Authorize(AuthenticationSchemes = "user", Roles = "user")]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDTO createOrderDTO)
         {
-            var userId = GetCurrentUserId();
+            var userId = HttpContextHelper.CurrentUserId;
             if (userId == Guid.Empty)
                 return Unauthorized(new { Message = "User not authenticated" });
 
-            var result = await _orderService.CreateOrderAsync(createOrderDTO, userId);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return CreatedAtAction(nameof(GetOrderById),
-                                new { id = result.Order!.Id },
-                                new
-                                {
-                                    Message = "Order created successfully",
-                                    result.Order
-                                });
+            var order = await _orderService.CreateOrderAsync(createOrderDTO, userId);
+            return ApiResponseHelper.Created("Order created successfully", order);
         }
 
         [HttpPut("{id:guid}/status")]
-        [Authorize(Roles = "admin")]
+        [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
         public async Task<IActionResult> UpdateOrderStatus([FromRoute] Guid id, [FromBody] UpdateOrderStatusDTO updateOrderStatusDTO)
         {
-            var result = await _orderService.UpdateOrderStatusAsync(id, updateOrderStatusDTO);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Order not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new
-            {
-                Message = "Order status updated successfully",
-                result.Order
-            });
+            var order = await _orderService.UpdateOrderStatusAsync(id, updateOrderStatusDTO);
+            return ApiResponseHelper.Success("Order status updated successfully", order);
         }
 
         [HttpDelete("{id:guid}")]
-        [Authorize(Roles = "admin")]
+        [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
         public async Task<IActionResult> DeleteOrder([FromRoute] Guid id)
         {
-            var result = await _orderService.DeleteOrderAsync(id);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = "Order not found" }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
+            await _orderService.DeleteOrderAsync(id);
             return NoContent();
         }
     }

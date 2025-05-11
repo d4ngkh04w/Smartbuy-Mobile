@@ -1,3 +1,4 @@
+using api.Helpers;
 using api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,7 +24,6 @@ namespace api.Database
         public DbSet<ProductTag> ProductTags { get; set; } = null!;
         public DbSet<Cart> Carts { get; set; } = null!;
         public DbSet<CartItem> CartItems { get; set; } = null!;
-        public DbSet<CarouselImage> CarouselImages { get; set; } = null!;
         public DbSet<Comment> Comments { get; set; } = null!;
         public DbSet<Order> Orders { get; set; } = null!;
         public DbSet<OrderItem> OrderItems { get; set; } = null!;
@@ -125,14 +125,26 @@ namespace api.Database
                 .HasForeignKey(ci => ci.CartId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            builder.Entity<CarouselImage>()
-                .HasKey(c => c.Id);
-
             builder.Entity<Comment>()
                 .HasOne(c => c.Parent)
                 .WithMany()
                 .HasForeignKey(c => c.ParentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Thêm tài khoản admin
+            builder.Entity<User>().HasData(
+                new User
+                {
+                    Email = ConfigHelper.Email,
+                    EmailConfirmed = true,
+                    PhoneNumber = ConfigHelper.AdminPhoneNumber,
+                    PhoneNumberConfirmed = true,
+                    Password = BCrypt.Net.BCrypt.HashPassword(ConfigHelper.AdminPassword),
+                    Name = ConfigHelper.AdminName,
+                    Role = "admin",
+                    CreatedAt = DateTime.Now,
+                }
+            );
 
             base.OnModelCreating(builder);
         }

@@ -1,4 +1,6 @@
 using api.DTOs.Auth;
+using api.Exceptions;
+using api.Helpers;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,124 +9,99 @@ namespace api.Controllers
 {
     [Route("api/v1/auth")]
     [ApiController]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "smart", Roles = "admin,user")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
         private readonly ITokenService _tokenService;
-        private readonly IConfiguration _config;
 
-        public AuthController(IAuthService authService, ITokenService tokenService, IConfiguration config)
+        public AuthController(IAuthService authService, ITokenService tokenService)
         {
             _authService = authService;
             _tokenService = tokenService;
-            _config = config;
         }
 
         [HttpPost("refresh-token")]
         [AllowAnonymous]
         public async Task<IActionResult> RefreshToken()
         {
-            var refreshToken = Request.Cookies["refreshToken"];
-            if (string.IsNullOrEmpty(refreshToken))
-                return Unauthorized(new { Message = "Refresh token is missing" });
-
-            var result = await _tokenService.ValidateRefreshToken(refreshToken);
-            if (result.Success)
+            if (HttpContextHelper.UserOrigin.Contains(ConfigHelper.AdminUrl))
             {
-                Response.Cookies.Append("refreshToken", result.Token!.RefreshToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddDays(int.Parse(_config["JWT:RefreshTokenExpiry"]!)),
-                });
-                Response.Cookies.Append("token", result.Token!.Token, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Path = "/",
-                    Expires = DateTimeOffset.Now.AddMinutes(int.Parse(_config["JWT:Expire"]!)),
-                });
-                return Ok(new
-                {
-                    Message = "Token refreshed successfully",
-                });
+                var adminRefreshToken = CookieHelper.AdminRefreshToken;
+                if (string.IsNullOrEmpty(adminRefreshToken))
+                    throw new UnauthorizedException("Refresh token is missing");
+                var token = await _tokenService.ValidateRefreshToken(adminRefreshToken, "admin");
+                CookieHelper.AdminAccessToken = token.AccessToken;
+                CookieHelper.AdminRefreshToken = token.RefreshToken;
+            }
+            else if (HttpContextHelper.UserOrigin.Contains(ConfigHelper.UserUrl))
+            {
+                var userRefreshToken = CookieHelper.UserRefreshToken;
+                if (string.IsNullOrEmpty(userRefreshToken))
+                    throw new UnauthorizedException("Refresh token is missing");
+                var token = await _tokenService.ValidateRefreshToken(userRefreshToken, "user");
+                CookieHelper.UserAccessToken = token.AccessToken;
+                CookieHelper.UserRefreshToken = token.RefreshToken;
             }
 
-            return Unauthorized(new { Message = result.ErrorMessage });
+            return ApiResponseHelper.Success<object>("Token refreshed successfully", null);
         }
 
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
-            var refreshToken = Request.Cookies["refreshToken"];
-            if (!string.IsNullOrEmpty(refreshToken))
+            if (HttpContextHelper.UserOrigin.Contains(ConfigHelper.AdminUrl))
             {
-                await _tokenService.RevokeRefreshToken(refreshToken);
+                var adminRefreshToken = CookieHelper.AdminRefreshToken;
+                if (!string.IsNullOrEmpty(adminRefreshToken))
+                {
+                    await _tokenService.RevokeRefreshToken(adminRefreshToken);
+                    CookieHelper.RemoveAuthAdminTokens();
+                }
             }
-
-            Response.Cookies.Delete("token");
-            Response.Cookies.Delete("refreshToken");
-
-            return Ok(new { Message = "Logged out successfully" });
+            else if (HttpContextHelper.UserOrigin.Contains(ConfigHelper.UserUrl))
+            {
+                var userRefreshToken = CookieHelper.UserRefreshToken;
+                if (!string.IsNullOrEmpty(userRefreshToken))
+                {
+                    await _tokenService.RevokeRefreshToken(userRefreshToken);
+                    CookieHelper.RemoveAuthUserTokens();
+                }
+            }
+            else
+            {
+                CookieHelper.RemoveAuthAdminTokens();
+                CookieHelper.RemoveAuthUserTokens();
+            }
+            return ApiResponseHelper.Success<object>("Logged out successfully", null);
         }
 
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDTO forgotPasswordDto)
         {
-            var result = await _authService.ForgotPasswordAsync(forgotPasswordDto);
-
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new { Message = "If the email address exists in our system, we will send a password reset link." });
+            await _authService.ForgotPasswordAsync(forgotPasswordDto);
+            return ApiResponseHelper.Success<object>("If the email address exists in our system, we will send a password reset link", null);
         }
 
         [HttpPost("reset-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDTO resetPasswordDto)
         {
-            var result = await _authService.ResetPasswordAsync(resetPasswordDto);
-
-            if (!result.Success && result.ErrorMessage != null && result.ErrorMessage.Contains("Error", StringComparison.OrdinalIgnoreCase))
-            {
-                return BadRequest(new { Message = result.ErrorMessage });
-            }
-
-            return Ok(new { Message = "Password has been reset successfully. You can now log in with your new password." });
+            await _authService.ResetPasswordAsync(resetPasswordDto);
+            return ApiResponseHelper.Success<object>("Password has been reset successfully. You can now log in with your new password", null);
         }
 
         [HttpPost("change-password")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO changePasswordDto)
         {
-            var userId = User.Claims.FirstOrDefault(c => c.Type == "id")?.Value;
-            if (userId == null)
+            var userId = HttpContextHelper.CurrentUserId;
+            if (userId == Guid.Empty)
                 return Unauthorized(new { Message = "User not authenticated" });
 
-            var result = await _authService.ChangePasswordAsync(changePasswordDto, Guid.Parse(userId));
+            await _authService.ChangePasswordAsync(changePasswordDto, userId);
 
-            if (!result.Success && result.ErrorMessage != null)
-            {
-                return result.ErrorMessage switch
-                {
-                    string msg when msg.Contains("User not found", StringComparison.OrdinalIgnoreCase) => NotFound(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Incorrect", StringComparison.OrdinalIgnoreCase) => BadRequest(new { Message = result.ErrorMessage }),
-                    string msg when msg.Contains("Error", StringComparison.OrdinalIgnoreCase) => StatusCode(500, new { Message = result.ErrorMessage }),
-                    _ => BadRequest(new { Message = result.ErrorMessage })
-                };
-            }
-
-            return Ok(new { Message = "Password changed successfully" });
+            return ApiResponseHelper.Success<object>("Password changed successfully", null);
         }
     }
 }

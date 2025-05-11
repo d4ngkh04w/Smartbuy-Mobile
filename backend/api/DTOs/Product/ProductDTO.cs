@@ -4,7 +4,7 @@ namespace api.DTOs.Product
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
-        public int Quantity { get; set; }
+        public int Stock { get; set; }
         public decimal ImportPrice { get; set; }
         public decimal SalePrice { get; set; }
         public string Description { get; set; } = string.Empty;

@@ -10,5 +10,8 @@ namespace api.DTOs.Order
         public decimal Discount { get; set; }
         public int ProductId { get; set; }
         public ProductDTO? Product { get; set; }
+        public int ColorId { get; set; }
+        public string ColorName { get; set; } = string.Empty;
+        public string ColorImage { get; set; } = string.Empty;
     }
 }

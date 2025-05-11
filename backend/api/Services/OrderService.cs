@@ -1,4 +1,5 @@
 using api.DTOs.Order;
+using api.Exceptions;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
@@ -22,199 +23,165 @@ namespace api.Services
             _cartRepository = cartRepository;
         }
 
-        public async Task<(bool Success, string? ErrorMessage, OrderDTO? Order)> CreateOrderAsync(CreateOrderDTO orderDTO, Guid userId)
+        public async Task<OrderDTO> CreateOrderAsync(CreateOrderDTO orderDTO, Guid userId)
         {
-            try
+            if (orderDTO.Items == null || !orderDTO.Items.Any())
             {
-                Console.WriteLine("Test");
-                if (orderDTO.Items == null || !orderDTO.Items.Any())
-                {
-                    return (false, "Order must contain at least one item", null);
-                }
+                throw new BadRequestException("Order must contain at least one item");
+            }
 
-                // Tạo order mới
-                var order = new Order
+            // Tạo order mới
+            var order = new Order
+            {
+                UserId = userId,
+                Status = "Chờ xác nhận",
+                PaymentMethod = orderDTO.PaymentMethod,
+                OrderDate = DateTime.Now,
+                OrderItems = new List<OrderItem>()
+            };
+
+            decimal totalAmount = 0;
+            int totalItems = 0;
+
+            foreach (var item in orderDTO.Items)
+            {
+                var product = await _productRepository.GetByIdAsync(item.ProductId);
+                if (product == null)
+                    throw new NotFoundException($"Product with ID {item.ProductId} not found");
+
+                if (!product.IsActive)
+                    throw new BadRequestException($"Product '{product.Name}' is no longer available");
+
+                // Find the specific color
+                var color = product.Colors.FirstOrDefault(c => c.Id == item.ColorId);
+                if (color == null)
+                    throw new NotFoundException($"Color with ID {item.ColorId} not found for product '{product.Name}'");
+
+                // Check if there's enough quantity for the selected color
+                if (color.Quantity < item.Quantity)
+                    throw new BadRequestException($"Not enough quantity available for product '{product.Name}' in the selected color");
+
+                // Tạo order item
+                var orderItem = new OrderItem
                 {
-                    UserId = userId,
-                    Status = "Chờ xác nhận",
-                    PaymentMethod = orderDTO.PaymentMethod,
-                    OrderDate = DateTime.Now,
-                    ShippingFee = orderDTO.ShippingFee,
-                    OrderItems = new List<OrderItem>()
+                    ProductId = item.ProductId,
+                    ColorId = item.ColorId,
+                    Quantity = item.Quantity,
+                    Price = product.SalePrice,
+                    Discount = 0 // Update later
                 };
 
-                Console.WriteLine("Test");
+                // Update total
+                totalAmount += orderItem.Price * orderItem.Quantity;
+                totalItems += item.Quantity;
 
-                decimal totalAmount = 0;
+                // Add item vào order
+                order.OrderItems.Add(orderItem);
 
-                foreach (var item in orderDTO.Items)
-                {
-                    var product = await _productRepository.GetByIdAsync(item.ProductId);
-                    if (product == null)
-                        return (false, $"Product with ID {item.ProductId} not found", null);
-
-                    if (!product.IsActive)
-                        return (false, $"Product '{product.Name}' is no longer available", null);
-
-                    if (product.Quantity < item.Quantity)
-                        return (false, $"Not enough quantity available for product '{product.Name}'", null);
-
-                    // Tạo order item
-                    var orderItem = new OrderItem
-                    {
-                        ProductId = item.ProductId,
-                        Quantity = item.Quantity,
-                        Price = product.SalePrice,
-                        Discount = 0 // Update later
-                    };
-
-                    // Update total
-                    totalAmount += orderItem.Price * orderItem.Quantity;
-
-                    // Add item vào order
-                    order.OrderItems.Add(orderItem);
-
-                    // Update số lượng sản phẩm
-                    product.Quantity -= item.Quantity;
-                    product.Sold += item.Quantity;
-                    await _productRepository.UpdateAsync(product);
-                    Console.WriteLine("Test1");
-                }
-
-                Console.WriteLine("Test");
-
-                // Set tổng tiền cho order
-                order.TotalAmount = totalAmount + orderDTO.ShippingFee;
-
-                // Lưu order
-                Console.WriteLine("Test2");
-                var createdOrder = await _orderRepository.CreateOrderAsync(order);
-                Console.WriteLine("Test3");
-                // Xóa item trong giỏ hàng của người dùng sau khi đặt hàng thông qua giỏ hàng
-                var cart = await _cartRepository.GetCartByUserIdAsync(userId);
-                if (cart != null)
-                {
-                    await _cartRepository.RemoveAllCartItemsAsync(cart.Id);
-                }
-
-                return (true, null, createdOrder.ToOrderDTO());
+                // Update số lượng sản phẩm cho màu cụ thể
+                color.Quantity -= item.Quantity;
+                product.Sold += item.Quantity;
+                await _productRepository.UpdateAsync(product);
             }
-            catch (Exception)
+
+            decimal shippingFee = CalculateShippingFee(totalAmount);
+            order.ShippingFee = shippingFee;
+
+            // Set tổng tiền cho order
+            order.TotalAmount = totalAmount + shippingFee;
+
+            // Lưu order
+            var createdOrder = await _orderRepository.CreateOrderAsync(order);
+
+            // Xóa item trong giỏ hàng của người dùng sau khi đặt hàng thông qua giỏ hàng
+            var cart = await _cartRepository.GetCartByUserIdAsync(userId);
+            if (cart != null)
             {
-                return (false, "Error creating order", null);
+                await _cartRepository.RemoveAllCartItemsAsync(cart.Id);
+            }
+
+            return createdOrder.ToOrderDTO();
+        }
+
+        private decimal CalculateShippingFee(decimal orderTotal)
+        {
+            decimal baseShippingFee = 30_000; // Phí vận chuyển cơ bản
+            decimal discountThreshold = 5_000_000; // Giảm 50% phí vận chuyển cho đơn hàng trên 5 triệu
+            decimal freeShippingThreshold = 10_000_000; // Miễn phí vận chuyển cho đơn hàng trên 10 triệu
+
+            if (orderTotal >= freeShippingThreshold)
+                return 0;
+
+            // Phí vận chuyển cơ bản
+            decimal shippingFee = baseShippingFee;
+
+            // Giảm 50% phí vận chuyển nếu đơn hàng trên ngưỡng giảm giá
+            if (orderTotal >= discountThreshold && orderTotal < freeShippingThreshold)
+            {
+                shippingFee *= 0.5m;
+            }
+
+            return shippingFee;
+        }
+
+        public async Task DeleteOrderAsync(Guid id)
+        {
+            var result = await _orderRepository.DeleteOrderAsync(id);
+            if (!result)
+            {
+                throw new NotFoundException("Order not found");
             }
         }
 
-        public async Task<(bool Success, string? ErrorMessage)> DeleteOrderAsync(Guid id)
+        public async Task<IEnumerable<OrderDTO>> GetAllOrdersAsync()
         {
-            try
+            var orders = await _orderRepository.GetAllOrdersAsync();
+            if (orders == null || !orders.Any())
             {
-                var result = await _orderRepository.DeleteOrderAsync(id);
-                if (!result)
-                {
-                    return (false, "Order not found");
-                }
+                throw new NotFoundException("Not found any orders");
+            }
 
-                return (true, null);
-            }
-            catch (Exception)
-            {
-                return (false, "Error deleting order");
-            }
+            return orders.Select(o => o.ToOrderDTO());
         }
 
-        public async Task<(bool Success, string? ErrorMessage, IEnumerable<OrderDTO>? Orders)> GetAllOrdersAsync()
+        public async Task<OrderDTO> GetOrderByIdAsync(Guid id)
         {
-            try
-            {
-                var orders = await _orderRepository.GetAllOrdersAsync();
-                if (orders == null || !orders.Any())
-                {
-                    return (false, "Not found any orders", null);
-                }
-
-                var orderDTOs = orders.Select(o => o.ToOrderDTO()).ToList();
-                return (true, null, orderDTOs);
-            }
-            catch (Exception)
-            {
-                return (false, "Error retrieving orders", null);
-            }
+            var order = await _orderRepository.GetOrderByIdAsync(id) ?? throw new NotFoundException("Order not found");
+            return order.ToOrderDTO();
         }
 
-        public async Task<(bool Success, string? ErrorMessage, OrderDTO? Order)> GetOrderByIdAsync(Guid id)
+        public async Task<IEnumerable<OrderDTO>> GetOrdersByUserIdAsync(Guid userId)
         {
-            try
+            var orders = await _orderRepository.GetOrdersByUserIdAsync(userId);
+            if (orders == null || !orders.Any())
             {
-                var order = await _orderRepository.GetOrderByIdAsync(id);
-                if (order == null)
-                {
-                    return (false, "Order not found", null);
-                }
+                throw new NotFoundException("Not found any orders for you");
+            }
 
-                return (true, null, order.ToOrderDTO());
-            }
-            catch (Exception)
-            {
-                return (false, "Error retrieving order", null);
-            }
+            return orders.Select(o => o.ToOrderDTO());
         }
 
-        public async Task<(bool Success, string? ErrorMessage, IEnumerable<OrderDTO>? Orders)> GetOrdersByUserIdAsync(Guid userId)
+        public async Task<OrderDTO> UpdateOrderStatusAsync(Guid id, UpdateOrderStatusDTO updateOrderStatusDTO)
         {
-            try
+            var order = await _orderRepository.GetOrderByIdAsync(id) ?? throw new NotFoundException("Order not found");
+
+            // Kiểm tra trạng thái hiện tại và trạng thái mới có hợp lệ không
+            if (!IsValidStatusTransition(order.Status, updateOrderStatusDTO.Status))
             {
-                var orders = await _orderRepository.GetOrdersByUserIdAsync(userId);
-                if (orders == null || !orders.Any())
-                {
-                    return (false, "Not found any orders for you", null);
-                }
-
-                var orderDTOs = orders.Select(o => o.ToOrderDTO()).ToList();
-                return (true, null, orderDTOs);
+                throw new BadRequestException($"Invalid status transition from '{order.Status}' to '{updateOrderStatusDTO.Status}'");
             }
-            catch (Exception)
+
+            // Update order status
+            order.Status = updateOrderStatusDTO.Status;
+
+            if (updateOrderStatusDTO.Status == "Đã giao hàng")
             {
-                return (false, "Error retrieving user's orders", null);
+                order.DeliveryDate = updateOrderStatusDTO.DeliveryDate ?? DateTime.Now;
             }
-        }
 
-        public async Task<(bool Success, string? ErrorMessage, OrderDTO? Order)> UpdateOrderStatusAsync(Guid id, UpdateOrderStatusDTO updateOrderStatusDTO)
-        {
-            try
-            {
-                var order = await _orderRepository.GetOrderByIdAsync(id);
-                if (order == null)
-                {
-                    return (false, "Order not found", null);
-                }
+            var result = await _orderRepository.UpdateOrderAsync(order);
 
-                // Kiểm tra trạng thái hiện tại và trạng thái mới có hợp lệ không
-                if (!IsValidStatusTransition(order.Status, updateOrderStatusDTO.Status))
-                {
-                    return (false, $"Invalid status transition from '{order.Status}' to '{updateOrderStatusDTO.Status}'", null);
-                }
-
-                // Update order status
-                order.Status = updateOrderStatusDTO.Status;
-
-                if (updateOrderStatusDTO.Status == "Đã giao hàng")
-                {
-                    order.DeliveryDate = updateOrderStatusDTO.DeliveryDate ?? DateTime.Now;
-                }
-
-                var result = await _orderRepository.UpdateOrderAsync(order);
-                if (!result)
-                {
-                    return (false, "Failed to update order status", null);
-                }
-
-                return (true, null, order.ToOrderDTO());
-            }
-            catch (Exception)
-            {
-                return (false, "Error updating order status", null);
-            }
+            return result.ToOrderDTO();
         }
 
         private bool IsValidStatusTransition(string currentStatus, string newStatus)

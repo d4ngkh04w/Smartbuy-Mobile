@@ -8,9 +8,6 @@ namespace api.DTOs.Order
         public string PaymentMethod { get; set; } = "COD";
 
         [Required]
-        public decimal ShippingFee { get; set; } = 0;
-
-        [Required]
         public ICollection<CreateOrderItemDTO> Items { get; set; } = new List<CreateOrderItemDTO>();
     }
 }

@@ -28,8 +28,22 @@ namespace api.Mappers
                 Id = cartItem.Id,
                 Quantity = cartItem.Quantity,
                 ProductId = cartItem.ProductId,
+                ColorId = cartItem.ColorId,
                 Product = cartItem.Product?.ToProductDTO()
             };
+
+            // Set color information if available
+            if (cartItem.Color != null)
+            {
+                cartItemDto.ColorName = cartItem.Color.Name;
+
+                // Get the first image from the color, if there's any
+                var firstImage = cartItem.Color.Images.FirstOrDefault();
+                if (firstImage != null)
+                {
+                    cartItemDto.ColorImage = firstImage.ImagePath;
+                }
+            }
 
             // Calculate subtotal based on product price and quantity
             cartItemDto.SubTotal = cartItem.Product != null

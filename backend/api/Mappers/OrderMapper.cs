@@ -24,15 +24,31 @@ namespace api.Mappers
 
         public static OrderItemDTO ToOrderItemDTO(this OrderItem item)
         {
-            return new OrderItemDTO
+            var orderItemDto = new OrderItemDTO
             {
                 Id = item.Id,
                 Quantity = item.Quantity,
                 Price = item.Price,
                 Discount = item.Discount,
                 ProductId = item.ProductId,
-                Product = item.Product?.ToProductDTO()
+                Product = item.Product?.ToProductDTO(),
+                ColorId = item.ColorId
             };
+
+            // Set color information if available
+            if (item.Color != null)
+            {
+                orderItemDto.ColorName = item.Color.Name;
+
+                // Get the first image from the color, if there's any
+                var firstImage = item.Color.Images.FirstOrDefault();
+                if (firstImage != null)
+                {
+                    orderItemDto.ColorImage = firstImage.ImagePath;
+                }
+            }
+
+            return orderItemDto;
         }
     }
 }

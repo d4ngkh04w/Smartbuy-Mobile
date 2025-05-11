@@ -9,7 +9,7 @@ namespace api.Interfaces.Repositories
         Task<List<Comment>> GetRepliesByParentIdAsync(int parentId);
         Task<int> GetCommentsCountByProductIdAsync(int productId);
         Task<Comment> CreateCommentAsync(Comment comment);
-        Task<bool> UpdateCommentAsync(Comment comment);
+        Task<Comment> UpdateCommentAsync(Comment comment);
         Task<bool> DeleteCommentAsync(int id);
         Task<bool> AddReactionAsync(int commentId, Guid userId, bool isLike);
         Task<double?> GetProductAverageRatingAsync(int productId);

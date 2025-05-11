@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using api.Extensions;
 
 namespace api.DTOs.Product
 {
@@ -9,10 +8,6 @@ namespace api.DTOs.Product
         [StringLength(100, ErrorMessage = "Name must be less than 100 characters")]
         [RegularExpression(@"^[a-zA-Z0-9\s\-\/]+$", ErrorMessage = "Name can only contain letters, numbers, spaces, hyphens, and slashes")]
         public string Name { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Quantity is required")]
-        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be greater than 0")]
-        public int Quantity { get; set; }
 
         [Required(ErrorMessage = "Import price is required")]
         [Range(0.01, 999999999.99, ErrorMessage = "Import price must be greater than 0")]
@@ -24,10 +19,6 @@ namespace api.DTOs.Product
 
         [StringLength(2000, ErrorMessage = "Description must be less than 2000 characters")]
         public string? Description { get; set; } = string.Empty;
-
-        // [Required(ErrorMessage = "Brand ID is required")]
-        // [Range(1, int.MaxValue, ErrorMessage = "Brand ID must be greater than 0")]
-        // public int BrandId { get; set; }
 
         [Required(ErrorMessage = "ProductLine ID is required")]
         [Range(1, int.MaxValue, ErrorMessage = "ProductLine ID must be greater than 0")]
@@ -62,20 +53,5 @@ namespace api.DTOs.Product
         public int? SimSlots { get; set; }
 
         public List<int>? TagIds { get; set; }
-
-        // Màu sắc và hình ảnh không còn là bắt buộc
-        // public List<ColorDataDTO>? ColorData { get; set; } = new List<ColorDataDTO>();
     }
-
-    // public class ColorDataDTO
-    // {
-    //     [Required(ErrorMessage = "Color name is required")]
-    //     [StringLength(50, ErrorMessage = "Color name must be less than 50 characters")]
-    //     public string Name { get; set; } = string.Empty;
-
-    //     [AllowFileExtension(extensions: [".jpg", ".jpeg", ".png"], ErrorMessage = "Images must be valid images (jpg, jpeg, png)")]
-    //     public List<IFormFile> Images { get; set; } = new List<IFormFile>();
-
-    //     public int MainImageIndex { get; set; } = 0;
-    // }
 }
