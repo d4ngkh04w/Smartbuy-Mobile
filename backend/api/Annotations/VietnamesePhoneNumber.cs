@@ -27,6 +27,8 @@ namespace api.Annotations
         {
             if (!IsValid(value))
                 return new ValidationResult(ErrorMessage ?? "Invalid Vietnamese phone number format");
+            if (value == null)
+                return ValidationResult.Success!;
 
             string phoneNumber = value!.ToString()!;
             string prefix = phoneNumber.Substring(0, 3);
