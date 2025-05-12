@@ -1,5 +1,6 @@
 using api.DTOs.ProductLine;
 using api.Exceptions;
+using api.Helpers;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
@@ -14,13 +15,20 @@ namespace api.Services
         private readonly IBrandRepository _brandRepository;
         private readonly IProductRepository _productRepository;
         private readonly IWebHostEnvironment _env;
-
-        public ProductLineService(IProductLineRepository productLineRepository, IProductRepository productRepository, IBrandRepository brandRepository, IWebHostEnvironment webEnvironment)
+        private readonly ICacheService _cacheService;
+        private readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(25);
+        public ProductLineService(
+            IProductLineRepository productLineRepository,
+            IProductRepository productRepository,
+            IBrandRepository brandRepository,
+            IWebHostEnvironment webEnvironment,
+            ICacheService cacheService)
         {
             _productLineRepository = productLineRepository;
             _brandRepository = brandRepository;
             _productRepository = productRepository;
             _env = webEnvironment;
+            _cacheService = cacheService;
         }
 
         public async Task<ProductLineDTO> CreateProductLineAsync(CreateProductLineDTO productLineDTO)
@@ -40,6 +48,8 @@ namespace api.Services
             }
 
             var createdProductLine = await _productLineRepository.CreateProductLineAsync(productLine);
+
+            _cacheService.RemoveAllProductLinesCache();
 
             return createdProductLine.ToDTO();
         }
@@ -84,30 +94,52 @@ namespace api.Services
             }
 
             await _productLineRepository.DeleteProductLineAsync(productLine);
-        }
 
+            _cacheService.RemoveProductLineCache(id);
+            _cacheService.RemoveAllProductLinesCache();
+        }
         public async Task<ProductLineDTO> GetProductLineByIdAsync(int id, ProductLineQuery? query = null)
         {
-            var productLine = await _productLineRepository.GetProductLineByIdAsync(id, query) ?? throw new NotFoundException("Product line not found");
-            return productLine.ToDTO();
-        }
+            string cacheKey = CacheKeyManager.GetProductLineKey(id, query);
 
+            if (_cacheService.TryGetValue(cacheKey, out ProductLineDTO? cachedProductLine) && cachedProductLine != null)
+            {
+                return cachedProductLine;
+            }
+
+            var productLine = await _productLineRepository.GetProductLineByIdAsync(id, query) ?? throw new NotFoundException("Product line not found");
+            var productLineDto = productLine.ToDTO();
+
+            _cacheService.Set(cacheKey, productLineDto, _cacheDuration);
+
+            return productLineDto;
+        }
         public async Task<IEnumerable<ProductLineDTO>> GetProductLinesAsync(ProductLineQuery query)
         {
+            string cacheKey = CacheKeyManager.GetAllProductLinesKey(query);
+
+            if (_cacheService.TryGetValue(cacheKey, out IEnumerable<ProductLineDTO>? cachedProductLines) && cachedProductLines != null)
+            {
+                return cachedProductLines;
+            }
+
             var productLines = await _productLineRepository.GetProductLinesAsync(query);
             if (productLines == null || !productLines.Any())
             {
                 throw new NotFoundException("Not found any product lines");
             }
 
-            return productLines.Select(pl => pl.ToDTO());
+            var productLineDtos = productLines.Select(pl => pl.ToDTO()).ToList();
+
+            _cacheService.Set(cacheKey, productLineDtos, _cacheDuration);
+
+            return productLineDtos;
         }
 
         public async Task<ProductLineDTO> UpdateProductLineAsync(int id, UpdateProductLineDTO productLineDTO)
         {
             var productLine = await _productLineRepository.GetProductLineByIdAsync(id) ?? throw new NotFoundException("Product line not found");
 
-            // Chỉ cập nhật các trường hợp có trong DTO
             var newName = productLineDTO.Name?.Trim();
             if (!string.IsNullOrEmpty(newName))
             {
@@ -143,6 +175,9 @@ namespace api.Services
 
             var result = await _productLineRepository.UpdateProductLineAsync(productLine);
 
+            _cacheService.RemoveProductLineCache(id);
+            _cacheService.RemoveAllProductLinesCache();
+
             return result.ToDTO();
         }
 
@@ -176,6 +211,9 @@ namespace api.Services
                 }
             }
 
+            _cacheService.RemoveProductLineCache(id);
+            _cacheService.RemoveAllProductLinesCache();
+
             return productLine.ToDTO();
         }
 
@@ -204,6 +242,9 @@ namespace api.Services
                     }
                 }
             }
+
+            _cacheService.RemoveProductLineCache(id);
+            _cacheService.RemoveAllProductLinesCache();
 
             return productLine.ToDTO();
         }

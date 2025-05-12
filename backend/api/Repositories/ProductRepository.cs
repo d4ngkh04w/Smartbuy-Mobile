@@ -72,89 +72,18 @@ namespace api.Repositories
             return await _db.Products.AnyAsync(p => p.Name.ToLower() == name.ToLower());
         }
 
-        // public async Task<(List<Product> Items, int TotalItems)> GetPagedProductsAsync(
-        //     int page,
-        //     int pageSize,
-        //     string? search = null,
-        //     string? sortBy = "newest",
-        //     string? brand = null,
-        //     decimal? minPrice = null,
-        //     decimal? maxPrice = null)
-        // {
-        //     var query = _db.Products
-        //         .Include(p => p.Colors)
-        //             .ThenInclude(c => c.Images)
-        //         .Include(p => p.ProductLine)
-        //         .Where(p => p.IsActive)
-        //         .AsQueryable();
-
-        //     if (!string.IsNullOrWhiteSpace(search))
-        //     {
-        //         string lowerKey = search.Trim().ToLower();
-        //         query = query.Where(p =>
-        //             p.Name.ToLower().Contains(lowerKey));
-        //     }
-
-        //     if (!string.IsNullOrWhiteSpace(brand))
-        //     {
-        //         string lowerBrand = brand.Trim().ToLower();
-        //         var brandInDb = _db.Brands
-        //             .Where(b => b.Name.ToLower().Contains(lowerBrand))
-        //             .FirstOrDefault();
-
-        //         if (brandInDb != null)
-        //         {
-        //             query = query.Where(p => p.ProductLine!.BrandId == brandInDb.Id);
-        //         }
-
-        //     }
-
-
-        //     if (minPrice.HasValue)
-        //     {
-        //         query = query.Where(p => p.SalePrice >= minPrice.Value);
-        //     }
-
-        //     if (maxPrice.HasValue)
-        //     {
-        //         query = query.Where(p => p.SalePrice <= maxPrice.Value);
-        //     }
-
-        //     switch (sortBy)
-        //     {
-        //         case "oldest":
-        //             query = query.OrderBy(p => p.CreatedAt);
-        //             break;
-        //         case "priceInc":
-        //             query = query.OrderBy(p => p.SalePrice);
-        //             break;
-        //         case "priceDesc":
-        //             query = query.OrderByDescending(p => p.SalePrice);
-        //             break;
-        //         default: // newest
-        //             query = query.OrderByDescending(p => p.CreatedAt);
-        //             break;
-        //     }
-
-        //     var totalItems = await query.CountAsync();
-
-        //     var items = await query
-        //         .Skip((page - 1) * pageSize)
-        //         .Take(pageSize)
-        //         .AsNoTracking()
-        //         .ToListAsync();
-
-        //     return (items, totalItems);
-        // }
-
         public async Task<(List<Product> Items, int TotalItems)> GetPagedProductsAsync(ProductQuery productQuery)
         {
             var query = _db.Products
                 .Include(p => p.Colors)
                     .ThenInclude(c => c.Images)
                 .Include(p => p.ProductLine)
-                .Where(p => p.IsActive)
                 .AsQueryable();
+
+            if (productQuery.IsActive.HasValue)
+            {
+                query = query.Where(p => p.IsActive == productQuery.IsActive.Value);
+            }
 
             if (!string.IsNullOrWhiteSpace(productQuery.Search))
             {
@@ -232,6 +161,21 @@ namespace api.Repositories
             await _db.ProductImages.AddAsync(image);
             await _db.SaveChangesAsync();
             return image;
+        }
+
+        public async Task<ProductColor?> GetProductColorAsync(int productId, int colorId)
+        {
+            return await _db.Colors
+                .Where(c => c.ProductId == productId && c.Id == colorId)
+                .Include(c => c.Images)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<ProductColor> UpdateColorAsync(ProductColor color)
+        {
+            _db.Colors.Update(color);
+            await _db.SaveChangesAsync();
+            return color;
         }
     }
 }

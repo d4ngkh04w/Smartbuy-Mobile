@@ -20,7 +20,6 @@ namespace api.Controllers
             _authService = authService;
             _tokenService = tokenService;
         }
-
         [HttpPost("refresh-token")]
         [AllowAnonymous]
         public async Task<IActionResult> RefreshToken()
@@ -42,6 +41,29 @@ namespace api.Controllers
                 var token = await _tokenService.ValidateRefreshToken(userRefreshToken, "user");
                 CookieHelper.UserAccessToken = token.AccessToken;
                 CookieHelper.UserRefreshToken = token.RefreshToken;
+            }
+            else if (HttpContextHelper.UserOrigin == "unknown" || string.IsNullOrEmpty(HttpContextHelper.UserOrigin))
+            {
+                var adminRefreshToken = CookieHelper.AdminRefreshToken;
+                if (!string.IsNullOrEmpty(adminRefreshToken))
+                {
+                    var adminToken = await _tokenService.ValidateRefreshToken(adminRefreshToken, "admin");
+                    CookieHelper.AdminAccessToken = adminToken.AccessToken;
+                    CookieHelper.AdminRefreshToken = adminToken.RefreshToken;
+                }
+
+                var userRefreshToken = CookieHelper.UserRefreshToken;
+                if (!string.IsNullOrEmpty(userRefreshToken))
+                {
+                    var userToken = await _tokenService.ValidateRefreshToken(userRefreshToken, "user");
+                    CookieHelper.UserAccessToken = userToken.AccessToken;
+                    CookieHelper.UserRefreshToken = userToken.RefreshToken;
+                }
+
+                if (string.IsNullOrEmpty(adminRefreshToken) && string.IsNullOrEmpty(userRefreshToken))
+                {
+                    throw new UnauthorizedException("Refresh token is missing");
+                }
             }
 
             return ApiResponseHelper.Success<object>("Token refreshed successfully", null);

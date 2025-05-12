@@ -60,10 +60,13 @@ builder.Services.AddAuthentication(options =>
 {
     options.ForwardDefaultSelector = context =>
     {
-        // string origin = context.Request.Headers.Origin.ToString();
         string origin = HttpContextHelper.UserOrigin;
 
-        if (!string.IsNullOrEmpty(origin) && origin.Contains(ConfigHelper.AdminUrl))
+        if (string.IsNullOrEmpty(origin) || origin.Contains("unknown"))
+        {
+            return "both";
+        }
+        else if (!string.IsNullOrEmpty(origin) && origin.Contains(ConfigHelper.AdminUrl))
         {
             return "admin";
         }
@@ -112,6 +115,48 @@ builder.Services.AddAuthentication(options =>
                 }
                 return Task.CompletedTask;
             },
+        };
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(ConfigHelper.JwtSecretKey)),
+            ValidIssuer = ConfigHelper.JwtIssuer,
+            ValidAudience = ConfigHelper.JwtAudience,
+        };
+    }
+)
+.AddJwtBearer("both",
+    options =>
+    {
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var adminToken = CookieHelper.AdminAccessToken;
+                if (!string.IsNullOrEmpty(adminToken))
+                {
+                    context.Token = adminToken;
+                    return Task.CompletedTask;
+                }
+
+                var userToken = CookieHelper.UserAccessToken;
+                if (!string.IsNullOrEmpty(userToken))
+                {
+                    context.Token = userToken;
+                }
+                return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = context =>
+            {
+                if (context.Exception != null && !string.IsNullOrEmpty(CookieHelper.AdminAccessToken) && !string.IsNullOrEmpty(CookieHelper.UserAccessToken))
+                {
+                }
+                return Task.CompletedTask;
+            }
         };
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -195,6 +240,13 @@ builder.Services.AddAuthentication(options =>
 //     };
 // });
 
+
+builder.Services.AddMemoryCache(options =>
+{
+    options.ExpirationScanFrequency = TimeSpan.FromMinutes(5);
+    options.SizeLimit = 15000;
+});
+
 // Đăng ký các repository và service
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -216,12 +268,9 @@ builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<ICacheService, CacheService>();
 
 var app = builder.Build();
-
-var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
-CookieHelper.Configure(httpContextAccessor);
-HttpContextHelper.Configure(httpContextAccessor);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -240,6 +289,9 @@ app.UseStaticFiles();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
+var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
+CookieHelper.Configure(httpContextAccessor);
+HttpContextHelper.Configure(httpContextAccessor);
 app.UseMiddleware<ErrorHandlerMiddleware>();
 app.UseMiddleware<LoggingMiddleware>();
 app.MapControllers();

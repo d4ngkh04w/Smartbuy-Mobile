@@ -72,6 +72,13 @@ namespace api.Controllers
             return ApiResponseHelper.Created("Product color created successfully", color);
         }
 
+        [HttpPut("{productId:int}/color/{colorId:int}")]
+        public async Task<IActionResult> UpdateProductColor([FromRoute] int productId, [FromRoute] int colorId, [FromForm] UpdateColorDTO productColorDTO)
+        {
+            var color = await _productService.UpdateProductColorAsync(productId, colorId, productColorDTO);
+            return ApiResponseHelper.Success("Product color updated successfully", color);
+        }
+
         [HttpPut("{id:int}/activate")]
         public async Task<IActionResult> ActivateProduct([FromRoute] int id)
         {

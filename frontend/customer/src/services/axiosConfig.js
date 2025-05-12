@@ -1,7 +1,7 @@
 import axios from "axios";
 import authService from "./authService";
 
-const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+const apiUrl = import.meta.env.VITE_API_URL;
 const instance = axios.create({
 	baseURL: apiUrl,
 	timeout: 10000,
@@ -10,6 +10,18 @@ const instance = axios.create({
 		"Content-Type": "application/json",
 	},
 });
+
+// Add request interceptor to correctly merge headers
+instance.interceptors.request.use(
+	(config) => {
+		// Save custom options from config to handle properly in the response interceptor
+		if (config.skipAuthRedirect) {
+			config.skipAuthRedirect = true;
+		}
+		return config;
+	},
+	(error) => Promise.reject(error)
+);
 
 // Add a response interceptor to handle token refresh
 instance.interceptors.response.use(
@@ -21,7 +33,15 @@ instance.interceptors.response.use(
 		}
 		if (originalRequest?.isRefreshRequest === true) {
 			console.error("Lỗi xác thực:", error);
-			window.location.href = "/login";
+			window.location.href = "/";
+			return Promise.reject(error);
+		}
+
+		// Kiểm tra nếu request đến từ header, không chuyển hướng
+		if (
+			originalRequest?.headers &&
+			originalRequest.headers["X-From-Header"] === "true"
+		) {
 			return Promise.reject(error);
 		}
 
@@ -38,7 +58,11 @@ instance.interceptors.response.use(
 				} catch (logoutError) {
 					console.error("Không thể đăng xuất:", logoutError);
 				}
-				window.location.href = "/login";
+
+				// Kiểm tra nếu yêu cầu đã được đánh dấu để bỏ qua chuyển hướng xác thực
+				if (!originalRequest?.skipAuthRedirect) {
+					window.location.href = "/";
+				}
 				return Promise.reject(refreshError);
 			}
 		}

@@ -9,5 +9,6 @@ namespace api.Queries
         public string? BrandName { get; set; } = null;
         public decimal? MinPrice { get; set; } = null;
         public decimal? MaxPrice { get; set; } = null;
+        public bool? IsActive { get; set; } = null;
     }
 }

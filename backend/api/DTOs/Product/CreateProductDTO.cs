@@ -6,7 +6,7 @@ namespace api.DTOs.Product
     {
         [Required(ErrorMessage = "Name is required")]
         [StringLength(100, ErrorMessage = "Name must be less than 100 characters")]
-        [RegularExpression(@"^[a-zA-Z0-9\s\-\/]+$", ErrorMessage = "Name can only contain letters, numbers, spaces, hyphens, and slashes")]
+        [RegularExpression(@"^[\p{L}\p{N}\s\-\/]+$", ErrorMessage = "Name can only contain letters, numbers, spaces, hyphens, and slashes")]
         public string Name { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Import price is required")]
@@ -24,7 +24,6 @@ namespace api.DTOs.Product
         [Range(1, int.MaxValue, ErrorMessage = "ProductLine ID must be greater than 0")]
         public int ProductLineId { get; set; }
 
-        // Thông số kỹ thuật không còn là bắt buộc
         [Range(1, 60, ErrorMessage = "Warranty must be between 1 and 60 months")]
         public int? Warranty { get; set; }
 

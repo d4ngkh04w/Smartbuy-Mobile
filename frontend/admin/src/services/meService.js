@@ -14,7 +14,7 @@ export const updateUserProfile = async (userInfo) => {
 				"Content-Type": "multipart/form-data",
 			},
 		})
-	).data.user; // Trả về thông tin người dùng đã cập nhật
+	).data.data; // Trả về thông tin người dùng đã cập nhật
 };
 
 // Auth services

@@ -278,14 +278,14 @@ const submitForm = async () => {
 			response = await updateProductLine(formData.value.id, data);
 			emitter.emit("show-notification", {
 				status: "success",
-				message: "Thêm mới dòng sản phẩm thành công",
+				message: "Cập nhật dòng sản phẩm thành công",
 			});
 		} else {
 			// Sử dụng hàm từ service thay vì axios trực tiếp
 			response = await createProductLine(data);
 			emitter.emit("show-notification", {
 				status: "success",
-				message: "Cập nhật dòng sản phẩm thành công",
+				message: "Thêm dòng sản phẩm thành công",
 			});
 		}
 

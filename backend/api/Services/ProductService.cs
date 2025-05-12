@@ -1,5 +1,6 @@
 using api.DTOs.Product;
 using api.Exceptions;
+using api.Helpers;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
@@ -14,30 +15,56 @@ namespace api.Services
         private readonly IProductRepository _productRepository;
         private readonly IProductLineRepository _productLineRepository;
         private readonly IWebHostEnvironment _env;
-
+        private readonly ICacheService _cacheService;
+        private readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(10);
+        private readonly TimeSpan _pagedCacheDuration = TimeSpan.FromMinutes(5);
         public ProductService(IProductRepository productRepository,
                               IProductLineRepository productLineRepository,
-                              IWebHostEnvironment webHostEnvironment)
+                              IWebHostEnvironment webHostEnvironment,
+                              ICacheService cacheService)
         {
             _productRepository = productRepository;
             _productLineRepository = productLineRepository;
             _env = webHostEnvironment;
+            _cacheService = cacheService;
         }
 
         public async Task<IEnumerable<ProductDTO>> GetProductsAsync()
         {
+            string cacheKey = CacheKeyManager.GetAllProductsKey();
+
+            if (_cacheService.TryGetValue(cacheKey, out IEnumerable<ProductDTO>? cachedProducts) && cachedProducts != null)
+            {
+                return cachedProducts;
+            }
+
             var products = await _productRepository.GetAllAsync();
 
             if (!products.Any())
                 return new List<ProductDTO>();
 
-            return products.Select(p => p.ToProductDTO());
+            var productDtos = products.Select(p => p.ToProductDTO()).ToList();
+
+            _cacheService.Set(cacheKey, productDtos, _cacheDuration);
+
+            return productDtos;
         }
 
         public async Task<ProductDTO> GetProductByIdAsync(int id)
         {
+            string cacheKey = CacheKeyManager.GetProductKey(id);
+
+            if (_cacheService.TryGetValue(cacheKey, out ProductDTO? cachedProduct) && cachedProduct != null)
+            {
+                return cachedProduct;
+            }
+
             var product = await _productRepository.GetByIdAsync(id) ?? throw new NotFoundException("Product not found");
-            return product.ToProductDTO();
+            var productDto = product.ToProductDTO();
+
+            _cacheService.Set(cacheKey, productDto, _cacheDuration);
+
+            return productDto;
         }
 
         public async Task<ProductDTO> CreateProductAsync(CreateProductDTO productDTO)
@@ -47,7 +74,6 @@ namespace api.Services
             else
                 productDTO.Name = productDTO.Name.Trim();
 
-            // Validate that product line exists
             var productLine = await _productLineRepository.GetProductLineByIdAsync(productDTO.ProductLineId) ?? throw new NotFoundException($"Product line with ID {productDTO.ProductLineId} not found");
             if (!productLine.IsActive)
                 throw new BadRequestException($"Product line with ID {productDTO.ProductLineId} is inactive");
@@ -55,7 +81,9 @@ namespace api.Services
             var product = productDTO.ToProductModel();
             product.Detail = productDTO.ToProductDetailModel();
 
-            var createdProduct = await _productRepository.CreateAsync(product);
+            var createdProduct = await _productRepository.CreateAsync(product);            // Xóa cache danh sách sản phẩm
+            _cacheService.RemoveAllProductsCache();
+
             return createdProduct.ToProductDTO();
         }
 
@@ -63,7 +91,6 @@ namespace api.Services
         {
             var product = await _productRepository.GetByIdAsync(id) ?? throw new NotFoundException("Product not found");
 
-            // Update basic info
             if (!string.IsNullOrEmpty(productDTO.Name?.Trim()))
                 product.Name = productDTO.Name.Trim();
 
@@ -110,170 +137,92 @@ namespace api.Services
                     product.Detail.SimSlots = productDTO.SimSlots.Value;
             }
 
-            // Save basic product changes first
-            await _productRepository.UpdateAsync(product);
+            var updatedProduct = await _productRepository.UpdateAsync(product);
 
-            // Handle color updates
-            if (productDTO.UpdateColorData != null && productDTO.UpdateColorData.Any())
+            return updatedProduct.ToProductDTO();
+        }
+
+        public async Task<ProductColorDTO> UpdateProductColorAsync(int productId, int colorId, UpdateColorDTO productColorDTO)
+        {
+            _ = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
+            var productColor = await _productRepository.GetProductColorAsync(productId, colorId) ?? throw new NotFoundException("Product color not found");
+
+            if (!string.IsNullOrEmpty(productColorDTO.Name?.Trim()))
             {
-                foreach (var colorData in productDTO.UpdateColorData)
+                if (productColor.Name == productColorDTO.Name.Trim())
+                    throw new AlreadyExistsException($"Color with name {productColorDTO.Name.Trim()} already exists for this product");
+
+                productColor.Name = productColorDTO.Name.Trim();
+            }
+
+            if (productColorDTO.Quantity.HasValue)
+                productColor.Quantity = productColorDTO.Quantity.Value;
+
+            if (productColorDTO.RemoveImageIds != null && productColorDTO.RemoveImageIds.Any())
+            {
+                foreach (var imageId in productColorDTO.RemoveImageIds)
                 {
-                    ProductColor? color = null;
-
-                    // If color has an ID, find and update the existing color
-                    if (colorData.Id.HasValue && colorData.Id.Value > 0)
+                    var image = productColor.Images.FirstOrDefault(i => i.Id == imageId);
+                    if (image != null)
                     {
-                        color = product.Colors.FirstOrDefault(c => c.Id == colorData.Id.Value);
-
-                        if (color != null && !string.IsNullOrEmpty(colorData.Name?.Trim()))
+                        var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
+                        if (!deletedImg)
                         {
-                            color.Name = colorData.Name.Trim();
-                            await _productRepository.UpdateAsync(product); // Update color name
+                            Console.WriteLine($"[WARN]: Failed to delete old image file: {image.ImagePath}");
                         }
-                    }
-                    // Otherwise create a new color
-                    else if (!string.IsNullOrEmpty(colorData.Name?.Trim()))
-                    {
-                        color = new ProductColor
-                        {
-                            Name = colorData.Name.Trim(),
-                            ProductId = product.Id
-                        };
-
-                        // Save the new color to get valid ID
-                        color = await _productRepository.AddColorAsync(color);
-                    }
-
-                    if (color != null)
-                    {
-                        // Process added images for this color
-                        if (colorData.AddImages != null && colorData.AddImages.Any())
-                        {
-                            for (int i = 0; i < colorData.AddImages.Count; i++)
-                            {
-                                var image = colorData.AddImages[i];
-                                var filePath = await ImageUtils.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024);
-
-                                var newImage = new ProductImage
-                                {
-                                    ImagePath = filePath,
-                                    IsMain = i == colorData.MainImageIndex && colorData.SetMainImage,
-                                    ColorId = color.Id
-                                };
-
-                                // Add image directly to database
-                                await _productRepository.AddImageAsync(newImage);
-                            }
-                        }
-
-                        // Process main image setting
-                        if (colorData.MainImageId.HasValue && colorData.SetMainImage)
-                        {
-                            // Get all images for this color from DB to ensure they're up to date
-                            var dbProduct = await _productRepository.GetByIdAsync(id);
-                            if (dbProduct != null)
-                            {
-                                var dbColor = dbProduct.Colors.FirstOrDefault(c => c.Id == color.Id);
-
-                                if (dbColor != null && dbColor.Images.Any())
-                                {
-                                    foreach (var image in dbColor.Images)
-                                    {
-                                        // Update IsMain status
-                                        image.IsMain = image.Id == colorData.MainImageId.Value;
-                                    }
-
-                                    // Save changes
-                                    await _productRepository.UpdateAsync(dbProduct);
-                                }
-                            }
-                        }
-
-                        // Process image deletion
-                        if (colorData.RemoveImageIds != null && colorData.RemoveImageIds.Any())
-                        {
-                            // Get fresh data from DB
-                            var dbProduct = await _productRepository.GetByIdAsync(id);
-
-                            if (dbProduct != null)
-                            {
-                                var dbColor = dbProduct.Colors.FirstOrDefault(c => c.Id == color.Id);
-
-                                if (dbColor != null)
-                                {
-                                    foreach (var imageId in colorData.RemoveImageIds)
-                                    {
-                                        var image = dbColor.Images.FirstOrDefault(i => i.Id == imageId);
-                                        if (image != null)
-                                        {
-                                            var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
-                                            if (!deletedImg)
-                                            {
-                                                Console.WriteLine($"Warning: Failed to delete image file: {image.ImagePath}");
-                                            }
-                                            dbColor.Images.Remove(image);
-                                        }
-                                    }
-
-                                    // Save changes
-                                    await _productRepository.UpdateAsync(dbProduct);
-                                }
-                            }
-                        }
+                        productColor.Images.Remove(image);
                     }
                 }
             }
 
-            // Handle color deletion
-            if (productDTO.RemoveColorIds != null && productDTO.RemoveColorIds.Any())
+            if (productColorDTO.AddImages != null && productColorDTO.AddImages.Any())
             {
-                // Get fresh product data
-                var dbProduct = await _productRepository.GetByIdAsync(id);
-
-                if (dbProduct != null)
+                for (int i = 0; i < productColorDTO.AddImages.Count; i++)
                 {
-                    foreach (var colorId in productDTO.RemoveColorIds)
-                    {
-                        var color = dbProduct.Colors.FirstOrDefault(c => c.Id == colorId);
-                        if (color != null)
-                        {
-                            // Delete all images associated with this color
-                            foreach (var image in color.Images.ToList())
-                            {
-                                if (!string.IsNullOrEmpty(image.ImagePath))
-                                {
-                                    var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
-                                    if (!deletedImg)
-                                    {
-                                        Console.WriteLine($"Warning: Failed to delete image file: {image.ImagePath}");
-                                    }
-                                }
-                                color.Images.Remove(image);
-                            }
+                    var image = productColorDTO.AddImages[i];
+                    var filePath = await ImageUtils.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024); // 5 MB max size
 
-                            // Remove the color
-                            dbProduct.Colors.Remove(color);
+                    if (productColorDTO.MainImageIndex.HasValue && productColorDTO.MainImageIndex.Value == i)
+                    {
+                        var mainImage = productColor.Images.Where(i => i.IsMain);
+                        foreach (var img in mainImage)
+                        {
+                            img.IsMain = false;
                         }
                     }
 
-                    // Save changes
-                    await _productRepository.UpdateAsync(dbProduct);
+                    var productImage = new ProductImage
+                    {
+                        ImagePath = filePath,
+                        IsMain = productColorDTO.MainImageIndex.HasValue && productColorDTO.MainImageIndex.Value == i,
+                        ColorId = productColor.Id
+                    };
+                    productColor.Images.Add(productImage);
                 }
             }
 
-            // Get the final updated product
-            var updatedProduct = await _productRepository.GetByIdAsync(id);
-            return updatedProduct!.ToProductDTO();
+            var updatedColor = await _productRepository.UpdateColorAsync(productColor);
+            _cacheService.RemoveProductCache(productId);
+            _cacheService.RemoveAllProductsCache();
+            return updatedColor.ToProductColorDTO();
         }
 
         public async Task DeleteProductAsync(int id)
         {
-            // Get product first to check if it exists and to access its images
             var product = await _productRepository.GetByIdAsync(id) ?? throw new NotFoundException("Product not found");
             await _productRepository.DeleteAsync(product);
+            _cacheService.RemoveProductCache(id);
+            _cacheService.RemoveAllProductsCache();
         }
         public async Task<ProductPagiDTO> GetPagedProductsAsync(ProductQuery productQuery)
         {
+            string cacheKey = CacheKeyManager.GetPagedProductsKey(productQuery);
+
+            if (_cacheService.TryGetValue(cacheKey, out ProductPagiDTO? cachedResult) && cachedResult != null)
+            {
+                return cachedResult;
+            }
+
             var (items, totalItems) = await _productRepository.GetPagedProductsAsync(productQuery);
 
             if (items == null || !items.Any())
@@ -284,12 +233,14 @@ namespace api.Services
                     Items = new List<ProductSummaryDTO>()
                 };
             }
+
             var productSummaries = items.Select(ProductMapper.ToSummaryDTO).ToList();
             var result = new ProductPagiDTO
             {
                 TotalItems = totalItems,
                 Items = productSummaries
             };
+            _cacheService.Set(cacheKey, result, _pagedCacheDuration);
 
             return result;
         }
@@ -344,6 +295,9 @@ namespace api.Services
 
             var result = await _productRepository.UpdateAsync(product);
 
+            _cacheService.RemoveProductCache(id);
+            _cacheService.RemoveAllProductsCache();
+
             return result.ToProductDTO();
         }
 
@@ -358,6 +312,9 @@ namespace api.Services
             product.UpdatedAt = DateTime.Now;
 
             var result = await _productRepository.UpdateAsync(product);
+
+            _cacheService.RemoveProductCache(id);
+            _cacheService.RemoveAllProductsCache();
 
             return result.ToProductDTO();
         }
