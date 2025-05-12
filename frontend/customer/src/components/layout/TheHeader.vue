@@ -72,23 +72,20 @@
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import meService from "@/services/meService";
-import authService from "@/services/authService";
 import productService from "@/services/productService";
 import emitter from "../../utils/evenBus.js";
 
 const router = useRouter();
 const searchQuery = ref("");
-const isUserMenuOpen = ref(false);
 const userDropdown = ref(null);
-const cartRef = ref(null);
-const showCart = ref(false);
-const cartItems = ref([]);
+
 
 // User data
 const isLoggedIn = ref(false);
 const currentUser = ref(null);
 const userAvatar = ref(null);
 const isReload = ref(0);
+const isUserMenuOpen = ref(false);
 
 // Base API URL
 const baseApiUrl = import.meta.env.VITE_API_URL;
@@ -114,8 +111,15 @@ const handleSearch = () => {
 	});
 };
 
-const goToLogin = () => {
-    router.push("/login");
+const closeMenus = (event) => {
+	if (
+		userDropdown.value &&
+		!userDropdown.value.contains(event.target) &&
+		isUserMenuOpen.value
+	) {
+		isUserMenuOpen.value = false;
+	}
+
 };
 
 // Fetch user data on component mount
@@ -177,6 +181,7 @@ const handleUserLoggedOut = () => {
 };
 
 onMounted(() => {
+    document.addEventListener("click", closeMenus);
 	getCartItems();
 	fetchUserData();
     emitter.on("cart-updated", () => {
@@ -184,12 +189,12 @@ onMounted(() => {
     });
     emitter.on('update-cart-count', () => {
         getCartItems();
-    
+    })
 	// Lắng nghe sự kiện đăng xuất
 	emitter.on("user-logged-out", handleUserLoggedOut);
 });
-});
 onUnmounted(() => {
+    document.removeEventListener("click", closeMenus);
 	emitter.off("cart-updated");
 
 	// Ngừng lắng nghe sự kiện khi component bị hủy
