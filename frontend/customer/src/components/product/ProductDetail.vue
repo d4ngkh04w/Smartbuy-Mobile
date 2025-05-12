@@ -1,4 +1,5 @@
 <template>
+    <Loading v-if="isLoading" />
     <div v-if="productData" class="product-detail-container" :class="{ 'out-of-stock-disable': getQuanity <= 0 }">
       <h2 class="product-title">{{ productData.name }}</h2>
       <div class="product-main-content">
@@ -72,6 +73,8 @@
                   v-model="quantity" 
                   min="1" 
                   :max="getQuanity"
+                  @focus="handleQuantityFocus"
+                  @blur="handleQuantityBlur"
                   @input="validateQuantity"
                 />
                 <button @click="increaseQuantity">+</button>
@@ -105,8 +108,8 @@
         </div>
         <div>
           <h3>Thông số kỹ thuật</h3>
-        <div class="specs-grid">
-          <!-- Bảo hành -->
+          <div class="specs-grid">
+            <!-- Bảo hành -->
             <div v-if="productData.detail.warranty" class="spec-item">
               <span class="spec-name">Bảo hành:</span>
               <span class="spec-value">{{ productData.detail.warranty }} tháng</span>
@@ -161,8 +164,9 @@
             </div>
           </div>
         </div>
-        
       </div>
+      
+      <!-- Đánh giá sản phẩm -->
       <div class="product-reviews">
         <h3>Đánh giá sản phẩm</h3>
         
@@ -240,19 +244,18 @@
             <i class="fa-solid fa-pen"></i> Viết đánh giá
           </button>
         </div>
-        
-        <!-- Form viết đánh giá (có thể thêm sau) -->
       </div>
     </div>
   </template>
   
   <script setup>
   import { useRoute } from 'vue-router'
-  import { getProductById } from '../../services/productService.js'
   import { ref, onMounted, computed } from 'vue';
-  import { getUrlImage } from '../../services/productService.js'
+  import productService from '../../services/productService.js';
+  import authService from '../../services/authService.js';
   import emitter from '../../utils/evenBus.js'
   import format from '../../utils/format.js';
+  import Loading from '../common/Loading.vue';
   
   const route = useRoute()
   const productId = route.params.id
@@ -261,12 +264,15 @@
   const selectedImgId = ref(null)
   const currentImageId = ref(null)
   const quantity = ref(1)
+  const isLoading = ref(true)
+
+  
   const fetchProduct = async(productId) => {
-    const data = await getProductById(productId);
+    isLoading.value = true;
+    const data = await productService.getProductById(productId);
     
     if(data) {
       productData.value = data;
-        console.log('Product data:', productData.value);
       // Chọn màu đầu tiên làm mặc định nếu có
       if (data.colors && data.colors.length > 0) {
         selectedColorId.value = data.colors[0].id;
@@ -274,12 +280,12 @@
     } else {
       console.error('Product not found');
     }
+    isLoading.value = false;
+
   }
   
-
   const getAllImages = () => {
     if (!productData.value || !productData.value.colors) return [];
-    console.log(productData.value.colors.flatMap(color => color.images));
     return productData.value.colors.flatMap(color => color.images);
   }
 
@@ -289,6 +295,7 @@
     );
     return foundColor ? foundColor.id : null;
   }
+  
   const getQuanity = computed(() => {
     const color = productData.value.colors.find(color => color.id === selectedColorId.value);
     if (color) {
@@ -297,23 +304,22 @@
     }
     return 0;
   })
+  
   const getCurrentMainImage = computed(() => {
     selectedColorId.value = findColorIdByImageId(productData.value.colors, selectedImgId.value);
     if(selectedImgId.value === null){
       selectedImgId.value = productData.value.colors[0].images[0].id; 
-  }
-  const images = getAllImages();
-  if (!images?.length) return '';
-  
-  const foundImage = images.find(img => img.id === selectedImgId.value);
-  if (!foundImage) return '';
-  
-  currentImageId.value = selectedImgId.value;
-  console.log('Current image URL:', foundImage.imagePath);
-  
-  return getImageUrl(foundImage.imagePath) || '';
-});
-  
+    }
+    const images = getAllImages();
+    if (!images?.length) return '';
+    
+    const foundImage = images.find(img => img.id === selectedImgId.value);
+    if (!foundImage) return '';
+    
+    currentImageId.value = selectedImgId.value;
+    
+    return getImageUrl(foundImage.imagePath) || '';
+  });
   
   // Chọn màu
   const selectColor = (color) => {
@@ -322,23 +328,53 @@
   
   // Helper functions
   const getImageUrl = (imgPath) => {
-    return getUrlImage(imgPath);
+    return productService.getUrlImage(imgPath);
   }
   
-  const validateQuantity = (event) => {
-    const value = parseInt(event.target.value)
-    const maxQuantity = getQuanity.value
-
-    if (isNaN(value) || value < 1) {
-      quantity.value = 1
-    } else if (value > maxQuantity) {
-      quantity.value = maxQuantity
-    } else {
-      quantity.value = value
+  const handleQuantityFocus = (event) => {
+    // Khi focus vào input, chọn toàn bộ nội dung để dễ dàng xóa
+    event.target.select();
+    
+    // Nếu giá trị là 1 (mặc định), xóa nó để người dùng có thể nhập số mới
+    if (quantity.value === 1) {
+      quantity.value = '';
     }
-  }
+  };
 
+  const handleQuantityBlur = () => {
+    // Khi blur khỏi input, nếu giá trị trống hoặc không hợp lệ, đặt lại thành 1
+    if (!quantity.value || quantity.value < 1) {
+      quantity.value = 1;
+    }
+  };
 
+  const validateQuantity = (event) => {
+    const value = parseInt(event.target.value);
+    const maxQuantity = getQuanity.value;
+
+    // Nếu giá trị không phải là số hoặc nhỏ hơn 1
+    if (isNaN(value) || value < 1) {
+      // Nếu người dùng đang xóa giá trị (nhập chuỗi rỗng), cho phép
+      if (event.target.value === '') {
+        quantity.value = '';
+        return;
+      }
+      quantity.value = 1;
+    } 
+    // Nếu giá trị lớn hơn số lượng tồn kho
+    else if (value > maxQuantity) {
+      quantity.value = maxQuantity;
+      emitter.emit('show-notification', {
+        status: 'error', 
+        message: 'Đạt đến số lượng tối đa'
+      });
+    } 
+    // Giá trị hợp lệ
+    else {
+      quantity.value = value;
+    }
+  };
+  
   const calculateDiscountPercentage = () => {
     if (!productData.value) return 0;
     return Math.round(
@@ -366,37 +402,57 @@
     });
     }
   }
-
   
-  const addToCart = () => {
-    console.log('Added to cart:', {
-      productId: productData.value.id,
-      colorId: selectedColorId.value,
-      quantity: quantity.value
-    });
-    // Gọi API hoặc dispatch Vuex action
+  const addToCart = async() => {
+    
+    const isAuthen = await checkAuth();
+    if (isAuthen && checkValidInfor()) {
+      const res = await productService.addToCart(productId, quantity.value, selectedColorId.value);
+        emitter.emit("show-notification", {
+            status: "success",
+            message: "Đã thêm vào giỏ hàng!"
+        });
+    emitter.emit('cart-updated');
+    } 
+  }
+
+  const checkValidInfor = () => {
+    if (productData.value.quantity <= quantity.value) {
+      emitter.emit('show-notification', {
+        status: 'error',
+        message: 'Sản phẩm không đáp ứng đủ số lượng'
+      });
+      return false;
+    }
+    if(selectedColorId.value === null){
+      emitter.emit('show-notification', {
+        status: 'warning',
+        message: 'Vui lòng chọn màu sắc'
+      });
+      return false;
+    }
+    return true;
   }
   
-  const buyNow = () => {
-    addToCart();
-    // Chuyển hướng đến trang thanh toán
-    // router.push('/checkout')
+  const buyNow = async () => {
+    const isAuthen = await checkAuth();
+    if (isAuthen && checkValidInfor()) {
+      console.log('Mua ngay:', {
+        productId: productData.value.id,
+        colorId: selectedColorId.value,
+        quantity: quantity.value
+      });
+    } 
   }
   
   onMounted(async() => {
     await fetchProduct(productId);
     document.title = `${productData.value.name} - SmartBuy Mobile`;
     if (productData.value?.colors?.length > 0 && !selectedColorId.value) {
-    selectedColorId.value = productData.value.colors[0].id;
-    selectedImgId.value = productData.value.colors[0].images[0]?.id;
-  }
+      selectedColorId.value = productData.value.colors[0].id;
+      selectedImgId.value = productData.value.colors[0].images[0]?.id;
+    }
   });
-  
-
-  
-  
-  
-  
   
   // Thêm dữ liệu mẫu cho đánh giá
   const reviews = ref([]);
@@ -414,8 +470,6 @@
     return (count / reviews.value.length) * 100;
   };
   
-
-  
   // Xem ảnh lớn
   const openImagePreview = (imgUrl) => {
     // Có thể triển khai lightbox ở đây
@@ -427,48 +481,32 @@
     // Triển khai khi có form đánh giá
     console.log('Cuộn đến form đánh giá');
   };
-  
-  // Lấy dữ liệu đánh giá từ API (giả lập)
-  // onMounted(() => {
-  // //   if (product.value?.name) {
-  // //   document.title = `${productData.value.name} - SmartBuy Mobile`
-  // // }
-  //   // Giả lập dữ liệu đánh giá
-  //   reviews.value = [
-  //     {
-  //       id: 1,
-  //       user: {
-  //         name: 'Nguyễn Văn A',
-  //         avatar: ''
-  //       },
-  //       rating: 5,
-  //       content: 'Sản phẩm rất tốt, màn hình đẹp, pin trâu. Nhân viên tư vấn nhiệt tình, giao hàng nhanh. Mình rất hài lòng với sản phẩm này.',
-  //       images: [
-  //         'https://via.placeholder.com/150',
-  //         'https://via.placeholder.com/150'
-  //       ],
-  //       date: '2023-05-15'
-  //     },
-  //     {
-  //       id: 2,
-  //       user: {
-  //         name: 'Trần Thị B',
-  //         avatar: 'https://randomuser.me/api/portraits/women/44.jpg'
-  //       },
-  //       rating: 4,
-  //       content: 'Sản phẩm tốt nhưng giá hơi cao so với mặt bằng chung. Camera chụp ảnh đẹp, thiết kế sang trọng.',
-  //       images: [],
-  //       date: '2023-05-10'
-  //     }
-  //   ];
-  // });
-  
-  
-  
-  
-  
-  
-  
+
+  async function checkAuth() {
+  try {
+    const response = await authService.verifyUser()
+    if (response && response.data && response.data.success) {
+      return true // Đã đăng nhập
+    } else {
+      // Hiển thị thông báo và chuyển hướng nếu chưa đăng nhập
+      emitter.emit('show-notification', {
+        status: 'warning',
+        message: 'Vui lòng đăng nhập để tiếp tục'
+      })
+      router.push({ name: 'login' })
+      return false
+    }
+  } catch (error) {
+    // Xử lý lỗi nếu có
+    console.error('Lỗi khi kiểm tra xác thực:', error)
+    emitter.emit('show-notification', {
+      status: 'error',
+      message: 'Có lỗi xảy ra khi kiểm tra đăng nhập'
+    })
+    router.push({ name: 'login' })
+    return false
+  }
+}
   </script>
   
   <style scoped>
@@ -629,6 +667,7 @@
     font-size: 14px;
   }
   
+  /* Quantity selector */
   .quantity-selector {
     margin-bottom: 25px;
   }
@@ -662,6 +701,16 @@
     text-align: center;
     border: 1px solid #ddd;
     border-radius: 4px;
+    transition: border-color 0.3s;
+  }
+  
+  .quantity-control input:focus {
+    border-color: var(--primary-color);
+    outline: none;
+  }
+  
+  .quantity-control input:placeholder-shown {
+    color: #999;
   }
   
   .stock-info {
@@ -673,6 +722,7 @@
     color: #ef4444;
   }
   
+  /* Action buttons */
   .action-buttons {
     display: flex;
     gap: 15px;
@@ -752,29 +802,7 @@
     font-size: 15px;
   }
   
-  /* Responsive */
-  @media (max-width: 768px) {
-    .product-main-content {
-      flex-direction: column;
-    }
-    
-    .product-info-section {
-      max-width: 100%;
-    }
-    
-    .main-image {
-      height: 300px;
-    }
-    
-    .specs-grid {
-      grid-template-columns: 1fr;
-    }
-    
-    .product-info-buy {
-      position: static;
-    }
-  }
-  
+  /* Product reviews */
   .product-reviews {
     margin-top: 40px;
     padding-top: 20px;
@@ -973,6 +1001,26 @@
   
   /* Responsive */
   @media (max-width: 768px) {
+    .product-main-content {
+      flex-direction: column;
+    }
+    
+    .product-info-section {
+      max-width: 100%;
+    }
+    
+    .main-image {
+      height: 300px;
+    }
+    
+    .specs-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .product-info-buy {
+      position: static;
+    }
+    
     .reviews-summary {
       flex-direction: column;
       gap: 20px;
@@ -999,8 +1047,11 @@
       padding-left: 65px;
     }
   }
+  
   .out-of-stock-disable{
     pointer-events: none;
     opacity: 0.5;
   }
+
+
   </style>

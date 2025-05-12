@@ -22,25 +22,36 @@
       <div class="product-middle">
         <h3>{{ product.name }}</h3>
         <p>{{ format.formatPrice(product.price) }}₫</p>
+        </div>
+        <div class="rating">
+        <div class="stars">
+          <i 
+            v-for="i in 5" 
+            :key="i" 
+            class="fas fa-star" 
+            :class="{ 'active': i <= Math.round(product.rating) }"
+          ></i>
+        </div>
+        <span class="rating-count">({{ product.ratingCount }})</span>
       </div>
+    
+    <!-- Số lượt đã bán -->
+    <div class="sold-count">Đã bán: {{ product.sold }}</div>
     </router-link>
 
-    <div class="product-bottom">
-      <button class="add-cart-btn" @click.stop="handleAddToCart">
-        <i class="fa-solid fa-cart-plus"></i>
-      </button>
-      <button class="buy-now-btn" @click.stop="handleBuy">
-        Mua ngay
-      </button>
-    </div>
+    
   </div>
 </template>
 
   
   <script setup>
-  import { defineProps } from 'vue'
-  import { getUrlImage } from '../../services/productService.js'
+  import authService from '@/services/authService.js'
+  import productService  from '../../services/productService.js'
   import format from '@/utils/format.js'
+  const averageRating  = 3
+  const reviewCount = 100
+  const soldQuantity = 50
+
   
   const props = defineProps({
     product: {
@@ -60,22 +71,11 @@
       default: '370px'
     }
   })
-  
-  // Hàm xử lý khi click "Mua ngay"
-  function handleBuy() {
-    console.log('Mua ngay:', props.product.name)
-  }
-  
-  // Hàm xử lý khi click "Thêm vào giỏ"
-  function handleAddToCart() {
-    console.log('Thêm vào giỏ:', props.product.name)
-  }
-  
-  
-  // Hàm lấy link ảnh
+    // Hàm lấy link ảnh
   const getUrlImg = (url) => {
-      return getUrlImage(url)
+      return productService.getUrlImage(url)
   }
+
   </script>
 
   <style scoped>
@@ -143,51 +143,76 @@
   padding: 8px;
   background-color: #fff;
 }
-
-/* Nút “Thêm vào giỏ” — outline style */
-.add-cart-btn {
-  flex: 1;
-  margin-right: 4px;
-  padding: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  border: 2px solid var(--primary-color);
-  border-radius: 8px;
-  background-color: transparent;
-  color: var(--primary-color);
-  cursor: pointer;
-  transition: background-color 0.3s, color 0.3s, transform 0.2s;
-}
-
-.add-cart-btn:hover {
-  background-color: var(--secondary-color);
-  color: #fff;
-  transform: scale(1.05);
-}
-
-/* Nút “Mua ngay” — filled style */
-.buy-now-btn {
-  flex: 2;
-  margin-left: 4px;
-  padding: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--primary-color);
-  color: #fff;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(248, 110, 211, 0.4);
-  transition: background-color 0.3s, transform 0.2s;
-}
-
-.buy-now-btn:hover {
-  background-color: #e358c2; /* đậm hơn 1 chút */
-  transform: scale(1.05);
-}
 .product-card {
   display: block;
   text-decoration: none;
   color: inherit;
 }
+/* Đánh giá sản phẩm */
+.rating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 0;
+  font-size: 14px;
+}
+
+.stars {
+  display: flex;
+  gap: 2px;
+}
+
+.stars i {
+  color: #ccc;
+  font-size: 14px;
+}
+
+.stars i.active {
+  color: #FFD700; /* vàng */
+}
+
+.rating-count {
+  font-size: 13px;
+  color: #555;
+}
+
+/* Số lượng đã bán */
+.sold-count {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  padding-bottom: 8px;
+}
+
+/* Responsive: Mobile */
+@media (max-width: 768px) {
+  .product-card {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .product-img {
+    height: 180px;
+  }
+
+  .product-middle h3 {
+    font-size: 16px;
+  }
+
+  .product-middle p {
+    font-size: 14px;
+  }
+
+  .rating,
+  .sold-count {
+    font-size: 12px;
+  }
+
+  .stars i {
+    font-size: 12px;
+  }
+}
+
 </style>

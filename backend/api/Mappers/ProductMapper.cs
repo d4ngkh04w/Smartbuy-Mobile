@@ -122,7 +122,10 @@ namespace api.Mappers
                 Id = product.Id,
                 Name = product.Name,
                 Price = product.SalePrice,
-                ImageUrl = mainImagePath
+                ImageUrl = mainImagePath,
+                Rating = product.Rating,
+                RatingCount = product.RatingCount,
+                Sold = product.Sold,
             };
         }
 

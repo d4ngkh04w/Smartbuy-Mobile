@@ -24,7 +24,7 @@
 
                 <div class="header-actions">
                     <router-link
-                        to = "/cart">
+                        to = "/cart" >
                         <div class="action-item cart-icon">
                             <div class="icon-container">
                                 <i class="fas fa-shopping-cart"></i>
@@ -71,6 +71,8 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import meService from "@/services/meService";
 import authService from "@/services/authService";
+import productService from "@/services/productService";
+import emitter from "../../utils/evenBus.js";
 
 const router = useRouter();
 const searchQuery = ref("");
@@ -89,18 +91,19 @@ const isReload = ref(0);
 // Base API URL
 const baseApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-const cartCount = ref(cartItems.value.length);
-const cartTotal = computed(() => {
-    return cartItems.value.reduce(
-        (total, item) => total + item.price * item.quantity,
-        0
-    );
-});
+const cartCount = ref(0);
+
 const resetSearchText = () => {
     searchQuery.value = "";
     isReload.value = 1 - isReload.value;
     handleSearch();
 };
+const getCartItems = async () => {
+  const res = await productService.getCarts()
+  if (res && res.data && res.data.cartItems) {
+    cartCount.value = res.data.cartItems.length;
+  }
+}
 
 const handleSearch = () => {
         router.push({
@@ -111,89 +114,6 @@ const handleSearch = () => {
 
 const goToLogin = () => {
     router.push("/login");
-};
-
-const toggleNotifications = () => {
-    showNotifications.value = !showNotifications.value;
-    if (showNotifications.value) {
-        isUserMenuOpen.value = false;
-        showCart.value = false;
-    }
-};
-
-const toggleCart = () => {
-    showCart.value = !showCart.value;
-    if (showCart.value) {
-        isUserMenuOpen.value = false;
-        showNotifications.value = false;
-    }
-};
-
-const closeMenus = (event) => {
-    if (
-        userDropdown.value &&
-        !userDropdown.value.contains(event.target) &&
-        isUserMenuOpen.value
-    ) {
-        isUserMenuOpen.value = false;
-    }
-
-
-    if (
-        cartRef.value &&
-        !cartRef.value.contains(event.target) &&
-        showCart.value
-    ) {
-        showCart.value = false;
-    }
-};
-
-const removeFromCart = (id) => {
-    // Xóa sản phẩm khỏi giỏ hàng
-    cartItems.value = cartItems.value.filter((item) => item.id !== id);
-};
-
-const formatTime = (date) => {
-    // Tính thời gian tương đối
-    const now = new Date();
-    const diffInMinutes = Math.floor(
-        (now.getTime() - date.getTime()) / (1000 * 60)
-    );
-
-    if (diffInMinutes < 60) {
-        return `${diffInMinutes} phút trước`;
-    } else if (diffInMinutes < 24 * 60) {
-        return `${Math.floor(diffInMinutes / 60)} giờ trước`;
-    } else {
-        return date.toLocaleDateString("vi-VN");
-    }
-};
-
-const getNotificationIcon = (type) => {
-    switch (type) {
-        case "order":
-            return "fas fa-shopping-bag";
-        case "promotion":
-            return "fas fa-percentage";
-        case "system":
-            return "fas fa-bell";
-        default:
-            return "fas fa-bell";
-    }
-};
-
-const markAllAsRead = () => {
-    notifications.value = notifications.value.map((notification) => ({
-        ...notification,
-        read: true,
-    }));
-};
-
-const formatPrice = (price) => {
-    return new Intl.NumberFormat("vi-VN", {
-        style: "currency",
-        currency: "VND",
-    }).format(price);
 };
 
 // Fetch user data on component mount
@@ -244,13 +164,20 @@ const fetchUserData = async () => {
 };
 
 onMounted(() => {
-    document.addEventListener("click", closeMenus);
+    getCartItems();
     fetchUserData();
+    emitter.on("cart-updated", () => {
+        getCartItems();
+    });
+    emitter.on('update-cart-count', () => {
+        getCartItems();
+    });
+});
+onUnmounted(() => {
+    emitter.off("cart-updated");
 });
 
-onUnmounted(() => {
-    document.removeEventListener("click", closeMenus);
-});
+
 </script>
 
 <style scoped>
@@ -362,22 +289,7 @@ onUnmounted(() => {
     font-size: 0.7rem;
 }
 
-.notification-badge {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background-color: red;
-    color: white;
-    border-radius: 50%;
-    width: 18px;
-    height: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-}
 
-.notification-icon,
 .cart-icon,
 .user-dropdown {
     position: relative;

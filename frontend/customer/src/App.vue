@@ -1,6 +1,6 @@
 <script setup>
 import { RouterView } from "vue-router";
-import Notification from "./components/Notification.vue";
+import Notification from "../src/components/common/Notification.vue";
 </script>
 
 <template>
@@ -12,7 +12,6 @@ import Notification from "./components/Notification.vue";
 </template>
 
 <style>
-
 
 * {
     margin: 0;

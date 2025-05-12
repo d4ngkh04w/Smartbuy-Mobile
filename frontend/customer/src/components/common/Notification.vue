@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
-import emitter from "../utils/evenBus.js";
+import emitter from "../../utils/evenBus.js"; // Import emitter từ eventBus.js
 
 const notifications = ref([]); // Chứa tất cả các thông báo
 

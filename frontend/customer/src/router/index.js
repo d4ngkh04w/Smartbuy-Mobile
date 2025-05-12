@@ -1,7 +1,7 @@
 // router/index.js
 import { createRouter, createWebHistory } from "vue-router";
 import { routes } from "./routes";
-import { authService } from "../services/authService.js";
+import authService from "../services/authService.js";
 
 // Khởi tạo router
 const router = createRouter({

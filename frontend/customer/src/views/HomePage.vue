@@ -79,9 +79,7 @@
 
         <!-- Danh sách sản phẩm -->
         <div class="products-container">
-            <div v-if="isLoading" class="loading">
-              Đang tải...
-            </div>
+          <Loading v-if="isLoading" />
           <template v-else-if="hasProducts">
             <ProductCard
               v-for="product in products"
@@ -107,15 +105,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import ProductCard from '../components/product/ProductCard.vue'
-import Pagi from '../components/Pagination.vue'
-import { getProducts, getBrands } from '../services/productService.js'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Carousel, Slide, Pagination, Navigation } from 'vue3-carousel'
-import '@vueform/slider/themes/default.css'
-import Slider from '@vueform/slider'
-import 'vue3-carousel/dist/carousel.css'
 import { useRoute } from 'vue-router'
+import Slider from '@vueform/slider'
+import '@vueform/slider/themes/default.css'
+import 'vue3-carousel/dist/carousel.css'
+import ProductCard from '../components/product/ProductCard.vue'
+import Pagi from '../components/common/Pagination.vue'
+import productService from '../services/productService.js'
+import Loading from '../components/common/Loading.vue'
+import authService from '@/services/authService'
 
 const route = useRoute()
 const searchKeyword = ref(route.query.search || null)
@@ -166,7 +166,7 @@ const activeBrands = computed(() => {
   return brands.value.filter(brand => brand.isActive == true)
 })
 const fetchBrands = async () => {
-  const data = await getBrands()
+  const data = await productService.getBrands()
   if (!data) {
     alert('Không thể tải thương hiệu. Vui lòng thử lại sau!')
     return
@@ -177,8 +177,8 @@ const fetchBrands = async () => {
 const fetchProducts = async (page = 1) => {
   isLoading.value = true;
   currentPage.value = page
-  const data = await getProducts(currentPage.value, pageSize.value, {
-    brand: selectedBrand.value,
+  const data = await productService.getProducts(currentPage.value, pageSize.value, {
+    brandName: selectedBrand.value,
     minPrice: priceRange.value[0],
     maxPrice: priceRange.value[1],
     sortBy: sortBy.value,
@@ -196,6 +196,7 @@ const fetchProducts = async (page = 1) => {
 
 const selectBrand = (brandName) => {
   selectedBrand.value = selectedBrand.value === brandName ? null : brandName
+  console.log('searchKeyword.value', selectedBrand.value )
   fetchProducts()
 }
 
@@ -223,7 +224,6 @@ onMounted(() => {
   fetchBrands()
   fetchProducts()
 })
-
 
 </script>
 
@@ -477,32 +477,4 @@ onMounted(() => {
   font-size: 12px;
   margin-left: 4px;
 }
-.loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 200px; /* hoặc 100vh nếu bạn muốn phủ cả màn */
-  font-size: 1.2rem;
-  color: #555;
-  position: relative;
-}
-
-/* Thêm spinner */
-.loading::before {
-  content: "";
-  width: 24px;
-  height: 24px;
-  border: 3px solid #ccc;
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  margin-right: 10px;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 </style>

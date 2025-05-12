@@ -45,7 +45,7 @@ export const routes = [
         component: Cart,
         meta: {
           title: "Giỏ hàng - SmartBuy Mobile",
-          requiresAuth: false,
+          requiresAuth: true,
         },
       }
     ],
