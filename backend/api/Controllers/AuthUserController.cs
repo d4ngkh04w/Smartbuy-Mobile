@@ -77,7 +77,6 @@ namespace api.Controllers
         }
 
         [HttpPost("verify-email")]
-        [AllowAnonymous]
         public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDTO verifyDto)
         {
             await _authService.VerifyEmailAsync(verifyDto);

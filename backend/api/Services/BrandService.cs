@@ -1,5 +1,6 @@
 using api.DTOs.Brand;
 using api.Exceptions;
+using api.Helpers;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
@@ -14,10 +15,18 @@ namespace api.Services
         private readonly IBrandRepository _repo;
         private readonly IProductRepository _productRepo;
         private readonly IProductLineRepository _productLineRepo;
+        private readonly ICacheService _cacheService;
+        private readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(30);
         private readonly IWebHostEnvironment _env;
 
-        public BrandService(IBrandRepository repo, IProductRepository productRepo, IProductLineRepository productLineRepo, IWebHostEnvironment webEnvironment)
+        public BrandService(
+            IBrandRepository repo,
+            IProductRepository productRepo,
+            IProductLineRepository productLineRepo,
+            IWebHostEnvironment webEnvironment,
+            ICacheService cacheService)
         {
+            _cacheService = cacheService;
             _env = webEnvironment;
             _repo = repo;
             _productRepo = productRepo;
@@ -40,15 +49,12 @@ namespace api.Services
 
             if (brandDTO.Logo != null)
             {
-
                 var filePath = await ImageUtils.SaveImageAsync(brandDTO.Logo, _env.WebRootPath, "brands", 2 * 1024 * 1024);
-
                 brand.Logo = filePath;
             }
+            var createdBrand = await _repo.CreateBrandAsync(brand) ?? throw new ServerException("Error creating brand");
 
-            var createdBrand = await _repo.CreateBrandAsync(brand);
-            if (createdBrand == null)
-                throw new ServerException("Error creating brand");
+            _cacheService.RemoveAllBrandsCache();
 
             return createdBrand.ToDTO();
         }
@@ -105,24 +111,46 @@ namespace api.Services
                     }
                 }
             }
-
             await _repo.DeleteBrandAsync(brand);
-        }
 
+            _cacheService.RemoveBrandCache(id);
+            _cacheService.RemoveAllBrandsCache();
+        }
         public async Task<BrandDTO> GetBrandByIdAsync(int id, BrandQuery query)
         {
-            var brand = await _repo.GetBrandByIdAsync(id, query) ?? throw new NotFoundException("Brand not found");
-            return brand.ToDTO();
-        }
+            string cacheKey = CacheKeyManager.GetBrandKey(id);
 
+            if (_cacheService.TryGetValue(cacheKey, out BrandDTO? cachedBrand) && cachedBrand != null)
+            {
+                return cachedBrand;
+            }
+
+            var brand = await _repo.GetBrandByIdAsync(id, query) ?? throw new NotFoundException("Brand not found");
+            var brandDto = brand.ToDTO();
+
+            _cacheService.Set(cacheKey, brandDto, _cacheDuration);
+
+            return brandDto;
+        }
         public async Task<IEnumerable<BrandDTO>> GetBrandsAsync(BrandQuery query)
         {
+            string cacheKey = CacheKeyManager.GetBrandsKey(query);
+
+            if (_cacheService.TryGetValue(cacheKey, out IEnumerable<BrandDTO>? cachedBrands) && cachedBrands != null)
+            {
+                return cachedBrands;
+            }
+
             var brands = await _repo.GetBrandsAsync(query);
 
             if (brands == null || !brands.Any())
                 throw new NotFoundException("Not found any brands");
 
-            return brands.Select(b => b.ToDTO());
+            var brandsDto = brands.Select(b => b.ToDTO()).ToList();
+
+            _cacheService.Set(cacheKey, brandsDto, _cacheDuration);
+
+            return brandsDto;
         }
 
         public async Task<BrandDTO> UpdateBrandAsync(int id, UpdateBrandDTO brandDTO)
@@ -148,8 +176,11 @@ namespace api.Services
                 var path = await ImageUtils.SaveImageAsync(brandDTO.Logo, _env.WebRootPath, "brands", 2 * 1024 * 1024);
                 brand.Logo = path!;
             }
-
             var updatedBrand = await _repo.UpdateBrandAsync(brand);
+
+            _cacheService.RemoveBrandCache(id);
+            _cacheService.RemoveAllBrandsCache();
+
             return updatedBrand.ToDTO();
         }
 
@@ -190,6 +221,9 @@ namespace api.Services
                 }
             }
 
+            _cacheService.RemoveBrandCache(id);
+            _cacheService.RemoveAllBrandsCache();
+
             return updatedBrand.ToDTO();
         }
 
@@ -229,6 +263,9 @@ namespace api.Services
                     }
                 }
             }
+
+            _cacheService.RemoveBrandCache(id);
+            _cacheService.RemoveAllBrandsCache();
 
             return updatedBrand.ToDTO();
         }
