@@ -1,14 +1,12 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig} from "vite";
 import vue from "@vitejs/plugin-vue";
 import vueDevTools from "vite-plugin-vue-devtools";
 import { fileURLToPath, URL } from "node:url";
 
-export default defineConfig(({ mode }) => {
-	const env = loadEnv(mode, process.cwd());
+export default defineConfig(() => {	
 	return {
 		server: {
-			port: 4000,
-			host: env.VITE_HOST || "localhost",
+			port: 4000,			
 		},
 		plugins: [vue(), vueDevTools()],
 		resolve: {

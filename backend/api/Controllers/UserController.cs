@@ -31,7 +31,7 @@ namespace api.Controllers
             var user = await _userService.GetUserByIdAsync(id);
             return ApiResponseHelper.Success("User retrieved successfully", user);
         }
-
+        
         [HttpGet("me")]
         public async Task<IActionResult> GetCurrentUser()
         {
