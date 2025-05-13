@@ -1,12 +1,12 @@
-// router/routes.js
 import MainLayout from "../layouts/MainLayout.vue";
 import BlankLayout from "../layouts/BlankLayout.vue";
 import HomePage from "../views/HomePage.vue";
-import ProductDetail from '../components/product/ProductDetail.vue'
-import Cart from '../components/product/Cart.vue'
+import ProductDetail from "../components/product/ProductDetail.vue";
+import Cart from "../components/product/Cart.vue";
+import NotLoggedIn from "@/components/common/NotLoggedIn.vue";
 
 export const routes = [
-  // Routes với MainLayout (có header và footer)
+  // 📦 Layout chính: Có header và footer
   {
     path: "/",
     component: MainLayout,
@@ -21,19 +21,10 @@ export const routes = [
         },
       },
       {
-        path: "account",
-        name: "account",
-        component: () => import("../views/AccountPage.vue"),
-        meta: {
-          title: "Tài khoản của tôi - SmartBuy Mobile",
-          requiresAuth: true,
-        },
-      },
-      {
-        path: "product/:id", // Thêm route cho chi tiết sản phẩm
+        path: "product/:id",
         name: "product-detail",
         component: ProductDetail,
-        props: true, // Chuyển các params vào component dưới dạng props
+        props: true,
         meta: {
           title: "Chi tiết sản phẩm - SmartBuy Mobile",
           requiresAuth: false,
@@ -47,11 +38,20 @@ export const routes = [
           title: "Giỏ hàng - SmartBuy Mobile",
           requiresAuth: true,
         },
-      }
+      },
+      {
+        path: "account",
+        name: "account",
+        component: () => import("../views/AccountPage.vue"),
+        meta: {
+          title: "Tài khoản của tôi - SmartBuy Mobile",
+          requiresAuth: true,
+        },
+      },
     ],
   },
 
-  // Routes với BlankLayout (không có header và footer)
+  // Layout trắng: Không có header/footer
   {
     path: "/",
     component: BlankLayout,
@@ -75,12 +75,30 @@ export const routes = [
         },
       },
       {
+        path: "not-logged-in",
+        name: "not-logged-in",
+        component: NotLoggedIn,
+        meta: {
+          title: "Chưa đăng nhập - SmartBuy Mobile",
+          requiresAuth: false,
+        },
+      },
+      {
         path: "profile-setup",
         name: "profile-setup",
         component: () => import("../views/ProfileSetupPage.vue"),
         meta: {
           title: "Hoàn tất thông tin - SmartBuy Mobile",
           requiresAuth: true,
+        },
+      },
+      {
+        path: "order",
+        name: "order",
+        component: () => import("../views/Order.vue"),
+        meta: {
+          title: "Đặt hàng - SmartBuy Mobile",
+          requiresAuth: false,
         },
       },
       {
@@ -110,7 +128,6 @@ export const routes = [
           requiresAuth: false,
         },
       },
-      // Có thể thêm các trang khác không cần header/footer...
     ],
   },
 ];

@@ -249,7 +249,7 @@
   </template>
   
   <script setup>
-  import { useRoute } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
   import { ref, onMounted, computed } from 'vue';
   import productService from '../../services/productService.js';
   import authService from '../../services/authService.js';
@@ -258,6 +258,8 @@
   import Loading from '../common/Loading.vue';
   
   const route = useRoute()
+  const router = useRouter()
+
   const productId = route.params.id
   const productData = ref(null)
   const selectedColorId = ref(null)
@@ -404,17 +406,47 @@
   }
   
   const addToCart = async() => {
-    
+  try {
     const isAuthen = await checkAuth();
-    if (isAuthen && checkValidInfor()) {
+    if (!isAuthen) {
+      return; 
+    }
+    
+    if(checkValidInfor()){
       const res = await productService.addToCart(productId, quantity.value, selectedColorId.value);
-        emitter.emit("show-notification", {
-            status: "success",
-            message: "Đã thêm vào giỏ hàng!"
-        });
-    emitter.emit('cart-updated');
-    } 
+      emitter.emit("show-notification", {
+        status: "success",
+        message: "Đã thêm vào giỏ hàng!"
+      });
+      emitter.emit('cart-updated');
+    }
+  } catch (error) {
+    console.error('Lỗi khi thêm vào giỏ hàng:', error);
+    emitter.emit("show-notification", {
+      status: "error",
+      message: "Có lỗi xảy ra khi thêm vào giỏ hàng"
+    });
   }
+}
+
+async function checkAuth() {
+  try {
+    const response = await authService.verifyUser();
+    // Kiểm tra response kỹ hơn
+    if (response?.data?.success) {
+      return true;
+    }
+    
+    // Thêm console.log để debug
+    console.log('Chưa đăng nhập, chuyển hướng...');
+    await router.push({ name: 'not-logged-in' });
+    return false;
+  } catch (error) {
+    console.error('Lỗi khi kiểm tra xác thực:', error);
+    await router.push({ name: 'not-logged-in' });
+    return false;
+  }
+}
 
   const checkValidInfor = () => {
     if (productData.value.quantity <= quantity.value) {
@@ -482,31 +514,6 @@
     console.log('Cuộn đến form đánh giá');
   };
 
-  async function checkAuth() {
-  try {
-    const response = await authService.verifyUser()
-    if (response && response.data && response.data.success) {
-      return true // Đã đăng nhập
-    } else {
-      // Hiển thị thông báo và chuyển hướng nếu chưa đăng nhập
-      emitter.emit('show-notification', {
-        status: 'warning',
-        message: 'Vui lòng đăng nhập để tiếp tục'
-      })
-      router.push({ name: 'login' })
-      return false
-    }
-  } catch (error) {
-    // Xử lý lỗi nếu có
-    console.error('Lỗi khi kiểm tra xác thực:', error)
-    emitter.emit('show-notification', {
-      status: 'error',
-      message: 'Có lỗi xảy ra khi kiểm tra đăng nhập'
-    })
-    router.push({ name: 'login' })
-    return false
-  }
-}
   </script>
   
   <style scoped>

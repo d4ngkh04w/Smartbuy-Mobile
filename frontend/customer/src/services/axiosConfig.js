@@ -1,5 +1,85 @@
+// import axios from "axios";
+// import authService from "./authService";
+
+// const apiUrl = import.meta.env.VITE_API_URL;
+// const instance = axios.create({
+// 	baseURL: apiUrl,
+// 	timeout: 10000,
+// 	withCredentials: true, // Enables sending cookies with cross-origin requests
+// 	headers: {
+// 		"Content-Type": "application/json",
+// 	},
+// });
+
+// // Add request interceptor to correctly merge headers
+// instance.interceptors.request.use(
+// 	(config) => {
+// 		// Save custom options from config to handle properly in the response interceptor
+// 		if (config.skipAuthRedirect) {
+// 			config.skipAuthRedirect = true;
+// 		}
+// 		return config;
+// 	},
+// 	(error) => Promise.reject(error)
+// );
+
+// // Add a response interceptor to handle token refresh
+// instance.interceptors.response.use(
+// 	(response) => response,
+// 	async (error) => {
+// 		const originalRequest = error.config;
+// 		if (originalRequest?.isLoginRequest) {
+// 			return Promise.reject(error); // để catch trong login() xử lý
+// 		}
+		
+// 		if (originalRequest?.isRefreshRequest === true) {
+// 			console.error("Lỗi xác thực:", error);
+// 			window.location.href = "/";
+// 			return Promise.reject(error);
+// 		}
+
+// 		// Kiểm tra nếu request đến từ header, không chuyển hướng
+// 		if (
+// 			originalRequest?.headers &&
+// 			originalRequest.headers["X-From-Header"] === "true"
+// 		) {
+// 			return Promise.reject(error);
+// 		}
+
+// 		if (error.response?.status === 401 && !originalRequest._retry) {
+// 			originalRequest._retry = true;
+
+// 			try {
+// 				await authService.refreshToken();
+// 				console.log("refreshToken thành công");
+// 				return instance(originalRequest);
+// 			} catch (refreshError) {
+// 				try {
+// 					await instance.post("/auth/logout");
+// 				} catch (logoutError) {
+// 					console.error("Không thể đăng xuất:", logoutError);
+// 				}
+
+// 				// Kiểm tra nếu yêu cầu đã được đánh dấu để bỏ qua chuyển hướng xác thực
+// 				if (!originalRequest?.skipAuthRedirect) {
+// 					if (typeof router !== 'undefined') {
+// 						router.push('/not-logged-in');
+// 					} else {
+// 						window.location.href = '/not-logged-in';
+// 					}
+// 				}
+// 				return Promise.reject(refreshError);
+// 			}
+// 		}
+
+// 		return Promise.reject(error);
+// 	}
+// );
+
+// export default instance;
+
+
 import axios from "axios";
-import authService from "./authService";
 
 const apiUrl = import.meta.env.VITE_API_URL;
 const instance = axios.create({
@@ -31,6 +111,7 @@ instance.interceptors.response.use(
 		if (originalRequest?.isLoginRequest) {
 			return Promise.reject(error); // để catch trong login() xử lý
 		}
+		
 		if (originalRequest?.isRefreshRequest === true) {
 			console.error("Lỗi xác thực:", error);
 			window.location.href = "/";
@@ -45,27 +126,21 @@ instance.interceptors.response.use(
 			return Promise.reject(error);
 		}
 
-		if (error.response?.status === 401 && !originalRequest._retry) {
-			originalRequest._retry = true;
-
-			try {
-				await authService.refreshToken();
-				console.log("refreshToken thành công");
-				return instance(originalRequest);
-			} catch (refreshError) {
-				try {
-					await instance.post("/auth/logout");
-				} catch (logoutError) {
-					console.error("Không thể đăng xuất:", logoutError);
-				}
-
-				// Kiểm tra nếu yêu cầu đã được đánh dấu để bỏ qua chuyển hướng xác thực
-				if (!originalRequest?.skipAuthRedirect) {
-					window.location.href = "/";
-				}
-				return Promise.reject(refreshError);
-			}
-		}
+	if (error.response?.status === 401 && !originalRequest._retry) {
+     	originalRequest._retry = true;
+		try {
+			await authService.refreshToken();
+			console.log("refreshToken thành công");
+			return instance(originalRequest);
+		}  catch (refreshError) {
+        if (!originalRequest?.skipAuthRedirect) {
+          if (window.location.pathname !== '/not-logged-in') {
+            window.location.href = '/not-logged-in';
+          }
+        }
+        return Promise.reject(refreshError);
+      }
+    }
 
 		return Promise.reject(error);
 	}

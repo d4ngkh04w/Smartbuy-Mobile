@@ -1,4 +1,5 @@
 import instance from "./axiosConfig";
+import emitter from "../utils/evenBus.js";
 class AuthService {
     async verifyUser() {
         return await instance.get("/user/auth/verify");
@@ -53,6 +54,7 @@ class AuthService {
     }
 
     async logout() {
+        emitter.emit("logout");
         return await instance.post("/auth/logout");
     }
 

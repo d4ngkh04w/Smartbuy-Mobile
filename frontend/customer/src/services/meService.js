@@ -1,8 +1,15 @@
 import instance from "./axiosConfig";
 export const getMe = async (options = {}) => {
-    const config = { ...options };
-    return (await instance.get("/user/me", config)).data.data; // Trả về thông tin người dùng
+  const config = { ...options };
+  try {
+    const response = await instance.get("/user/me", config);  // Gọi API để lấy thông tin người dùng
+    return response.data.data;  // Trả về dữ liệu người dùng
+  } catch (error) {
+    console.error("Error fetching user data:", error);
+    throw error; // Để xử lý lỗi ở các phần khác nếu cần
+  }
 };
+
 export const changePassword = async (passwordData) => {
     return await instance.post("/auth/change-password", passwordData);
 };

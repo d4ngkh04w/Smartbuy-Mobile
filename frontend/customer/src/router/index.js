@@ -14,30 +14,33 @@ const router = createRouter({
 		return savedPosition || { top: 0 };
 	},
 });
-
-// Update document title based on route meta
 router.beforeEach(async (to, from, next) => {
-	const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
-	document.title = to.meta.title || "SmartBuy Mobile";
-	if (requiresAuth) {
-		try {
-			await authService.verifyUser();
-			next(); // Tiếp tục khi xác thực thành công
-		} catch (error) {
-			if (
-				error.response?.status === 401 ||
-				error.response?.status === 403
-			) {
-				// await authService.logout();
-				next();
-			} else {
-				console.error("Lỗi xác thực:", error);
-				next(); // Vẫn cho phép tiếp tục nếu không phải lỗi 401
-			}
-		}
-	} else {
-		next();
-	}
+  document.title = to.meta.title || "SmartBuy Mobile";
+  
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  const isAuthRoute = ['/login', '/register', '/not-logged-in'].includes(to.path);
+
+  if (!requiresAuth) return next();
+
+  try {
+    await authService.verifyUser({ skipAuthRedirect: true });
+    next();
+  } catch (error) {
+    if ([401, 403].includes(error.response?.status)) {
+      try {
+        await authService.logout();
+      } catch (logoutError) {
+        console.error("Logout error:", logoutError);
+      }
+      
+      if (!isAuthRoute) {
+        return next('/not-logged-in');
+      }
+    }
+    next('/'); // Fallback
+  }
 });
+
+
 
 export default router;

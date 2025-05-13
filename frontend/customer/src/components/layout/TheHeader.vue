@@ -24,7 +24,7 @@
 
                 <div class="header-actions">
                     <router-link
-                        to = "/cart" >
+                        to = "/cart"  @click.native.prevent="handleCartClick">
                         <div class="action-item cart-icon">
                             <div class="icon-container">
                                 <i class="fas fa-shopping-cart"></i>
@@ -98,11 +98,18 @@ const resetSearchText = () => {
 	handleSearch();
 };
 const getCartItems = async () => {
+	if (!isLoggedIn.value) return;
   const res = await productService.getCarts()
   if (res && res.data && res.data.cartItems) {
     cartCount.value = res.data.cartItems.length;
   }
 }
+const handleCartClick = (e) => {
+  if (!isLoggedIn.value) {
+    e.preventDefault();
+    router.push('/not-logged-in');
+  }
+};
 
 const handleSearch = () => {
 	router.push({
@@ -121,56 +128,49 @@ const closeMenus = (event) => {
 	}
 
 };
-
-// Fetch user data on component mount
 const fetchUserData = async () => {
-	try {
-		// Gọi API getMe với cờ isHeaderRequest để tránh vòng lặp chuyển hướng
-		const userData = await meService.getMe({
-			headers: {
-				"X-From-Header": "true",
-			},
-			skipAuthRedirect: true,
-		});
-		currentUser.value = userData;
-		isLoggedIn.value = true;
+  try {
+    // Gọi API getMe với cờ isHeaderRequest để tránh vòng lặp chuyển hướng
+    const userData = await meService.getMe({
+      headers: {
+        "X-From-Header": "true", // Thêm header đặc biệt nếu cần
+      },
+      skipAuthRedirect: true,  // Đảm bảo không bị chuyển hướng khi không đăng nhập
+    });
+    currentUser.value = userData; // Lưu thông tin người dùng vào `currentUser`
+    isLoggedIn.value = true;  // Đánh dấu người dùng đã đăng nhập
 
-		// Set user avatar if available
-		if (userData.avatar) {
-			// Nếu avatar đã là URL đầy đủ (bắt đầu bằng http hoặc https)
-			if (userData.avatar.startsWith("http")) {
-				userAvatar.value = userData.avatar;
-			} else {
-				// Lấy base URL từ cấu hình API
-				const apiUrl = baseApiUrl;
-				const baseUrl = apiUrl.includes("/api")
-					? apiUrl.split("/api")[0]
-					: "";
+    // Xử lý avatar của người dùng nếu có
+    if (userData.avatar) {
+      // Nếu avatar đã là URL đầy đủ (bắt đầu bằng http hoặc https)
+      if (userData.avatar.startsWith("http")) {
+        userAvatar.value = userData.avatar;
+      } else {
+        // Lấy base URL từ cấu hình API
+        const apiUrl = baseApiUrl;
+        const baseUrl = apiUrl.includes("/api") ? apiUrl.split("/api")[0] : "";
 
-				// Chuẩn hóa đường dẫn file (chuyển \ thành /)
-				const normalizedPath = userData.avatar.replace(/\\/g, "/");
+        // Chuẩn hóa đường dẫn file (chuyển \ thành /)
+        const normalizedPath = userData.avatar.replace(/\\/g, "/");
 
-				// Kiểm tra xem có prefix / hay không
-				const avatarPath = normalizedPath.startsWith("/")
-					? normalizedPath
-					: `/${normalizedPath}`;
+        // Kiểm tra xem có prefix / hay không
+        const avatarPath = normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`;
 
-				userAvatar.value = `${baseUrl}${avatarPath}`;
-			}
-		} else {
-			userAvatar.value = null;
-		}
-	} catch (error) {
-		console.error("Error fetching user data:", error);
-		// Nếu API getMe trả về lỗi, xóa dữ liệu người dùng
-		isLoggedIn.value = false;
-		currentUser.value = null;
-		userAvatar.value = null;
-
-		// Không chuyển hướng sang trang đăng nhập khi gọi từ header
-		// Hiển thị UI cho trạng thái chưa đăng nhập
-	}
+        userAvatar.value = `${baseUrl}${avatarPath}`; // Cập nhật URL avatar
+      }
+    } else {
+      userAvatar.value = null;  // Nếu không có avatar, gán null
+    }
+  } catch (error) {
+    console.error("Error fetching user data:", error);
+    // Xử lý lỗi: khi không có thông tin người dùng
+    isLoggedIn.value = false;
+    currentUser.value = null;
+    userAvatar.value = null;
+    // Không chuyển hướng sang trang đăng nhập khi gọi từ header
+  }
 };
+
 
 // Xử lý sự kiện đăng xuất
 const handleUserLoggedOut = () => {
@@ -181,23 +181,38 @@ const handleUserLoggedOut = () => {
 };
 
 onMounted(() => {
-    document.addEventListener("click", closeMenus);
-	getCartItems();
-	fetchUserData();
-    emitter.on("cart-updated", () => {
-        getCartItems();
-    });
-    emitter.on('update-cart-count', () => {
-        getCartItems();
-    })
+	document.addEventListener("click", closeMenus);
+
+	fetchUserData().then(() => {
+		if (isLoggedIn.value) {
+			getCartItems();
+		}
+	});
+
+	// Lắng nghe sự kiện cập nhật giỏ hàng
+	emitter.on("cart-updated", () => {
+		if (isLoggedIn.value) {
+			getCartItems();
+		}
+	});
+	emitter.on("update-cart-count", () => {
+		if (isLoggedIn.value) {
+			getCartItems();
+		}
+	});
+	emitter.on("logout", () => {
+		cartCount.value = 0
+	});
+
 	// Lắng nghe sự kiện đăng xuất
 	emitter.on("user-logged-out", handleUserLoggedOut);
 });
+
 onUnmounted(() => {
     document.removeEventListener("click", closeMenus);
 	emitter.off("cart-updated");
-
-	// Ngừng lắng nghe sự kiện khi component bị hủy
+	emitter.off('update-cart-count');
+	emitter.off("logout");
 	emitter.off("user-logged-out", handleUserLoggedOut);
 });
 

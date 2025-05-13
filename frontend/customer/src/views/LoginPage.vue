@@ -145,10 +145,11 @@ const isValidPhoneNumber = (phone) => {
 	<div class="login-page">
 		<div class="login-container">
 			<div class="logo-section">
-				<div class="logo-text">SmartBuy Mobile</div>
+				<router-link to="/" class="logo">
+					<div class="logo-text">SmartBuy Mobile</div>
+				</router-link>
 				<h2 class="tagline">
-					SmartBuy Mobile – Mua smartphone chính hãng, giá tốt, giao
-					nhanh!
+					Công nghệ chính hãng, dịch vụ tận tâm, giao nhanh từng phút.
 				</h2>
 			</div>
 
