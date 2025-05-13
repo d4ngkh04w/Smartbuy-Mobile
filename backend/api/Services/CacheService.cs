@@ -106,7 +106,6 @@ namespace api.Services
             var keys = CacheKeyManager.GetTagKeys(id);
             RemoveRange(keys);
         }
-
         public void RemoveAllTagsCache()
         {
             var keys = CacheKeyManager.GetAllTagKeys();

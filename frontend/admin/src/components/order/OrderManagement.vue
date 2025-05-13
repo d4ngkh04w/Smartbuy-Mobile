@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted, computed, watch, onUnmounted } from "vue";
 import {
 	getOrders,
@@ -37,10 +37,14 @@ const fetchOrders = async () => {
 		orders.value = response.data.data || [];
 	} catch (error) {
 		console.error("Error fetching orders:", error);
-		emitter.emit("show-notification", {
-			status: "error",
-			message: "Không thể tải danh sách đơn hàng",
-		});
+		if (error.response && error.response.status === 404) {
+			orders.value = [];
+		} else {
+			emitter.emit("show-notification", {
+				status: "error",
+				message: "Không thể tải danh sách đơn hàng",
+			});
+		}
 	} finally {
 		loading.value = false;
 	}
@@ -109,6 +113,57 @@ const pageCount = computed(() => {
 	return Math.ceil(filteredOrders.value.length / itemsPerPage.value);
 });
 
+// Calculate which page numbers to display in pagination
+const displayedPageNumbers = computed(() => {
+	const pages = [];
+	const maxVisiblePages = 5; // Maximum number of page buttons to show
+
+	if (pageCount.value <= maxVisiblePages) {
+		// If we have 5 or fewer pages, show all page numbers
+		for (let i = 1; i <= pageCount.value; i++) {
+			pages.push(i);
+		}
+	} else {
+		// Always include first page
+		pages.push(1);
+
+		// Calculate start and end of the displayed range
+		let start = Math.max(2, currentPage.value - 1);
+		let end = Math.min(pageCount.value - 1, currentPage.value + 1);
+
+		// Adjust the range if we're near the beginning or end
+		if (currentPage.value <= 3) {
+			start = 2;
+			end = Math.min(start + 2, pageCount.value - 1);
+		} else if (currentPage.value >= pageCount.value - 2) {
+			end = pageCount.value - 1;
+			start = Math.max(2, end - 2);
+		}
+
+		// Add ellipsis if needed before the range
+		if (start > 2) {
+			pages.push("...");
+		}
+
+		// Add the range of page numbers
+		for (let i = start; i <= end; i++) {
+			pages.push(i);
+		}
+
+		// Add ellipsis if needed after the range
+		if (end < pageCount.value - 1) {
+			pages.push("...");
+		}
+
+		// Always include the last page
+		if (pageCount.value > 1) {
+			pages.push(pageCount.value);
+		}
+	}
+
+	return pages;
+});
+
 // Calculate stats
 const orderStats = computed(() => {
 	return {
@@ -117,8 +172,9 @@ const orderStats = computed(() => {
 		processing: orders.value.filter(
 			(o) => o.status === "Đã xác nhận" || o.status === "Đang giao hàng"
 		).length,
-		completed: orders.value.filter((o) => o.status === "Đã giao hàng")
+		delivered: orders.value.filter((o) => o.status === "Đã giao hàng")
 			.length,
+		completed: orders.value.filter((o) => o.status === "Hoàn thành").length,
 		cancelled: orders.value.filter(
 			(o) =>
 				o.status === "Đã huỷ" ||
@@ -262,6 +318,8 @@ const getStatusClass = (status) => {
 			return "shipping";
 		case "Đã giao hàng":
 			return "delivered";
+		case "Hoàn thành":
+			return "completed";
 		case "Đã huỷ":
 			return "canceled";
 		case "Đã hoàn tiền":
@@ -281,11 +339,17 @@ const getAvailableStatusOptions = (currentStatus) => {
 		case "Đã xác nhận":
 			return ["Đang giao hàng", "Đã huỷ"];
 		case "Đang giao hàng":
-			return ["Đã giao hàng", "Đã huỷ", "Đã trả hàng"];
+			return ["Đã giao hàng"];
 		case "Đã giao hàng":
-			return ["Đã hoàn tiền", "Đã trả hàng"];
+			return ["Hoàn thành", "Đã trả hàng"];
+		case "Hoàn thành":
+			return []; // Final state, no further transitions
 		case "Đã huỷ":
+			return []; // Final state, no further transitions
+		case "Đã trả hàng":
 			return ["Đã hoàn tiền"];
+		case "Đã hoàn tiền":
+			return []; // Final state, no further transitions
 		default:
 			return [];
 	}
@@ -345,6 +409,7 @@ onUnmounted(() => {
 								Đang giao hàng
 							</option>
 							<option value="Đã giao hàng">Đã giao hàng</option>
+							<option value="Hoàn thành">Hoàn thành</option>
 							<option value="Đã huỷ">Đã huỷ</option>
 							<option value="Đã hoàn tiền">Đã hoàn tiền</option>
 							<option value="Đã trả hàng">Đã trả hàng</option>
@@ -371,7 +436,6 @@ onUnmounted(() => {
 				</div>
 			</div>
 		</div>
-
 		<!-- Status Cards -->
 		<div class="status-cards">
 			<div class="status-card">
@@ -401,6 +465,16 @@ onUnmounted(() => {
 				<div class="status-content">
 					<h3>{{ orderStats.processing }}</h3>
 					<p>Đang xử lý</p>
+				</div>
+			</div>
+
+			<div class="status-card">
+				<div class="icon-wrapper bg-blue">
+					<i class="fas fa-box"></i>
+				</div>
+				<div class="status-content">
+					<h3>{{ orderStats.delivered }}</h3>
+					<p>Đã giao hàng</p>
 				</div>
 			</div>
 
@@ -495,25 +569,55 @@ onUnmounted(() => {
 						</tr>
 					</tbody>
 				</table>
-
 				<!-- Pagination -->
-				<div class="pagination" v-if="pageCount > 1">
+				<div class="pagination" v-if="filteredOrders.length > 0">
+					<button
+						@click="currentPage = 1"
+						:disabled="currentPage === 1"
+						class="pagination-button"
+						title="Trang đầu tiên"
+					>
+						<i class="fas fa-angle-double-left"></i>
+					</button>
 					<button
 						@click="currentPage--"
 						:disabled="currentPage === 1"
 						class="pagination-button"
+						title="Trang trước"
 					>
 						<i class="fas fa-chevron-left"></i>
 					</button>
-					<span class="page-info"
-						>Trang {{ currentPage }} / {{ pageCount }}</span
-					>
+
+					<!-- Page Numbers -->
+					<div class="page-numbers">
+						<button
+							v-for="page in displayedPageNumbers"
+							:key="page"
+							@click="currentPage = page"
+							:class="[
+								'page-number',
+								{ active: currentPage === page },
+							]"
+						>
+							{{ page }}
+						</button>
+					</div>
+
 					<button
 						@click="currentPage++"
 						:disabled="currentPage === pageCount"
 						class="pagination-button"
+						title="Trang sau"
 					>
 						<i class="fas fa-chevron-right"></i>
+					</button>
+					<button
+						@click="currentPage = pageCount"
+						:disabled="currentPage === pageCount"
+						class="pagination-button"
+						title="Trang cuối"
+					>
+						<i class="fas fa-angle-double-right"></i>
 					</button>
 				</div>
 			</div>
@@ -782,6 +886,7 @@ onUnmounted(() => {
 							"
 						>
 							<h4 class="section-title">Cập nhật trạng thái</h4>
+
 							<div class="status-form">
 								<div class="form-group">
 									<label>Trạng thái mới</label>
@@ -1224,8 +1329,8 @@ onUnmounted(() => {
 }
 
 .status-badge.confirmed {
-	background-color: #e8f5e9;
-	color: #2e7d32;
+	background-color: #e3f2fd;
+	color: #1565c0;
 }
 
 .status-badge.shipping {
@@ -1235,7 +1340,12 @@ onUnmounted(() => {
 
 .status-badge.delivered {
 	background-color: #e8f5e9;
-	color: #2e7d32;
+	color: #43a047;
+}
+
+.status-badge.completed {
+	background-color: #f1f8e9;
+	color: #388e3c;
 }
 
 .status-badge.canceled {
@@ -1259,7 +1369,7 @@ onUnmounted(() => {
 	align-items: center;
 	justify-content: center;
 	margin-top: 1.5rem;
-	gap: 1rem;
+	gap: 0.5rem;
 }
 
 .pagination-button {
@@ -1284,6 +1394,39 @@ onUnmounted(() => {
 .pagination-button:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
+}
+
+.page-numbers {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.page-number {
+	width: 36px;
+	height: 36px;
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid #ddd;
+	background-color: white;
+	color: #666;
+	font-size: 0.9rem;
+	cursor: pointer;
+	transition: all 0.2s;
+}
+
+.page-number:hover {
+	border-color: var(--primary-color);
+	color: var(--primary-color);
+}
+
+.page-number.active {
+	background-color: var(--primary-color);
+	border-color: var(--primary-color);
+	color: white;
+	font-weight: 600;
 }
 
 .page-info {

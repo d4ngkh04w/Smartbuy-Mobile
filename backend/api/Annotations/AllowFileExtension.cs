@@ -17,7 +17,7 @@ namespace api.Annotations
                 var extension = Path.GetExtension(file.FileName)?.ToLowerInvariant();
                 if (string.IsNullOrEmpty(extension) || !_extensions.Contains(extension))
                 {
-                    return new ValidationResult(ErrorMessage);
+                    return new ValidationResult(ErrorMessage ?? $"File extension must be one of: {string.Join(", ", _extensions)}");
                 }
             }
             return ValidationResult.Success!;

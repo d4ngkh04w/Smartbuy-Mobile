@@ -35,12 +35,12 @@ namespace api.Controllers
             return ApiResponseHelper.Success("Brand retrieved successfully", brand);
         }
 
-        [HttpDelete("{id:int}")]
-        public async Task<IActionResult> DeleteBrand(int id)
-        {
-            await _brandService.DeleteBrandAsync(id);
-            return NoContent();
-        }
+        // [HttpDelete("{id:int}")]
+        // public async Task<IActionResult> DeleteBrand(int id)
+        // {
+        //     await _brandService.DeleteBrandAsync(id);
+        //     return NoContent();
+        // }
 
         [HttpPost]
         public async Task<IActionResult> CreateBrand([FromForm] CreateBrandDTO brandDTO)

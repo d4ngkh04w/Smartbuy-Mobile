@@ -1,5 +1,6 @@
 using api.DTOs.ProductLine;
 using api.Models;
+using api.Utils;
 
 namespace api.Mappers
 {
@@ -13,7 +14,7 @@ namespace api.Mappers
                 Description = createProductLineDTO.Description,
                 BrandId = createProductLineDTO.BrandId,
                 IsActive = true,
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTimeUtils.FormatDateTime(DateTime.Now),
                 Products = new HashSet<Product>(),
             };
         }

@@ -144,6 +144,15 @@ namespace api.Services
 
         public async Task<ProductColorDTO> UpdateProductColorAsync(int productId, int colorId, UpdateColorDTO productColorDTO)
         {
+            if (productColorDTO.AddImages != null)
+            {
+                foreach (var image in productColorDTO.AddImages)
+                {
+                    if (!image.IsImage())
+                        throw new BadRequestException("Invalid image format");
+                }
+            }
+
             _ = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
             var productColor = await _productRepository.GetProductColorAsync(productId, colorId) ?? throw new NotFoundException("Product color not found");
 
@@ -247,6 +256,11 @@ namespace api.Services
 
         public async Task<ProductColorDTO> CreateProductColorAsync(int productId, CreateColorDTO productColorDTO)
         {
+            foreach (var image in productColorDTO.Images)
+            {
+                if (!image.IsImage())
+                    throw new BadRequestException("Invalid image format");
+            }
             var product = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
             var productColor = new ProductColor
             {

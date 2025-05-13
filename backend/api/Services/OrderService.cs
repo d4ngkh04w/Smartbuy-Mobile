@@ -52,12 +52,10 @@ namespace api.Services
                 if (!product.IsActive)
                     throw new BadRequestException($"Product '{product.Name}' is no longer available");
 
-                // Find the specific color
                 var color = product.Colors.FirstOrDefault(c => c.Id == item.ColorId);
                 if (color == null)
                     throw new NotFoundException($"Color with ID {item.ColorId} not found for product '{product.Name}'");
 
-                // Check if there's enough quantity for the selected color
                 if (color.Quantity < item.Quantity)
                     throw new BadRequestException($"Not enough quantity available for product '{product.Name}' in the selected color");
 
@@ -78,9 +76,7 @@ namespace api.Services
                 // Add item vào order
                 order.OrderItems.Add(orderItem);
 
-                // Update số lượng sản phẩm cho màu cụ thể
                 color.Quantity -= item.Quantity;
-                product.Sold += item.Quantity;
                 await _productRepository.UpdateAsync(product);
             }
 
@@ -103,7 +99,7 @@ namespace api.Services
             return createdOrder.ToOrderDTO();
         }
 
-        private decimal CalculateShippingFee(decimal orderTotal)
+        private static decimal CalculateShippingFee(decimal orderTotal)
         {
             decimal baseShippingFee = 30_000; // Phí vận chuyển cơ bản
             decimal discountThreshold = 5_000_000; // Giảm 50% phí vận chuyển cho đơn hàng trên 5 triệu
@@ -122,6 +118,41 @@ namespace api.Services
             }
 
             return shippingFee;
+        }
+
+        public async Task<OrderDTO> CancelOrderAsync(Guid id, Guid userId)
+        {
+            var order = await _orderRepository.GetOrderByIdAsync(id) ?? throw new NotFoundException("Order not found");
+
+            if (order.UserId != userId)
+            {
+                throw new ForbiddenException("You don't have permission to cancel this order");
+            }
+
+            if (order.Status != "Chờ xác nhận" && order.Status != "Đã xác nhận")
+            {
+                throw new BadRequestException($"Order cannot be canceled because it is in '{order.Status}' status. Only orders in 'Chờ xác nhận' or 'Đã xác nhận' status can be canceled.");
+            }
+
+            order.Status = "Đã huỷ";
+
+            foreach (var item in order.OrderItems)
+            {
+                var product = await _productRepository.GetByIdAsync(item.ProductId);
+                if (product != null)
+                {
+                    var color = product.Colors.FirstOrDefault(c => c.Id == item.ColorId);
+                    if (color != null)
+                    {
+                        color.Quantity += item.Quantity;
+                        await _productRepository.UpdateAsync(product);
+                    }
+                }
+            }
+
+            var updatedOrder = await _orderRepository.UpdateOrderAsync(order);
+
+            return updatedOrder.ToOrderDTO();
         }
 
         public async Task DeleteOrderAsync(Guid id)
@@ -160,7 +191,6 @@ namespace api.Services
 
             return orders.Select(o => o.ToOrderDTO());
         }
-
         public async Task<OrderDTO> UpdateOrderStatusAsync(Guid id, UpdateOrderStatusDTO updateOrderStatusDTO)
         {
             var order = await _orderRepository.GetOrderByIdAsync(id) ?? throw new NotFoundException("Order not found");
@@ -179,37 +209,39 @@ namespace api.Services
                 order.DeliveryDate = updateOrderStatusDTO.DeliveryDate ?? DateTime.Now;
             }
 
+            // Nếu đơn hàng chuyển sang trạng thái "Hoàn thành", tăng số lượng đã bán của sản phẩm
+            if (updateOrderStatusDTO.Status == "Hoàn thành")
+            {
+                foreach (var item in order.OrderItems)
+                {
+                    var product = await _productRepository.GetByIdAsync(item.ProductId);
+                    if (product != null)
+                    {
+                        product.Sold += item.Quantity;
+                        await _productRepository.UpdateAsync(product);
+                    }
+                }
+            }
+
             var result = await _orderRepository.UpdateOrderAsync(order);
 
             return result.ToOrderDTO();
         }
-
-        private bool IsValidStatusTransition(string currentStatus, string newStatus)
+        private static bool IsValidStatusTransition(string currentStatus, string newStatus)
         {
             Dictionary<string, List<string>> validTransitions = new Dictionary<string, List<string>>
             {
                 ["Chờ xác nhận"] = new List<string> { "Đã xác nhận", "Đã huỷ" },
                 ["Đã xác nhận"] = new List<string> { "Đang giao hàng", "Đã huỷ" },
-                ["Đang giao hàng"] = new List<string> { "Đã giao hàng", "Đã huỷ" },
-                ["Đã giao hàng"] = new List<string> { "Đã hoàn tiền", "Đã trả hàng" },
+                ["Đang giao hàng"] = new List<string> { "Đã giao hàng" },
+                ["Đã giao hàng"] = new List<string> { "Hoàn thành", "Đã trả hàng" },
+                ["Hoàn thành"] = new List<string>(),
                 ["Đã huỷ"] = new List<string>(),
                 ["Đã hoàn tiền"] = new List<string>(),
-                ["Đã trả hàng"] = new List<string>()
+                ["Đã trả hàng"] = new List<string> { "Đã hoàn tiền" }
             };
 
-            // Kiểm tra chuyển trạng thái hợp lệ
-            if (validTransitions.ContainsKey(currentStatus) && validTransitions[currentStatus].Contains(newStatus))
-            {
-                return true;
-            }
-
-            // Cho phép chuyển trạng thái bất kỳ nếu trạng thái hiện tại không được định nghĩa
-            if (!validTransitions.ContainsKey(currentStatus))
-            {
-                return true;
-            }
-
-            return false;
+            return validTransitions.ContainsKey(currentStatus) && validTransitions[currentStatus].Contains(newStatus);
         }
     }
 }

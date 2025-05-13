@@ -1,5 +1,4 @@
 using api.DTOs.Cart;
-using api.Mappers;
 using api.Models;
 
 namespace api.Mappers
@@ -15,7 +14,6 @@ namespace api.Mappers
                 CartItems = cart.Items?.Select(ci => ci.ToCartItemDTO()) ?? new List<CartItemDTO>(),
             };
 
-            // Calculate total price based on all item subtotals
             cartDto.TotalPrice = cartDto.CartItems.Sum(item => item.SubTotal);
 
             return cartDto;
@@ -32,12 +30,10 @@ namespace api.Mappers
                 Product = cartItem.Product?.ToProductDTO()
             };
 
-            // Set color information if available
             if (cartItem.Color != null)
             {
                 cartItemDto.ColorName = cartItem.Color.Name;
 
-                // Get the first image from the color, if there's any
                 var firstImage = cartItem.Color.Images.FirstOrDefault();
                 if (firstImage != null)
                 {
@@ -45,7 +41,6 @@ namespace api.Mappers
                 }
             }
 
-            // Calculate subtotal based on product price and quantity
             cartItemDto.SubTotal = cartItem.Product != null
                 ? cartItem.Product.SalePrice * cartItem.Quantity
                 : 0;

@@ -27,6 +27,7 @@ namespace api.Annotations
         {
             if (!IsValid(value))
                 return new ValidationResult(ErrorMessage ?? "Invalid Vietnamese phone number format");
+
             if (value == null)
                 return ValidationResult.Success!;
 

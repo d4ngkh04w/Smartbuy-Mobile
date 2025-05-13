@@ -59,12 +59,12 @@ namespace api.Controllers
             return ApiResponseHelper.Success("Product line updated successfully", productLine);
         }
 
-        [HttpDelete("{id:int}")]
-        public async Task<IActionResult> DeleteProductLine([FromRoute] int id)
-        {
-            await _productLineService.DeleteProductLineAsync(id);
-            return NoContent();
-        }
+        // [HttpDelete("{id:int}")]
+        // public async Task<IActionResult> DeleteProductLine([FromRoute] int id)
+        // {
+        //     await _productLineService.DeleteProductLineAsync(id);
+        //     return NoContent();
+        // }
 
         [HttpPut("{id:int}/activate")]
         public async Task<IActionResult> ActivateProductLine([FromRoute] int id)

@@ -27,8 +27,6 @@ namespace api.Controllers
             if (HttpContextHelper.UserOrigin.Contains(ConfigHelper.AdminUrl))
             {
                 var adminRefreshToken = CookieHelper.AdminRefreshToken;
-                if (string.IsNullOrEmpty(adminRefreshToken))
-                    throw new UnauthorizedException("Refresh token is missing");
                 var token = await _tokenService.ValidateRefreshToken(adminRefreshToken, "admin");
                 CookieHelper.AdminAccessToken = token.AccessToken;
                 CookieHelper.AdminRefreshToken = token.RefreshToken;
@@ -36,8 +34,6 @@ namespace api.Controllers
             else if (HttpContextHelper.UserOrigin.Contains(ConfigHelper.UserUrl))
             {
                 var userRefreshToken = CookieHelper.UserRefreshToken;
-                if (string.IsNullOrEmpty(userRefreshToken))
-                    throw new UnauthorizedException("Refresh token is missing");
                 var token = await _tokenService.ValidateRefreshToken(userRefreshToken, "user");
                 CookieHelper.UserAccessToken = token.AccessToken;
                 CookieHelper.UserRefreshToken = token.RefreshToken;
@@ -58,11 +54,6 @@ namespace api.Controllers
                     var userToken = await _tokenService.ValidateRefreshToken(userRefreshToken, "user");
                     CookieHelper.UserAccessToken = userToken.AccessToken;
                     CookieHelper.UserRefreshToken = userToken.RefreshToken;
-                }
-
-                if (string.IsNullOrEmpty(adminRefreshToken) && string.IsNullOrEmpty(userRefreshToken))
-                {
-                    throw new UnauthorizedException("Refresh token is missing");
                 }
             }
 
