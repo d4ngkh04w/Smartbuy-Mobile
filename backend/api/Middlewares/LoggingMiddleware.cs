@@ -15,6 +15,11 @@ namespace api.Middlewares
 
         public async Task InvokeAsync(HttpContext context)
         {
+            if (context.Request.Path.StartsWithSegments("/uploads"))
+            {
+                await _next(context);
+                return;
+            }
             _logger.LogInformation("Request: {requestMethod} {requestPath} | User: {userEmail} | Origin: {userOrigin} | IP: {userIP} | User-Agent: {userAgent}",
                 context.Request.Method,
                 context.Request.Path + context.Request.QueryString,

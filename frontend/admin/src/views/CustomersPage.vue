@@ -32,10 +32,14 @@ const fetchCustomers = async () => {
 		customers.value = response.data.data || [];
 	} catch (error) {
 		console.error("Error fetching customers:", error);
-		emitter.emit("show-notification", {
-			status: "error",
-			message: "Không thể tải danh sách khách hàng",
-		});
+		if (error.response && error.response.status === 404) {
+			customers.value = [];
+		} else {
+			emitter.emit("show-notification", {
+				status: "error",
+				message: "Không thể tải danh sách khách hàng",
+			});
+		}
 	} finally {
 		loading.value = false;
 	}
@@ -117,6 +121,43 @@ const paginatedCustomers = computed(() => {
 // Total pages
 const totalPages = computed(() => {
 	return Math.ceil(filteredCustomers.value.length / itemsPerPage.value) || 1;
+});
+
+// Calculate which page numbers to display in pagination
+const displayedPageNumbers = computed(() => {
+	const total = totalPages.value;
+	const current = currentPage.value;
+	const delta = 2; // Number of pages to show before and after current page
+	let pages = [];
+
+	// Always include page 1
+	pages.push(1);
+
+	// Calculate start and end pages to display
+	const startPage = Math.max(2, current - delta);
+	const endPage = Math.min(total - 1, current + delta);
+
+	// Add ellipsis after page 1 if needed
+	if (startPage > 2) {
+		pages.push("...");
+	}
+
+	// Add pages in the middle
+	for (let i = startPage; i <= endPage; i++) {
+		pages.push(i);
+	}
+
+	// Add ellipsis before the last page if needed
+	if (endPage < total - 1) {
+		pages.push("...");
+	}
+
+	// Always include the last page if it's not already included
+	if (total > 1) {
+		pages.push(total);
+	}
+
+	return pages;
 });
 
 // Reset filters
@@ -443,25 +484,55 @@ onMounted(async () => {
 					</tr>
 				</tbody>
 			</table>
-
 			<!-- Pagination -->
 			<div v-if="filteredCustomers.length > 0" class="pagination">
 				<button
+					@click="currentPage = 1"
 					:disabled="currentPage === 1"
+					class="pagination-button"
+					title="Trang đầu tiên"
+				>
+					<i class="fas fa-angle-double-left"></i>
+				</button>
+				<button
 					@click="currentPage--"
-					class="page-button"
+					:disabled="currentPage === 1"
+					class="pagination-button"
+					title="Trang trước"
 				>
 					<i class="fas fa-chevron-left"></i>
 				</button>
-				<span class="page-info">
-					Trang {{ currentPage }} / {{ totalPages }}
-				</span>
+
+				<!-- Page Numbers -->
+				<div class="page-numbers">
+					<button
+						v-for="page in displayedPageNumbers"
+						:key="page"
+						@click="currentPage = page"
+						:class="[
+							'page-number',
+							{ active: currentPage === page },
+						]"
+					>
+						{{ page }}
+					</button>
+				</div>
+
 				<button
-					:disabled="currentPage === totalPages"
 					@click="currentPage++"
-					class="page-button"
+					:disabled="currentPage === totalPages"
+					class="pagination-button"
+					title="Trang sau"
 				>
 					<i class="fas fa-chevron-right"></i>
+				</button>
+				<button
+					@click="currentPage = totalPages"
+					:disabled="currentPage === totalPages"
+					class="pagination-button"
+					title="Trang cuối cùng"
+				>
+					<i class="fas fa-angle-double-right"></i>
 				</button>
 			</div>
 		</div>
@@ -1174,38 +1245,67 @@ lock-button i,
 /* Pagination */
 .pagination {
 	display: flex;
-	justify-content: center;
 	align-items: center;
+	justify-content: center;
 	margin-top: 1.5rem;
-	gap: 1rem;
+	gap: 0.5rem;
 }
 
-.page-info {
-	color: #6b7280;
-	font-size: 0.9rem;
-}
-
-.page-button {
-	width: 32px;
-	height: 32px;
-	border-radius: 6px;
-	background-color: white;
-	border: 1px solid #e5e7eb;
+.pagination-button {
+	width: 36px;
+	height: 36px;
+	border-radius: 8px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	color: #4b5563;
+	border: 1px solid #ddd;
+	background-color: white;
+	color: #666;
 	cursor: pointer;
 	transition: all 0.2s;
 }
 
-.page-button:hover:not(:disabled) {
-	background-color: #f3f4f6;
+.pagination-button:hover:not(:disabled) {
+	border-color: var(--primary-color);
+	color: var(--primary-color);
 }
 
-.page-button:disabled {
+.pagination-button:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
+}
+
+.page-numbers {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.page-number {
+	width: 36px;
+	height: 36px;
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid #ddd;
+	background-color: white;
+	color: #666;
+	font-size: 0.9rem;
+	cursor: pointer;
+	transition: all 0.2s;
+}
+
+.page-number:hover {
+	border-color: var(--primary-color);
+	color: var(--primary-color);
+}
+
+.page-number.active {
+	background-color: var(--primary-color);
+	border-color: var(--primary-color);
+	color: white;
+	font-weight: 600;
 }
 
 /* Modal */

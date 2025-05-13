@@ -9,6 +9,7 @@ namespace api.Interfaces.Services
         Task<OrderDTO> GetOrderByIdAsync(Guid id);
         Task<OrderDTO> CreateOrderAsync(CreateOrderDTO orderDTO, Guid userId);
         Task<OrderDTO> UpdateOrderStatusAsync(Guid id, UpdateOrderStatusDTO updateOrderStatusDTO);
+        Task<OrderDTO> CancelOrderAsync(Guid id, Guid userId);
         Task DeleteOrderAsync(Guid id);
     }
 }

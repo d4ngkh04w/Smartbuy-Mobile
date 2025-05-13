@@ -187,6 +187,8 @@ namespace api.Helpers
             return allKeys;
         }
 
+        #endregion
+
         public static HashSet<string> GetTagKeys(int id)
         {
             string key = id.ToString();
@@ -219,7 +221,6 @@ namespace api.Helpers
 
             return cacheKey;
         }
-        #endregion
 
         private static string GetEntityIdFromKey(string key, string prefix)
         {

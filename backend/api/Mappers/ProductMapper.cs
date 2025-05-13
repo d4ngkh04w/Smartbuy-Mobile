@@ -1,5 +1,6 @@
 using api.DTOs.Product;
 using api.Models;
+using api.Utils;
 
 namespace api.Mappers
 {
@@ -13,7 +14,6 @@ namespace api.Mappers
                 Name = productColor.Name,
                 Quantity = productColor.Quantity,
                 Images = productColor.Images?.Select(i => i.ToProductImageDTO()).ToHashSet() ?? new HashSet<ProductImageDTO>(),
-                // HasMainImage = productColor.Images?.Any(i => i.IsMain) ?? false
             };
         }
 
@@ -59,8 +59,8 @@ namespace api.Mappers
                 Sold = product.Sold,
                 IsActive = product.IsActive,
                 ManuallyDeactivated = product.ManuallyDeactivated,
-                CreatedAt = DateTime.Parse(product.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ss")),
-                UpdatedAt = product.UpdatedAt.HasValue ? DateTime.Parse(product.UpdatedAt.Value.ToString("yyyy-MM-ddTHH:mm:ss")) : DateTime.Now,
+                CreatedAt = DateTimeUtils.FormatDateTime(product.CreatedAt),
+                UpdatedAt = product.UpdatedAt.HasValue ? DateTimeUtils.FormatDateTime(product.UpdatedAt.Value) : DateTimeUtils.FormatDateTime(DateTime.Now),
                 ProductLineId = product.ProductLineId,
                 ProductLineName = product.ProductLine?.Name ?? string.Empty,
 
@@ -80,8 +80,8 @@ namespace api.Mappers
                 SalePrice = productDTO.SalePrice,
                 Description = productDTO.Description,
                 ProductLineId = productDTO.ProductLineId,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now,
+                CreatedAt = DateTimeUtils.FormatDateTime(DateTime.Now),
+                UpdatedAt = DateTimeUtils.FormatDateTime(DateTime.Now),
                 IsActive = true,
                 Rating = 0,
                 RatingCount = 0,

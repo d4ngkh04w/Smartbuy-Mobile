@@ -78,70 +78,77 @@
 
   </script>
 
-  <style scoped>
+<style scoped>
 .product-card {
-  width: 230px;
-  height: var(--height);
-  background-color: var(--card-bg);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: transform 0.3s;
+	width: 100%;
+	height: var(--height, 380px);
+	background-color: var(--card-bg, #fff);
+	border-radius: 12px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .product-card:hover {
-  transform: translateY(-4px);
+	transform: translateY(-5px);
+	box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
 }
 
 .product-top {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 12px;
+	background-color: #fafafa;
 }
 
 .product-img {
-  width: 100%;
-  height: 220px;
-  object-fit: contain;
-  border-bottom: 1px solid #e0e0e0;
+	width: 100%;
+	height: 180px;
+	object-fit: contain;
+	transition: transform 0.3s;
+}
+
+.product-card:hover .product-img {
+	transform: scale(1.05);
 }
 
 .product-middle {
-  padding: 8px;
-  text-align: center;
-  background-color: #fff;
+	padding: 12px 16px;
+	text-align: left;
+	background-color: #fff;
 }
 
 .product-middle h3 {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-color, #333);
-  margin-bottom: 8px;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  height: 24px;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--text-color, #333);
+	margin-bottom: 10px;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-height: 40px;
 }
 
-.product-middle p {
-  font-size: 16px;
-  font-weight: 500;
-  color: #FF7043;
-  margin: 0;
+.price {
+	font-size: 16px;
+	font-weight: 600;
+	color: #ff7043;
+	margin: 0;
 }
 
 .product-bottom {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px;
-  background-color: #fff;
+	display: flex;
+	justify-content: space-between;
+	padding: 12px;
+	background-color: #fff;
 }
 .product-card {
   display: block;

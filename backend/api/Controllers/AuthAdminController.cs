@@ -33,9 +33,6 @@ namespace api.Controllers
         [HttpGet("verify")]
         public IActionResult VerifyToken()
         {
-            if (!HttpContextHelper.UserOrigin.Contains(ConfigHelper.AdminUrl))
-                throw new UnauthorizedException();
-
             return Ok(new
             {
                 Message = "Token is valid",

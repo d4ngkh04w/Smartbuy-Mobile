@@ -86,6 +86,8 @@ router.beforeEach(async (to, from, next) => {
 			if (error.response?.status != 401) {
 				console.error("Lỗi xác thực:", error);
 				next("/login");
+			} else {
+				next("/login");
 			}
 		}
 	} else {

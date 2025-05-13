@@ -12,7 +12,7 @@ namespace api.Models
         [Column(TypeName = "decimal(12, 2)")]
         public decimal TotalAmount { get; set; }
         public Guid UserId { get; set; }
-        [Column(TypeName = "enum('Chờ xác nhận', 'Đã xác nhận', 'Đang giao hàng', 'Đã giao hàng', 'Đã huỷ', 'Đã hoàn tiền', 'Đã trả hàng')")]
+        [Column(TypeName = "enum('Chờ xác nhận', 'Đã xác nhận', 'Đang giao hàng', 'Đã giao hàng', 'Đã huỷ', 'Đã hoàn tiền', 'Đã trả hàng', 'Hoàn thành')")]
         public string Status { get; set; } = string.Empty;
 
         [Column(TypeName = "enum('COD', 'Banking')")]

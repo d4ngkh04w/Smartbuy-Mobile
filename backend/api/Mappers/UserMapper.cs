@@ -1,5 +1,6 @@
 using api.DTOs.User;
 using api.Models;
+using api.Utils;
 
 namespace api.Mappers
 {
@@ -16,8 +17,8 @@ namespace api.Mappers
                 PhoneNumberConfirmed = user.PhoneNumberConfirmed,
                 Address = user.Address,
                 DateOfBirth = user.DateOfBirth,
-                CreatedAt = user.CreatedAt,
-                UpdatedAt = user.UpdatedAt.HasValue ? DateTime.Parse(user.UpdatedAt.Value.ToString("yyyy-MM-ddTHH:mm:ss")) : null,
+                CreatedAt = DateTimeUtils.FormatDateTime(user.CreatedAt),
+                UpdatedAt = user.UpdatedAt.HasValue ? DateTimeUtils.FormatDateTime(user.UpdatedAt.Value) : null,
                 IsLocked = user.IsLocked,
                 LockedBy = user.LockedBy ?? string.Empty,
                 LockReason = user.LockReason ?? string.Empty,
@@ -25,7 +26,7 @@ namespace api.Mappers
                 Gender = user.Gender ?? string.Empty,
                 Name = user.Name,
                 Avatar = user.Avatar ?? string.Empty,
-                LastLogin = user.LastLogin,
+                LastLogin = user.LastLogin.HasValue ? DateTimeUtils.FormatDateTime(user.LastLogin.Value) : null,
             };
         }
     }

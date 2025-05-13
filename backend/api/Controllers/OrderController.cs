@@ -76,6 +76,18 @@ namespace api.Controllers
             return ApiResponseHelper.Success("Order status updated successfully", order);
         }
 
+        [HttpPut("{id:guid}/cancel")]
+        [Authorize(AuthenticationSchemes = "user", Roles = "user")]
+        public async Task<IActionResult> CancelOrder([FromRoute] Guid id)
+        {
+            var userId = HttpContextHelper.CurrentUserId;
+            if (userId == Guid.Empty)
+                throw new UnauthorizedException();
+
+            var order = await _orderService.CancelOrderAsync(id, userId);
+            return ApiResponseHelper.Success("Order canceled successfully", order);
+        }
+
         [HttpDelete("{id:guid}")]
         [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
         public async Task<IActionResult> DeleteOrder([FromRoute] Guid id)

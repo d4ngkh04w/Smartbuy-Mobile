@@ -33,6 +33,11 @@ namespace api.Services
 
         public async Task<ProductLineDTO> CreateProductLineAsync(CreateProductLineDTO productLineDTO)
         {
+            if (productLineDTO.Image != null && !productLineDTO.Image.IsImage())
+            {
+                throw new BadRequestException("Invalid image format");
+            }
+
             _ = await _brandRepository.GetBrandByIdAsync(productLineDTO.BrandId) ?? throw new NotFoundException("Brand not found");
             bool exists = await _productLineRepository.ProductLineExistAsync(productLineDTO.Name.Trim());
             if (exists)
@@ -158,6 +163,11 @@ namespace api.Services
 
             if (productLineDTO.Image != null)
             {
+                if (!productLineDTO.Image.IsImage())
+                {
+                    throw new BadRequestException("Invalid image format");
+                }
+
                 if (!string.IsNullOrEmpty(productLine.Image))
                 {
                     var deleted = ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);

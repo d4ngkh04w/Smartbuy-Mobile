@@ -1,19 +1,40 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using api.Exceptions;
+using Microsoft.AspNetCore.Http;
 
 namespace api.Utils
 {
     public static class ImageUtils
     {
-        public static async Task<string> SaveImageAsync(IFormFile file, string webRootPath, string folder, long maxSize)
+        public static bool IsImage(this IFormFile file)
         {
             if (file == null || file.Length == 0)
             {
-                throw new BadRequestException("File is empty");
+                return false;
             }
 
-            if (!file.ContentType.StartsWith("image/"))
+            string[] validImageTypes = {
+                "image/jpeg", "image/jpg", "image/pjpeg",
+                "image/png",
+                "image/svg+xml"
+            };
+
+            if (!validImageTypes.Contains(file.ContentType))
             {
-                throw new BadRequestException("File must be an image");
+                return false;
+            }
+
+            return true;
+        }
+
+        public static async Task<string> SaveImageAsync(IFormFile file, string webRootPath, string folder, long maxSize)
+        {
+            if (!file.IsImage())
+            {
+                throw new BadRequestException("Invalid image format");
             }
 
             if (file.Length > maxSize)

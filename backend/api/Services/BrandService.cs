@@ -35,6 +35,11 @@ namespace api.Services
 
         public async Task<BrandDTO> CreateBrandAsync(CreateBrandDTO brandDTO)
         {
+            if (brandDTO.Logo != null && !brandDTO.Logo.IsImage())
+            {
+                throw new BadRequestException("Invalid image format");
+            }
+
             var newName = brandDTO.Name.Trim();
             var existsBrand = await _repo.BrandExistsAsync(newName);
             if (existsBrand)
@@ -166,6 +171,9 @@ namespace api.Services
 
             if (brandDTO.Logo != null)
             {
+                if (!brandDTO.Logo.IsImage())
+                    throw new BadRequestException("Invalid image format");
+
                 if (!string.IsNullOrEmpty(brand.Logo))
                 {
                     var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + brand.Logo);
