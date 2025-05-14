@@ -1,4 +1,6 @@
+using System.Threading.Tasks;
 using api.DTOs.Product;
+using api.Interfaces.Repositories;
 using api.Models;
 using api.Utils;
 
@@ -53,9 +55,9 @@ namespace api.Mappers
                 Stock = product.Colors.Sum(c => c.Quantity),
                 ImportPrice = product.ImportPrice,
                 SalePrice = product.SalePrice,
+                Rating = 0,
+                RatingCount = 0,
                 Description = product.Description ?? string.Empty,
-                Rating = product.Rating,
-                RatingCount = product.RatingCount,
                 Sold = product.Sold,
                 IsActive = product.IsActive,
                 ManuallyDeactivated = product.ManuallyDeactivated,
@@ -63,7 +65,34 @@ namespace api.Mappers
                 UpdatedAt = product.UpdatedAt.HasValue ? DateTimeUtils.FormatDateTime(product.UpdatedAt.Value) : DateTimeUtils.FormatDateTime(DateTime.Now),
                 ProductLineId = product.ProductLineId,
                 ProductLineName = product.ProductLine?.Name ?? string.Empty,
+                Discounts = product.Discounts.Select(d => d.Discount!.ToDTO()).ToHashSet(),
+                Colors = product.Colors.Select(c => c.ToProductColorDTO()).ToHashSet(),
+                Detail = product.Detail?.ToProductDetailDTO(),
+                // Add tags when implementing tag functionality
+                // Tags = product.ProductTags.Select(pt => pt.Tag).ToHashSet()
+            };
+        }
 
+        public static async Task<ProductDTO> ToProductDTO(this Product product, ICommentRepository commentRepository)
+        {
+            return new ProductDTO
+            {
+                Rating = (decimal)await commentRepository.GetProductAverageRatingAsync(product.Id),
+                RatingCount = await commentRepository.GetProductRatingCountAsync(product.Id),
+                Id = product.Id,
+                Name = product.Name,
+                Stock = product.Colors.Sum(c => c.Quantity),
+                ImportPrice = product.ImportPrice,
+                SalePrice = product.SalePrice,
+                Description = product.Description ?? string.Empty,
+                Sold = product.Sold,
+                IsActive = product.IsActive,
+                ManuallyDeactivated = product.ManuallyDeactivated,
+                CreatedAt = DateTimeUtils.FormatDateTime(product.CreatedAt),
+                UpdatedAt = product.UpdatedAt.HasValue ? DateTimeUtils.FormatDateTime(product.UpdatedAt.Value) : DateTimeUtils.FormatDateTime(DateTime.Now),
+                ProductLineId = product.ProductLineId,
+                ProductLineName = product.ProductLine?.Name ?? string.Empty,
+                Discounts = product.Discounts.Select(d => d.Discount!.ToDTO()).ToHashSet(),
                 Colors = product.Colors.Select(c => c.ToProductColorDTO()).ToHashSet(),
                 Detail = product.Detail?.ToProductDetailDTO(),
                 // Add tags when implementing tag functionality
@@ -83,8 +112,6 @@ namespace api.Mappers
                 CreatedAt = DateTimeUtils.FormatDateTime(DateTime.Now),
                 UpdatedAt = DateTimeUtils.FormatDateTime(DateTime.Now),
                 IsActive = true,
-                Rating = 0,
-                RatingCount = 0,
                 Sold = 0,
             };
         }
@@ -104,27 +131,18 @@ namespace api.Mappers
                 ScreenResolution = productDTO.ScreenResolution,
             };
         }
-        public static ProductSummaryDTO ToSummaryDTO(this Product product)
+        public static async Task<ProductSummaryDTO> ToSummaryDTO(this Product product, ICommentRepository commentRepository)
         {
-            string mainImagePath = string.Empty;
-            foreach (var color in product.Colors)
-            {
-                var mainImage = color.Images.FirstOrDefault(i => i.IsMain);
-                if (mainImage != null)
-                {
-                    mainImagePath = mainImage.ImagePath;
-                    break;
-                }
-            }
-
             return new ProductSummaryDTO
             {
+                Rating = (decimal)await commentRepository.GetProductAverageRatingAsync(product.Id),
+                RatingCount = await commentRepository.GetProductRatingCountAsync(product.Id),
                 Id = product.Id,
                 Name = product.Name,
                 Price = product.SalePrice,
-                ImageUrl = mainImagePath,
-                Rating = product.Rating,
-                RatingCount = product.RatingCount,
+                ImageUrl = product.Colors
+                    .SelectMany(c => c.Images)
+                    .FirstOrDefault(i => i.IsMain)?.ImagePath ?? string.Empty,
                 Sold = product.Sold,
             };
         }

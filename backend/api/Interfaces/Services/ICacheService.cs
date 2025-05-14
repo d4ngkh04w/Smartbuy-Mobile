@@ -16,5 +16,8 @@ namespace api.Interfaces.Services
         void RemoveAllProductLinesCache();
         void RemoveTagCache(int id);
         void RemoveAllTagsCache();
+        void RemoveCommentCache(int id);
+        void RemoveAllCommentsCache();
+        void RemoveCommentsByProductCache(int productId);
     }
 }

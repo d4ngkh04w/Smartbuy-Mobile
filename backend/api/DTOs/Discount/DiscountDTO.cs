@@ -1,9 +1,10 @@
-namespace api.DTOs.Product
+namespace api.DTOs.Discount
 {
-    public class ProductDiscountDTO
+    public class DiscountDTO
     {
         public int Id { get; set; }
         public decimal DiscountPercentage { get; set; }
+        public decimal DiscountAmount { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
     }

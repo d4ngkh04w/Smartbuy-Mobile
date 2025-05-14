@@ -1,3 +1,5 @@
+using api.DTOs.Discount;
+
 namespace api.DTOs.Product
 {
     public class ProductDTO
@@ -18,7 +20,7 @@ namespace api.DTOs.Product
         public int ProductLineId { get; set; }
         public string ProductLineName { get; set; } = string.Empty;
         public ICollection<ProductColorDTO> Colors { get; set; } = new HashSet<ProductColorDTO>();
-        public ICollection<ProductDiscountDTO> Discounts { get; set; } = new HashSet<ProductDiscountDTO>();
+        public ICollection<DiscountDTO> Discounts { get; set; } = new HashSet<DiscountDTO>();
         public ProductDetailDTO? Detail { get; set; } = null;
         // Will add tags collection later when implementing tag functionality
         // public ICollection<TagDTO> Tags { get; set; } = new HashSet<TagDTO>();

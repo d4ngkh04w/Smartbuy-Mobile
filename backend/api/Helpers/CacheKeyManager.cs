@@ -9,6 +9,7 @@ namespace api.Helpers
         private static readonly ConcurrentDictionary<string, HashSet<string>> _productKeys = new();
         private static readonly ConcurrentDictionary<string, HashSet<string>> _productLineKeys = new();
         private static readonly ConcurrentDictionary<string, HashSet<string>> _tagKeys = new();
+        private static readonly ConcurrentDictionary<string, HashSet<string>> _commentKeys = new();
 
         #region Brand Cache Keys
 
@@ -187,8 +188,6 @@ namespace api.Helpers
             return allKeys;
         }
 
-        #endregion
-
         public static HashSet<string> GetTagKeys(int id)
         {
             string key = id.ToString();
@@ -221,6 +220,63 @@ namespace api.Helpers
 
             return cacheKey;
         }
+        #endregion
+
+        #region Comment Cache Keys
+
+        public static string GetCommentKey(int id) => RegisterCommentKey($"comment-{id}");
+
+        public static string GetAllCommentsKey() => RegisterCommentKey("comments-all");
+
+        public static string GetCommentsByProductIdKey(int productId, int page, int pageSize) =>
+            RegisterCommentKey($"comments-product-{productId}-page-{page}-size-{pageSize}");
+
+        public static string GetProductAverageRatingKey(int productId) =>
+            RegisterCommentKey($"product-{productId}-rating");
+
+        public static HashSet<string> GetAllCommentKeys()
+        {
+            HashSet<string> allKeys = new();
+            foreach (var entry in _commentKeys)
+            {
+                allKeys.UnionWith(entry.Value);
+            }
+            return allKeys;
+        }
+
+        public static HashSet<string> GetCommentKeys(int id)
+        {
+            string key = id.ToString();
+            return _commentKeys.TryGetValue(key, out var keys) ? keys : new HashSet<string>();
+        }
+
+        private static string RegisterCommentKey(string cacheKey)
+        {
+            string entityId = GetEntityIdFromKey(cacheKey, "comment-");
+            if (!string.IsNullOrEmpty(entityId))
+            {
+                _commentKeys.AddOrUpdate(entityId,
+                    new HashSet<string> { cacheKey },
+                    (_, existingKeys) =>
+                    {
+                        existingKeys.Add(cacheKey);
+                        return existingKeys;
+                    });
+            }
+            else
+            {
+                _commentKeys.AddOrUpdate("all",
+                    new HashSet<string> { cacheKey },
+                    (_, existingKeys) =>
+                    {
+                        existingKeys.Add(cacheKey);
+                        return existingKeys;
+                    });
+            }
+
+            return cacheKey;
+        }
+        #endregion
 
         private static string GetEntityIdFromKey(string key, string prefix)
         {

@@ -111,5 +111,24 @@ namespace api.Services
             var keys = CacheKeyManager.GetAllTagKeys();
             RemoveRange(keys);
         }
+
+        public void RemoveCommentCache(int id)
+        {
+            var keys = CacheKeyManager.GetCommentKeys(id);
+            RemoveRange(keys);
+        }
+
+        public void RemoveAllCommentsCache()
+        {
+            var keys = CacheKeyManager.GetAllCommentKeys();
+            RemoveRange(keys);
+        }
+
+        public void RemoveCommentsByProductCache(int productId)
+        {
+            var allKeys = CacheKeyManager.GetAllCommentKeys();
+            var productCommentKeys = allKeys.Where(k => k.Contains($"comments-product-{productId}") || k.Contains($"product-{productId}-rating"));
+            RemoveRange(productCommentKeys);
+        }
     }
 }

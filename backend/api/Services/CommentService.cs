@@ -1,5 +1,6 @@
 using api.DTOs.Comment;
 using api.Exceptions;
+using api.Helpers;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 using api.Mappers;
@@ -10,15 +11,25 @@ namespace api.Services
     {
         private readonly ICommentRepository _commentRepository;
         private readonly IProductRepository _productRepository;
+        private readonly ICacheService _cacheService;
+        private readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(5);
 
-        public CommentService(ICommentRepository commentRepository, IProductRepository productRepository)
+        public CommentService(ICommentRepository commentRepository, IProductRepository productRepository, ICacheService cacheService)
         {
             _commentRepository = commentRepository;
             _productRepository = productRepository;
+            _cacheService = cacheService;
         }
 
         public async Task<CommentDTO> GetCommentByIdAsync(int id)
         {
+            string cacheKey = CacheKeyManager.GetCommentKey(id);
+
+            if (_cacheService.TryGetValue(cacheKey, out CommentDTO? cachedComment) && cachedComment != null)
+            {
+                return cachedComment;
+            }
+
             var comment = await _commentRepository.GetCommentByIdAsync(id) ?? throw new NotFoundException("Comment not found");
 
             // Lấy những phản hồi của bình luận
@@ -26,11 +37,20 @@ namespace api.Services
             var commentDto = comment.ToCommentDTO();
             commentDto.Replies = replies.Select(r => r.ToCommentDTO()).ToList();
 
+            _cacheService.Set(cacheKey, commentDto, _cacheDuration);
+
             return commentDto;
         }
 
         public async Task<CommentResponseDTO> GetCommentsByProductIdAsync(int productId, int page, int pageSize)
         {
+            string cacheKey = CacheKeyManager.GetCommentsByProductIdKey(productId, page, pageSize);
+
+            if (_cacheService.TryGetValue(cacheKey, out CommentResponseDTO? cachedResponse) && cachedResponse != null)
+            {
+                return cachedResponse;
+            }
+
             var product = await _productRepository.GetByIdAsync(productId);
             if (product == null)
             {
@@ -60,6 +80,8 @@ namespace api.Services
                 PageSize = pageSize,
                 TotalPages = totalPages
             };
+
+            _cacheService.Set(cacheKey, result, _cacheDuration);
 
             return result;
         }
@@ -95,6 +117,20 @@ namespace api.Services
 
             var commentDto = createdComment.ToCommentDTO();
 
+            _cacheService.RemoveCommentsByProductCache(commentDTO.ProductId);
+            if (commentDTO.Rating.HasValue)
+            {
+                string ratingCacheKey = CacheKeyManager.GetProductAverageRatingKey(commentDTO.ProductId);
+                _cacheService.Remove(ratingCacheKey);
+                _cacheService.RemoveProductCache(commentDTO.ProductId);
+                _cacheService.RemoveAllProductsCache();
+            }
+
+            if (commentDTO.ParentId.HasValue)
+            {
+                _cacheService.RemoveCommentCache(commentDTO.ParentId.Value);
+            }
+
             return commentDto;
         }
 
@@ -121,11 +157,29 @@ namespace api.Services
                 throw new BadRequestException("Rating can only be provided in top-level comments");
             }
 
+            bool ratingChanged = commentDTO.Rating.HasValue && comment.Rating != commentDTO.Rating.Value;
+
             comment.Content = commentDTO.Content.Trim();
             comment.Rating = commentDTO.Rating ?? comment.Rating;
             comment.UpdatedAt = DateTime.Now;
 
             var commentRes = await _commentRepository.UpdateCommentAsync(comment);
+
+            _cacheService.RemoveCommentCache(id);
+            _cacheService.RemoveCommentsByProductCache(comment.ProductId);
+
+            if (comment.ParentId.HasValue)
+            {
+                _cacheService.RemoveCommentCache(comment.ParentId.Value);
+            }
+
+            if (ratingChanged)
+            {
+                string ratingCacheKey = CacheKeyManager.GetProductAverageRatingKey(comment.ProductId);
+                _cacheService.Remove(ratingCacheKey);
+                _cacheService.RemoveProductCache(comment.ProductId);
+                _cacheService.RemoveAllProductsCache();
+            }
 
             return commentRes.ToCommentDTO();
         }
@@ -143,6 +197,22 @@ namespace api.Services
             {
                 throw new ServerException("Failed to delete comment");
             }
+
+            _cacheService.RemoveCommentCache(id);
+            _cacheService.RemoveCommentsByProductCache(comment.ProductId);
+
+            if (comment.ParentId.HasValue)
+            {
+                _cacheService.RemoveCommentCache(comment.ParentId.Value);
+            }
+
+            if (comment.Rating.HasValue)
+            {
+                string ratingCacheKey = CacheKeyManager.GetProductAverageRatingKey(comment.ProductId);
+                _cacheService.Remove(ratingCacheKey);
+                _cacheService.RemoveProductCache(comment.ProductId);
+                _cacheService.RemoveAllProductsCache();
+            }
         }
 
         public async Task<CommentDTO> AddReactionAsync(int commentId, CommentReactionDTO reactionDTO, Guid userId)
@@ -157,14 +227,32 @@ namespace api.Services
 
             var comment = await _commentRepository.GetCommentByIdAsync(commentId);
 
+            _cacheService.RemoveCommentCache(commentId);
+
+            if (comment?.ParentId.HasValue == true)
+            {
+                _cacheService.RemoveCommentCache(comment.ParentId.Value);
+            }
+
             return comment!.ToCommentDTO();
         }
 
         public async Task<double> GetProductAverageRatingAsync(int productId)
         {
+            string cacheKey = CacheKeyManager.GetProductAverageRatingKey(productId);
+
+            if (_cacheService.TryGetValue(cacheKey, out double cachedRating))
+            {
+                return cachedRating;
+            }
+
             _ = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
             double? averageRating = await _commentRepository.GetProductAverageRatingAsync(productId);
-            return averageRating ?? 0.0;
+            double rating = averageRating ?? 0.0;
+
+            _cacheService.Set(cacheKey, rating, _cacheDuration);
+
+            return rating;
         }
     }
 }

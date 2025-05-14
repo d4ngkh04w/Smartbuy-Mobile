@@ -22,9 +22,10 @@ namespace api.Repositories
                 .Include(p => p.Colors)
                     .ThenInclude(c => c.Images)
                 .Include(p => p.Discounts)
+                    .ThenInclude(d => d.Discount)
                 .Include(p => p.Detail)
-                .Include(p => p.ProductTags)
-                    .ThenInclude(pt => pt.Tag)
+                // .Include(p => p.ProductTags)
+                // .ThenInclude(pt => pt.Tag)
                 .ToListAsync();
         }
 
@@ -35,9 +36,10 @@ namespace api.Repositories
                 .Include(p => p.Colors)
                     .ThenInclude(c => c.Images)
                 .Include(p => p.Discounts)
+                    .ThenInclude(d => d.Discount)
                 .Include(p => p.Detail)
-                .Include(p => p.ProductTags)
-                    .ThenInclude(pt => pt.Tag)
+                // .Include(p => p.ProductTags)
+                //     .ThenInclude(pt => pt.Tag)
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
 

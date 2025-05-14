@@ -14,17 +14,20 @@ namespace api.Services
     {
         private readonly IProductRepository _productRepository;
         private readonly IProductLineRepository _productLineRepository;
+        private readonly ICommentRepository _commentRepository;
         private readonly IWebHostEnvironment _env;
         private readonly ICacheService _cacheService;
         private readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(10);
         private readonly TimeSpan _pagedCacheDuration = TimeSpan.FromMinutes(5);
         public ProductService(IProductRepository productRepository,
                               IProductLineRepository productLineRepository,
+                              ICommentRepository commentRepository,
                               IWebHostEnvironment webHostEnvironment,
                               ICacheService cacheService)
         {
             _productRepository = productRepository;
             _productLineRepository = productLineRepository;
+            _commentRepository = commentRepository;
             _env = webHostEnvironment;
             _cacheService = cacheService;
         }
@@ -43,7 +46,7 @@ namespace api.Services
             if (!products.Any())
                 return new List<ProductDTO>();
 
-            var productDtos = products.Select(p => p.ToProductDTO()).ToList();
+            var productDtos = (await Task.WhenAll(products.Select(async p => await p.ToProductDTO(_commentRepository)))).ToList();
 
             _cacheService.Set(cacheKey, productDtos, _cacheDuration);
 
@@ -60,7 +63,7 @@ namespace api.Services
             }
 
             var product = await _productRepository.GetByIdAsync(id) ?? throw new NotFoundException("Product not found");
-            var productDto = product.ToProductDTO();
+            var productDto = await product.ToProductDTO(_commentRepository);
 
             _cacheService.Set(cacheKey, productDto, _cacheDuration);
 
@@ -84,7 +87,7 @@ namespace api.Services
             var createdProduct = await _productRepository.CreateAsync(product);            // Xóa cache danh sách sản phẩm
             _cacheService.RemoveAllProductsCache();
 
-            return createdProduct.ToProductDTO();
+            return await createdProduct.ToProductDTO(_commentRepository);
         }
 
         public async Task<ProductDTO> UpdateProductAsync(int id, UpdateProductDTO productDTO)
@@ -138,8 +141,9 @@ namespace api.Services
             }
 
             var updatedProduct = await _productRepository.UpdateAsync(product);
-
-            return updatedProduct.ToProductDTO();
+            _cacheService.RemoveProductCache(id);
+            _cacheService.RemoveAllProductsCache();
+            return await updatedProduct.ToProductDTO(_commentRepository);
         }
 
         public async Task<ProductColorDTO> UpdateProductColorAsync(int productId, int colorId, UpdateColorDTO productColorDTO)
@@ -243,14 +247,14 @@ namespace api.Services
                 };
             }
 
-            var productSummaries = items.Select(ProductMapper.ToSummaryDTO).ToList();
+            var productSummaries = await Task.WhenAll(items.Select(async p => await p.ToSummaryDTO(_commentRepository)));
+
             var result = new ProductPagiDTO
             {
                 TotalItems = totalItems,
-                Items = productSummaries
+                Items = productSummaries.ToList()
             };
             _cacheService.Set(cacheKey, result, _pagedCacheDuration);
-
             return result;
         }
 
@@ -289,6 +293,9 @@ namespace api.Services
                 }
             }
 
+            _cacheService.RemoveProductCache(productId);
+            _cacheService.RemoveAllProductsCache();
+
             return savedColor.ToProductColorDTO();
         }
 
@@ -312,14 +319,14 @@ namespace api.Services
             _cacheService.RemoveProductCache(id);
             _cacheService.RemoveAllProductsCache();
 
-            return result.ToProductDTO();
+            return await result.ToProductDTO(_commentRepository);
         }
 
         public async Task<ProductDTO> DeactivateProductAsync(int id)
         {
             var product = await _productRepository.GetByIdAsync(id) ?? throw new NotFoundException("Product not found");
             if (!product.IsActive)
-                return product.ToProductDTO();
+                return await product.ToProductDTO(_commentRepository);
 
             product.IsActive = false;
             product.ManuallyDeactivated = true;
