@@ -65,10 +65,13 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import format from '@/utils/format.js'
+import authService from '@/services/authService.js'
 import productService from '../../services/productService.js'
 import emitter from '../../utils/evenBus.js'
 
+const router = useRouter()
 const items = ref([])
 const selectedItems = ref([])
 const selectAll = ref(true)
@@ -144,25 +147,92 @@ function decreaseQuantity(item) {
     productService.updateCartItem(item.id, item.quantity)
   }
 }
-
-function checkout() {
-  if (selectedItems.value.length === 0) {
-    alert('Vui lòng chọn ít nhất một sản phẩm để thanh toán.')
-    return
+async function checkAuth() {
+  try {
+    const response = await authService.verifyUser();
+    if (response?.data?.success) {
+      return true;
+    }
+    
+    console.log('Chưa đăng nhập, chuyển hướng...');
+    await router.push({ name: 'not-logged-in' });
+    return false;
+  } catch (error) {
+    console.error('Lỗi khi kiểm tra xác thực:', error);
+    await router.push({ name: 'not-logged-in' });
+    return false;
   }
-
-  const hasInactiveItems = items.value.some(
-    item => selectedItems.value.includes(item.id) && !item.product.isActive
-  )
-
-  if (hasInactiveItems) {
-    alert('Không thể thanh toán vì có sản phẩm không khả dụng trong giỏ hàng.')
-    return
-  }
-
-  alert('Đang chuyển đến trang thanh toán...')
 }
 
+async function checkout() {
+  const isAuthen = await checkAuth();
+  console.log('isAuthen', isAuthen);
+  if (!isAuthen) return;
+  try {
+    // 1. Kiểm tra sản phẩm hợp lệ
+    const hasInactiveItems = items.value.some(
+      item => selectedItems.value.includes(item.id) && !item.product.isActive
+    );
+    
+    if (hasInactiveItems) {
+      emitter.emit('show-notification', {
+        status: 'error',
+        message: 'Không thể thanh toán vì có sản phẩm không khả dụng'
+      });
+      return;
+    }
+
+    // 2. Chuẩn bị dữ liệu tối ưu
+    const selectedItemsData = items.value
+      .filter(item => selectedItems.value.includes(item.id))
+      .map(item => ({
+        productId: item.productId,
+        colorId: item.colorId,
+        quantity: item.quantity,
+        colorName: item.colorName,
+        imagePath: item.colorImage,
+        productName: item.product.name,
+        name: item.product.name,
+        salePrice: item.product.salePrice,
+        originalPrice: item.product.importPrice,
+        isActive: item.product.isActive
+      }));
+
+    // 3. Kiểm tra số lượng tồn kho (option)
+    const stockCheck = await Promise.all(
+      selectedItemsData.map(item => 
+        productService.getQuantityProduct(item.productId, item.colorId)
+      )
+    );
+    
+    const outOfStockItems = selectedItemsData.filter((item, index) => 
+      item.quantity > stockCheck[index]
+    );
+    
+    if (outOfStockItems.length > 0) {
+      emitter.emit('show-notification', {
+        status: 'error',
+        message: `Sản phẩm ${outOfStockItems[0].name} vượt quá số lượng tồn kho`
+      });
+      return;
+    }
+
+    // 4. Truyền dữ liệu
+    router.push({
+      name: 'order',
+      query: {
+        direct: 'true', // Đổi từ fromCart -> direct để đồng bộ với bên order
+        products: encodeURIComponent(JSON.stringify(selectedItemsData))
+      }
+    });
+  } catch (error) {
+    console.error('Lỗi khi thanh toán:', error);
+    emitter.emit('show-notification', {
+      status: 'error',
+      message: 'Có lỗi xảy ra khi xử lý đơn hàng'
+    });
+  }
+}
 onMounted(async () => {
   await getCartItems()
   if (items.value)

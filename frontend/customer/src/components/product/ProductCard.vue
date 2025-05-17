@@ -45,13 +45,8 @@
 
   
   <script setup>
-  import authService from '@/services/authService.js'
   import productService  from '../../services/productService.js'
   import format from '@/utils/format.js'
-  const averageRating  = 3
-  const reviewCount = 100
-  const soldQuantity = 50
-
   
   const props = defineProps({
     product: {

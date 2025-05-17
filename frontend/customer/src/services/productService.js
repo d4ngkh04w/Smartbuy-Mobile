@@ -31,11 +31,10 @@ class ProductService {
             throw error;
         }
     }
-    getProductById(id) {
-        return axiosInstance.get(`/product/${id}`)
+    async getProductById(id) {
+        return await axiosInstance.get(`/product/${id}`)
             .then(response => {
                 if (response) {
-                    console.log("Product data:", response.data.data);
                     return response.data.data;
                 }
             })
@@ -53,9 +52,20 @@ class ProductService {
             }
         }
     }
+    async createOrder(orderData) {
+    return await axiosInstance.post('/order', orderData)
+      .then(response => {
+        return response.data.data; 
+      })
+      .catch(error => {
+        console.error("Error creating order:", error.response?.data || error);
+        throw error;
+      });
+  }
 
-    getBrands() {
-        return axiosInstance.get("/brand")
+
+    async getBrands() {
+        return await axiosInstance.get("/brand")
             .then(response => {
                 if (response) {
                     return response.data;
@@ -70,8 +80,8 @@ class ProductService {
         let newUrlImage = url.startsWith('http') ? url : "http://localhost:5000" + `/${url}`;
         return newUrlImage;
     }   
-    getCarts() {    
-        return axiosInstance.get("/cart")
+    async getCarts() {    
+        return await axiosInstance.get("/cart")
             .then(response => {
                 if (response) {
                     return response.data;
@@ -82,8 +92,8 @@ class ProductService {
                 throw error;
             });
     }
-    removeCartItem(cartId) {
-        return axiosInstance.delete(`/cart/items/${cartId}`)
+    async removeCartItem(cartId) {
+        return await axiosInstance.delete(`/cart/items/${cartId}`)
             .then(response => {
                 if (response) {
                     return response.data;
@@ -94,8 +104,8 @@ class ProductService {
                 throw error;
             });
     }
-    updateCartItem(cartId, quantity) {
-    return axiosInstance.put(`/cart/items/${cartId}`, { quantity })
+    async updateCartItem(cartId, quantity) {
+    return await axiosInstance.put(`/cart/items/${cartId}`, { quantity })
         .then(response => {
             if (response) {
                 return response.data;
@@ -106,8 +116,8 @@ class ProductService {
             throw error;
         });
     }
-    addToCart(productId, quantity, colorId) {
-        return axiosInstance.post("/cart/add", {
+    async addToCart(productId, quantity, colorId) {
+        return await axiosInstance.post("/cart/add", {
             productId,
             quantity,
             colorId

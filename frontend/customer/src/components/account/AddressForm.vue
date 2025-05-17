@@ -86,9 +86,7 @@
         </div>
 
         <div class="form-group" v-if="formattedAddress">
-            <label class="address-preview-label"
-                >Xem trước địa chỉ đầy đủ:</label
-            >
+            <label class="address-preview-label">Xem trước địa chỉ đầy đủ:</label>
             <div class="address-preview">
                 {{ formattedAddress }}
             </div>
@@ -106,9 +104,13 @@ const props = defineProps({
         type: String,
         default: "",
     },
+    modelValue: {
+        type: String,
+        default: "",
+    }
 });
 
-const emit = defineEmits(["update:address"]);
+const emit = defineEmits(["update:modelValue"]);
 
 // Danh sách địa chỉ
 const provinces = ref([]);
@@ -130,8 +132,24 @@ const addressData = ref({
 
 // Địa chỉ đầy đủ đã được format
 const formattedAddress = computed(() => {
-    return addressService.formatFullAddress(addressData.value);
+    try {
+        return addressService.formatFullAddress(addressData.value);
+    } catch {
+        return "";
+    }
 });
+watch(() => props.modelValue, (newVal) => {
+    if (!props.initialAddress && newVal) {
+        parseAddress(newVal);
+    }
+});
+
+// Hàm fuzzy matching để xử lý địa chỉ không khớp chính xác
+const fuzzyMatch = (str1, str2) => {
+    const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    return normalize(str1).includes(normalize(str2)) || 
+           normalize(str2).includes(normalize(str1));
+};
 
 // Parse địa chỉ từ chuỗi ban đầu
 const parseAddress = async (addressString) => {
@@ -143,91 +161,55 @@ const parseAddress = async (addressString) => {
             await fetchProvinces();
         }
 
-        // Giả định địa chỉ có định dạng: Chi tiết, Phường/Xã, Quận/Huyện, Tỉnh/Thành phố
-        const addressParts = addressString.split(", ");
+        // Chuẩn hóa địa chỉ
+        const normalizedAddress = addressString.trim();
+        const parts = normalizedAddress.split(',').map(part => part.trim());
 
-        if (addressParts.length < 2) {
-            // Nếu không đủ thành phần, chỉ lưu vào phần chi tiết
-            addressData.value.detail = addressString;
-            return;
-        }
+        // Tìm tỉnh/thành phố (phần cuối)
+        if (parts.length > 0) {
+            const provincePart = parts[parts.length - 1];
+            const province = provinces.value.find(p => fuzzyMatch(p.name, provincePart));
 
-        // Tìm tỉnh/thành phố (phần cuối cùng của địa chỉ)
-        const provinceName = addressParts[addressParts.length - 1];
-        const province = provinces.value.find(
-            (p) =>
-                p.name.toLowerCase() === provinceName.toLowerCase() ||
-                provinceName.toLowerCase().includes(p.name.toLowerCase()) ||
-                p.name.toLowerCase().includes(provinceName.toLowerCase())
-        );
+            if (province) {
+                addressData.value.province = province;
+                await fetchDistricts();
 
-        if (province) {
-            addressData.value.province = province;
+                // Tìm quận/huyện (phần gần cuối)
+                if (parts.length >= 2) {
+                    const districtPart = parts[parts.length - 2];
+                    const district = districts.value.find(d => fuzzyMatch(d.name, districtPart));
 
-            // Tải quận/huyện
-            await fetchDistricts();
+                    if (district) {
+                        addressData.value.district = district;
+                        await fetchWards();
 
-            // Tìm quận/huyện (phần gần cuối)
-            const districtName = addressParts[addressParts.length - 2];
-            const district = districts.value.find(
-                (d) =>
-                    d.name.toLowerCase() === districtName.toLowerCase() ||
-                    districtName.toLowerCase().includes(d.name.toLowerCase()) ||
-                    d.name.toLowerCase().includes(districtName.toLowerCase())
-            );
+                        // Tìm phường/xã (phần thứ 3 từ cuối)
+                        if (parts.length >= 3) {
+                            const wardPart = parts[parts.length - 3];
+                            const ward = wards.value.find(w => fuzzyMatch(w.name, wardPart));
 
-            if (district) {
-                addressData.value.district = district;
-
-                // Tải phường/xã
-                await fetchWards();
-
-                // Nếu có đủ 3 phần trở lên thì mới có phường/xã
-                if (addressParts.length >= 3) {
-                    const wardName = addressParts[addressParts.length - 3];
-                    const ward = wards.value.find(
-                        (w) =>
-                            w.name.toLowerCase() === wardName.toLowerCase() ||
-                            wardName
-                                .toLowerCase()
-                                .includes(w.name.toLowerCase()) ||
-                            w.name
-                                .toLowerCase()
-                                .includes(wardName.toLowerCase())
-                    );
-
-                    if (ward) {
-                        addressData.value.ward = ward;
-
-                        // Nếu còn phần ở đầu thì là chi tiết
-                        if (addressParts.length > 3) {
-                            addressData.value.detail = addressParts
-                                .slice(0, addressParts.length - 3)
-                                .join(", ");
+                            if (ward) {
+                                addressData.value.ward = ward;
+                                
+                                // Phần còn lại là địa chỉ chi tiết
+                                if (parts.length > 3) {
+                                    addressData.value.detail = parts.slice(0, parts.length - 3).join(', ');
+                                }
+                            }
                         }
-                    } else {
-                        // Nếu không tìm thấy phường/xã, còn các phần ở đầu thì là chi tiết
-                        addressData.value.detail = addressParts
-                            .slice(0, addressParts.length - 2)
-                            .join(", ");
                     }
-                } else {
-                    // Nếu chỉ có 2 phần (tỉnh và quận), không có chi tiết
-                    addressData.value.detail = "";
                 }
             } else {
-                // Nếu không tìm thấy quận/huyện
-                addressData.value.detail = addressParts
-                    .slice(0, addressParts.length - 1)
-                    .join(", ");
+                // Nếu không tìm thấy tỉnh, đặt toàn bộ vào chi tiết
+                addressData.value.detail = addressString;
+                emitter.emit("show-notification", {
+                    status: "info",
+                    message: "Không thể tự động điền địa chỉ. Vui lòng kiểm tra lại.",
+                });
             }
-        } else {
-            // Nếu không tìm thấy tỉnh/thành phố, lưu toàn bộ vào chi tiết
-            addressData.value.detail = addressString;
         }
     } catch (error) {
         console.error("Error parsing address:", error);
-        // Nếu có lỗi, đặt toàn bộ vào phần chi tiết
         addressData.value.detail = addressString;
     }
 };
@@ -255,7 +237,6 @@ const fetchProvinces = async () => {
  * Xử lý khi thay đổi tỉnh/thành phố
  */
 const handleProvinceChange = async () => {
-    // Reset quận/huyện và phường/xã
     addressData.value.district = null;
     addressData.value.ward = null;
     districts.value = [];
@@ -270,7 +251,6 @@ const handleProvinceChange = async () => {
  * Xử lý khi thay đổi quận/huyện
  */
 const handleDistrictChange = async () => {
-    // Reset phường/xã
     addressData.value.ward = null;
     wards.value = [];
 
@@ -333,18 +313,25 @@ const fetchWards = async () => {
 
 // Theo dõi sự thay đổi của địa chỉ để emit ra ngoài
 watch(
-    [
-        () => addressData.value.province,
-        () => addressData.value.district,
-        () => addressData.value.ward,
-        () => addressData.value.detail,
-    ],
-    () => {
-        const fullAddress = addressService.formatFullAddress(addressData.value);
-        emit("update:address", fullAddress);
+    addressData,
+    (newValue) => {
+        const fullAddress = addressService.formatFullAddress(newValue);
+        emit("update:modelValue", fullAddress);
     },
     { deep: true }
 );
+
+// Theo dõi initialAddress để tự động parse khi có giá trị
+watch(
+    () => props.initialAddress,
+    async (newAddress, oldAddress) => {
+        if (newAddress && newAddress !== oldAddress) {
+            await parseAddress(newAddress);
+        }
+    },
+    { immediate: true }
+);
+
 
 // Khởi tạo địa chỉ khi component được tạo
 onMounted(async () => {
@@ -369,118 +356,173 @@ defineExpose({ resetAddress });
 
 <style scoped>
 .address-section {
-    border: 1px solid #eee;
+    border: 1px solid #eaeaea;
     border-radius: 12px;
-    padding: 1.8rem;
+    padding: 2rem;
     margin-bottom: 2rem;
     background-color: #fff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.address-section:hover {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 }
 
 .address-section-title {
-    font-size: 1.25rem;
-    margin-bottom: 1.5rem;
-    color: #333;
-    text-align: center;
+    font-size: 1.3rem;
+    margin-bottom: 1.8rem;
+    color: #2c3e50;
+    text-align: left;
     font-weight: 600;
     position: relative;
     padding-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
 }
 
-.address-section-title::after {
+.address-section-title::before {
     content: "";
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80px;
-    height: 3px;
-    background: linear-gradient(to right, #f9ceee, #f86ed3);
-    border-radius: 3px;
+    display: inline-block;
+    width: 4px;
+    height: 20px;
+    background: linear-gradient(to bottom, #f86ed3, #a18af5);
+    border-radius: 2px;
+    margin-right: 12px;
 }
 
 /* Layout 2 cột cho form địa chỉ */
 .address-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-    margin-bottom: 0.8rem;
+    gap: 1.8rem;
+    margin-bottom: 1rem;
 }
 
 .form-group {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.8rem;
     position: relative;
 }
 
 .form-group label {
     display: block;
     font-weight: 500;
-    color: #666;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
+    color: #4a5568;
+    margin-bottom: 0.6rem;
+    font-size: 0.95rem;
 }
 
 .form-input {
     width: 100%;
-    padding: 0.75rem 1rem;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    padding: 0.85rem 1.2rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
     font-size: 1rem;
     transition: all 0.3s ease;
+    background-color: #f8fafc;
+    color: #2d3748;
+}
+
+.form-input:hover {
+    border-color: #cbd5e0;
+    background-color: #fff;
 }
 
 .form-input:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(248, 110, 211, 0.15);
+    border-color: #a18af5;
+    box-shadow: 0 0 0 3px rgba(161, 138, 245, 0.2);
     outline: none;
+    background-color: #fff;
 }
 
 .form-input:disabled {
-    background-color: #f5f5f5;
+    background-color: #f1f5f9;
     cursor: not-allowed;
-    color: #999;
+    color: #94a3b8;
 }
 
 .loading-indicator {
     position: absolute;
     right: 12px;
-    top: calc(50% + 10px);
-    color: #666;
+    top: 38px;
+    color: #64748b;
     font-size: 0.85rem;
     font-style: italic;
+    display: flex;
+    align-items: center;
+}
+
+.loading-indicator::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #e2e8f0;
+    border-top-color: #a18af5;
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 .address-preview-label {
     font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: #333;
+    margin-bottom: 0.8rem;
+    color: #2d3748;
     font-size: 0.95rem;
+    display: flex;
+    align-items: center;
 }
+
 
 .address-preview {
-    padding: 1rem 1.2rem;
-    background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    padding: 1.2rem 1.5rem;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
     font-size: 1rem;
     line-height: 1.6;
-    color: #333;
+    color: #2d3748;
     min-height: 60px;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s ease;
 }
 
+.address-preview:hover {
+    background-color: #fff;
+    border-color: #cbd5e0;
+}
+
+/* Responsive design */
 @media (max-width: 768px) {
+    .address-section {
+        padding: 1.5rem;
+    }
+    
     .address-grid {
         grid-template-columns: 1fr;
-        gap: 1rem;
+        gap: 1.2rem;
     }
-
+    
     .address-section-title {
         font-size: 1.2rem;
+        margin-bottom: 1.5rem;
     }
-
+    
     .form-input {
-        padding: 0.7rem 0.9rem;
+        padding: 0.75rem 1rem;
     }
+}
+
+/* Animation for select elements */
+select.form-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1em;
+    padding-right: 2.5rem;
 }
 </style>
