@@ -1,5 +1,6 @@
 <script setup>
 import { defineProps, defineEmits } from "vue";
+import productService from "../../../services/productService.js";
 
 const props = defineProps({
     showModal: {
@@ -25,25 +26,7 @@ const formatCurrency = (value) => {
 
 // Format image URL
 const formatImageUrl = (imagePath) => {
-    if (!imagePath) return null;
-
-    // If image path is already a full URL or base64 data
-    if (imagePath.startsWith("http") || imagePath.startsWith("data:"))
-        return imagePath;
-
-    // Get base URL from API config
-    const apiUrl = import.meta.env.VITE_API_URL || "";
-    const baseUrl = apiUrl.includes("/api") ? apiUrl.split("/api")[0] : "";
-
-    // Normalize the path (convert \ to /)
-    const normalizedPath = imagePath.replace(/\\/g, "/");
-
-    // Check if path starts with /
-    const path = normalizedPath.startsWith("/")
-        ? normalizedPath
-        : `/${normalizedPath}`;
-
-    return `${baseUrl}${path}`;
+    return productService.getUrlImage(imagePath);
 };
 </script>
 
@@ -64,17 +47,18 @@ const formatImageUrl = (imagePath) => {
                         <div class="product-detail-image">
                             <img
                                 v-if="
-                                    product.colors && product.colors.length > 0
+                                    product.colors &&
+                                    product.colors.length > 0 &&
+                                    product.colors[0].images &&
+                                    product.colors[0].images.length > 0
                                 "
                                 :src="
                                     formatImageUrl(
-                                        product.colors[0].images
-                                            ? product.colors[0].images.find(
-                                                  (img) => img.isMain
-                                              )?.imagePath ||
-                                                  product.colors[0].images[0]
-                                                      ?.imagePath
-                                            : null
+                                        product.colors[0].images.find(
+                                            (img) => img.isMain
+                                        )?.imagePath ||
+                                            product.colors[0].images[0]
+                                                ?.imagePath
                                     )
                                 "
                                 :alt="product.name"
@@ -292,9 +276,17 @@ const formatImageUrl = (imagePath) => {
                                         <span class="quantity-label-detail"
                                             >Số lượng:</span
                                         >
-                                        <span class="quantity-value-detail">{{
-                                            color.quantity
-                                        }}</span>
+                                        <span
+                                            class="quantity-value-detail"
+                                            :class="{
+                                                'low-stock':
+                                                    color.quantity < 10,
+                                                'out-of-stock':
+                                                    color.quantity <= 0,
+                                            }"
+                                        >
+                                            {{ color.quantity }}
+                                        </span>
                                     </div>
                                 </div>
                                 <div class="color-images-grid">
@@ -434,6 +426,10 @@ const formatImageUrl = (imagePath) => {
     font-size: 1.5rem;
     margin: 0 0 1rem 0;
     color: #333;
+    font-weight: 600;
+    line-height: 1.3;
+    border-left: 3px solid var(--primary-color);
+    padding-left: 0.75rem;
 }
 
 .product-detail-info-row {
@@ -462,14 +458,26 @@ const formatImageUrl = (imagePath) => {
 
 .low-stock {
     color: #e65100;
+    background-color: #fff8e1;
+    padding: 0.15rem 0.4rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
 }
 
 .out-of-stock {
     color: #c62828;
+    background-color: #ffebee;
+    padding: 0.15rem 0.4rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
 }
 
 .sold-count {
     color: #1e40af;
+    background-color: #e1f5fe;
+    padding: 0.15rem 0.4rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
 }
 
 .status-badge {

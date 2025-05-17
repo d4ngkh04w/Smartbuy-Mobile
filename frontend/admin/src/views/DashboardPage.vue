@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { logout } from "../services/authService.js";
+import authService from "../services/authService.js";
 import emitter from "../utils/evenBus.js";
 
 const router = useRouter();
@@ -36,7 +36,7 @@ onMounted(() => {
 const handleLogout = async () => {
     try {
         // Gọi API đăng xuất
-        await logout();
+        await authService.logout();
 
         // Xóa lịch sử trình duyệt
         // clearBrowserHistory();

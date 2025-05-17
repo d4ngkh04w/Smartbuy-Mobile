@@ -2,7 +2,7 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import emitter from "../utils/evenBus.js";
-import { authService } from "../services/authService.js";
+import authService  from "../services/authService.js";
 
 const router = useRouter();
 

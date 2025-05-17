@@ -15,9 +15,7 @@ class AuthService {
         );
     }
 
-    async googleLogin(tokenData) {
-        console.log("Sending token data to backend:", tokenData);
-        // Make sure we're explicitly creating the object structure expected by the backend
+    async googleLogin(tokenData) {      
         return await instance.post(
             "/user/auth/google-login",
             {
