@@ -70,13 +70,18 @@ namespace api.Controllers
         {
             var color = await _productService.CreateProductColorAsync(productId, productColorDTO);
             return ApiResponseHelper.Created("Product color created successfully", color);
-        }
-
-        [HttpPut("{productId:int}/color/{colorId:int}")]
+        }        [HttpPut("{productId:int}/color/{colorId:int}")]
         public async Task<IActionResult> UpdateProductColor([FromRoute] int productId, [FromRoute] int colorId, [FromForm] UpdateColorDTO productColorDTO)
         {
             var color = await _productService.UpdateProductColorAsync(productId, colorId, productColorDTO);
             return ApiResponseHelper.Success("Product color updated successfully", color);
+        }
+
+        [HttpDelete("{productId:int}/color/{colorId:int}")]
+        public async Task<IActionResult> DeleteProductColor([FromRoute] int productId, [FromRoute] int colorId)
+        {
+            await _productService.DeleteProductColorAsync(productId, colorId);
+            return ApiResponseHelper.Success<object>("Product color deleted successfully");
         }
 
         [HttpPut("{id:int}/activate")]

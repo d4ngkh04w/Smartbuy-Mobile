@@ -171,13 +171,17 @@ namespace api.Repositories
                 .Where(c => c.ProductId == productId && c.Id == colorId)
                 .Include(c => c.Images)
                 .FirstOrDefaultAsync();
-        }
-
-        public async Task<ProductColor> UpdateColorAsync(ProductColor color)
+        }        public async Task<ProductColor> UpdateColorAsync(ProductColor color)
         {
             _db.Colors.Update(color);
             await _db.SaveChangesAsync();
             return color;
+        }
+
+        public async Task DeleteColorAsync(ProductColor color)
+        {
+            _db.Colors.Remove(color);
+            await _db.SaveChangesAsync();
         }
     }
 }

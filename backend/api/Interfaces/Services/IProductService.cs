@@ -15,5 +15,6 @@ namespace api.Interfaces.Services
         Task<ProductColorDTO> UpdateProductColorAsync(int productId, int colorId, UpdateColorDTO productColorDTO);
         Task<ProductDTO> ActivateProductAsync(int id);
         Task<ProductDTO> DeactivateProductAsync(int id);
+        Task DeleteProductColorAsync(int productId, int colorId);
     }
 }

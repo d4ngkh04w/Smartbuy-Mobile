@@ -31,8 +31,7 @@ namespace api.Services
             _env = webHostEnvironment;
             _cacheService = cacheService;
         }
-
-        public async Task<IEnumerable<ProductDTO>> GetProductsAsync()
+       public async Task<IEnumerable<ProductDTO>> GetProductsAsync()
         {
             string cacheKey = CacheKeyManager.GetAllProductsKey();
 
@@ -46,8 +45,13 @@ namespace api.Services
             if (!products.Any())
                 return new List<ProductDTO>();
 
-            var productDtos = (await Task.WhenAll(products.Select(async p => await p.ToProductDTO(_commentRepository)))).ToList();
-
+            // var productDtos = (await Task.WhenAll(products.Select(async p => await p.ToProductDTO(_commentRepository)))).ToList();
+            var productDtos = products.Select(p => p.ToProductDTO()).ToList();
+            foreach (var productDto in productDtos)
+            {
+                productDto.Rating = (decimal)await _commentRepository.GetProductAverageRatingAsync(productDto.Id);
+                productDto.RatingCount = await _commentRepository.GetProductRatingCountAsync(productDto.Id);
+            }
             _cacheService.Set(cacheKey, productDtos, _cacheDuration);
 
             return productDtos;
@@ -89,136 +93,148 @@ namespace api.Services
 
             return await createdProduct.ToProductDTO(_commentRepository);
         }
-
-        public async Task<ProductDTO> UpdateProductAsync(int id, UpdateProductDTO productDTO)
+        public async Task<ProductDTO> UpdateProductAsync(int id, UpdateProductDTO dto)
         {
-            var product = await _productRepository.GetByIdAsync(id) ?? throw new NotFoundException("Product not found");
+            var product = await _productRepository.GetByIdAsync(id)
+                ?? throw new NotFoundException("Product not found");
 
-            if (!string.IsNullOrEmpty(productDTO.Name?.Trim()))
-                product.Name = productDTO.Name.Trim();
+            // Cập nhật thông tin cơ bản
+            if (!string.IsNullOrWhiteSpace(dto.Name)) product.Name = dto.Name.Trim();
+            if (dto.ImportPrice.HasValue) product.ImportPrice = dto.ImportPrice.Value;
+            if (dto.SalePrice.HasValue) product.SalePrice = dto.SalePrice.Value;
+            if (!string.IsNullOrWhiteSpace(dto.Description)) product.Description = dto.Description.Trim();
+            if (dto.ProductLineId.HasValue) product.ProductLineId = dto.ProductLineId.Value;
 
-            if (productDTO.ImportPrice.HasValue)
-                product.ImportPrice = productDTO.ImportPrice.Value;
-
-            if (productDTO.SalePrice.HasValue)
-                product.SalePrice = productDTO.SalePrice.Value;
-
-            if (!string.IsNullOrEmpty(productDTO.Description?.Trim()))
-                product.Description = productDTO.Description.Trim();
-
-            if (productDTO.ProductLineId.HasValue)
-                product.ProductLineId = productDTO.ProductLineId.Value;
-
-            // Update details if they exist
+            // Cập nhật chi tiết sản phẩm
             if (product.Detail != null)
             {
-                if (!string.IsNullOrEmpty(productDTO.Warranty?.Trim()))
-                    product.Detail.WarrantyMonths = int.Parse(productDTO.Warranty);
+                if (int.TryParse(dto.Warranty, out var warranty)) product.Detail.WarrantyMonths = warranty;
+                if (int.TryParse(dto.RAM, out var ram)) product.Detail.RAMInGB = ram;
+                if (int.TryParse(dto.Storage, out var storage)) product.Detail.StorageInGB = storage;
+                if (decimal.TryParse(dto.ScreenSize, out var screenSize)) product.Detail.ScreenSizeInch = screenSize;
 
-                if (!string.IsNullOrEmpty(productDTO.RAM?.Trim()))
-                    product.Detail.RAMInGB = int.Parse(productDTO.RAM);
-
-                if (!string.IsNullOrEmpty(productDTO.Storage?.Trim()))
-                    product.Detail.StorageInGB = int.Parse(productDTO.Storage);
-
-                if (!string.IsNullOrEmpty(productDTO.ScreenSize?.Trim()))
-                    product.Detail.ScreenSizeInch = decimal.Parse(productDTO.ScreenSize);
-
-                if (!string.IsNullOrEmpty(productDTO.ScreenResolution?.Trim()))
-                    product.Detail.ScreenResolution = productDTO.ScreenResolution.Trim();
-
-                if (!string.IsNullOrEmpty(productDTO.Battery?.Trim()))
-                    product.Detail.BatteryCapacityMAh = int.Parse(productDTO.Battery);
-
-                if (!string.IsNullOrEmpty(productDTO.OS?.Trim()))
-                    product.Detail.OperatingSystem = productDTO.OS.Trim();
-
-                if (!string.IsNullOrEmpty(productDTO.Processor?.Trim()))
-                    product.Detail.Processor = productDTO.Processor.Trim();
-
-                if (productDTO.SimSlots.HasValue)
-                    product.Detail.SimSlots = productDTO.SimSlots.Value;
+                if (!string.IsNullOrWhiteSpace(dto.ScreenResolution)) product.Detail.ScreenResolution = dto.ScreenResolution.Trim();
+                if (!string.IsNullOrWhiteSpace(dto.Battery) && int.TryParse(dto.Battery, out var battery)) product.Detail.BatteryCapacityMAh = battery;
+                if (!string.IsNullOrWhiteSpace(dto.OS)) product.Detail.OperatingSystem = dto.OS.Trim();
+                if (!string.IsNullOrWhiteSpace(dto.Processor)) product.Detail.Processor = dto.Processor.Trim();
+                if (dto.SimSlots.HasValue) product.Detail.SimSlots = dto.SimSlots.Value;
             }
 
-            var updatedProduct = await _productRepository.UpdateAsync(product);
+            // Thêm màu mới nếu có
+            if (dto.UpdateColorData?.Any() == true)
+            {
+                foreach (var colorDto in dto.UpdateColorData)
+                {
+                    if (!string.IsNullOrWhiteSpace(colorDto.Name) && colorDto.Quantity.HasValue)
+                    {
+                        var newColor = new CreateColorDTO
+                        {
+                            Name = colorDto.Name,
+                            Quantity = colorDto.Quantity.Value,
+                            Images = colorDto.AddImages ?? new List<IFormFile>(),
+                            MainImageIndex = colorDto.MainImageIndex ?? 0
+                        };
+
+                        await CreateProductColorAsync(id, newColor);
+                    }
+                }
+            }
+
+            var updated = await _productRepository.UpdateAsync(product);
             _cacheService.RemoveProductCache(id);
             _cacheService.RemoveAllProductsCache();
-            return await updatedProduct.ToProductDTO(_commentRepository);
+
+            return await updated.ToProductDTO(_commentRepository);
         }
 
-        public async Task<ProductColorDTO> UpdateProductColorAsync(int productId, int colorId, UpdateColorDTO productColorDTO)
+        public async Task<ProductColorDTO> UpdateProductColorAsync(int productId, int colorId, UpdateColorDTO dto)
         {
-            if (productColorDTO.AddImages != null)
-            {
-                foreach (var image in productColorDTO.AddImages)
-                {
-                    if (!image.IsImage())
-                        throw new BadRequestException("Invalid image format");
-                }
-            }
+            // Kiểm tra định dạng ảnh hợp lệ
+            if (dto.AddImages?.Any(i => !i.IsImage()) == true)
+                throw new BadRequestException("Invalid image format");
 
+            // Lấy dữ liệu liên quan
             _ = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
-            var productColor = await _productRepository.GetProductColorAsync(productId, colorId) ?? throw new NotFoundException("Product color not found");
+            var color = await _productRepository.GetProductColorAsync(productId, colorId) ?? throw new NotFoundException("Product color not found");
 
-            if (!string.IsNullOrEmpty(productColorDTO.Name?.Trim()))
+            // Cập nhật tên và số lượng
+            if (!string.IsNullOrWhiteSpace(dto.Name))
             {
-                if (productColor.Name == productColorDTO.Name.Trim())
-                    throw new AlreadyExistsException($"Color with name {productColorDTO.Name.Trim()} already exists for this product");
-
-                productColor.Name = productColorDTO.Name.Trim();
+                var trimmedName = dto.Name.Trim();
+                if (color.Name == trimmedName)
+                    throw new AlreadyExistsException($"Color with name {trimmedName} already exists for this product");
+                color.Name = trimmedName;
             }
+            if (dto.Quantity.HasValue) color.Quantity = dto.Quantity.Value;
 
-            if (productColorDTO.Quantity.HasValue)
-                productColor.Quantity = productColorDTO.Quantity.Value;
-
-            if (productColorDTO.RemoveImageIds != null && productColorDTO.RemoveImageIds.Any())
+            // Xử lý xóa ảnh
+            bool wasMainDeleted = false;
+            if (dto.RemoveImageIds?.Any() == true)
             {
-                foreach (var imageId in productColorDTO.RemoveImageIds)
+                foreach (var id in dto.RemoveImageIds)
                 {
-                    var image = productColor.Images.FirstOrDefault(i => i.Id == imageId);
-                    if (image != null)
+                    var img = color.Images.FirstOrDefault(i => i.Id == id);
+                    if (img != null)
                     {
-                        var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
-                        if (!deletedImg)
-                        {
-                            Console.WriteLine($"[WARN]: Failed to delete old image file: {image.ImagePath}");
-                        }
-                        productColor.Images.Remove(image);
+                        if (img.IsMain) wasMainDeleted = true;
+
+                        if (!ImageUtils.DeleteImage(_env.WebRootPath + img.ImagePath))
+                            Console.WriteLine($"[WARN]: Failed to delete image file: {img.ImagePath}");
+
+                        color.Images.Remove(img);
                     }
                 }
             }
 
-            if (productColorDTO.AddImages != null && productColorDTO.AddImages.Any())
+            // Cập nhật ảnh chính            
+            if (dto.MainImageId.HasValue)
             {
-                for (int i = 0; i < productColorDTO.AddImages.Count; i++)
+                var newMain = color.Images.FirstOrDefault(i => i.Id == dto.MainImageId.Value)
+                    ?? throw new NotFoundException($"Image with ID {dto.MainImageId.Value} not found");
+
+                foreach (var img in color.Images) img.IsMain = false;
+                newMain.IsMain = true;
+                
+            }
+            else if (wasMainDeleted && color.Images.Any())
+            {
+                color.Images.First().IsMain = true;
+                
+            }
+
+            // Thêm ảnh mới
+            if (dto.AddImages?.Any() == true)
+            {
+                if (dto.MainImageIndex.HasValue)
                 {
-                    var image = productColorDTO.AddImages[i];
-                    var filePath = await ImageUtils.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024); // 5 MB max size
+                    foreach (var img in color.Images) img.IsMain = false;
+                }
 
-                    if (productColorDTO.MainImageIndex.HasValue && productColorDTO.MainImageIndex.Value == i)
-                    {
-                        var mainImage = productColor.Images.Where(i => i.IsMain);
-                        foreach (var img in mainImage)
-                        {
-                            img.IsMain = false;
-                        }
-                    }
+                for (int i = 0; i < dto.AddImages.Count; i++)
+                {
+                    var file = dto.AddImages[i];
+                    var path = await ImageUtils.SaveImageAsync(file, _env.WebRootPath, "products", 5 * 1024 * 1024);
 
-                    var productImage = new ProductImage
+                    color.Images.Add(new ProductImage
                     {
-                        ImagePath = filePath,
-                        IsMain = productColorDTO.MainImageIndex.HasValue && productColorDTO.MainImageIndex.Value == i,
-                        ColorId = productColor.Id
-                    };
-                    productColor.Images.Add(productImage);
+                        ImagePath = path,
+                        IsMain = dto.MainImageIndex == i,
+                        ColorId = color.Id
+                    });
                 }
             }
 
-            var updatedColor = await _productRepository.UpdateColorAsync(productColor);
+            // Đảm bảo có ảnh chính
+            if (!color.Images.Any(i => i.IsMain) && color.Images.Any())
+                color.Images.First().IsMain = true;
+
+            var updated = await _productRepository.UpdateColorAsync(color);
             _cacheService.RemoveProductCache(productId);
             _cacheService.RemoveAllProductsCache();
-            return updatedColor.ToProductColorDTO();
+
+            return updated.ToProductColorDTO();
         }
+
 
         public async Task DeleteProductAsync(int id)
         {
@@ -245,9 +261,25 @@ namespace api.Services
                     TotalItems = 0,
                     Items = new List<ProductSummaryDTO>()
                 };
-            }
+            }            // Thay đổi từ Task.WhenAll sang xử lý tuần tự để tránh lỗi DbContext Concurrency
+            var productSummaries = new List<ProductSummaryDTO>();
+            foreach (var product in items)
+            {
+                var dto = new ProductSummaryDTO
+                {
+                    Id = product.Id,
+                    Name = product.Name,
+                    Price = product.SalePrice,
+                    ImageUrl = product.Colors.SelectMany(c => c.Images).FirstOrDefault(i => i.IsMain)?.ImagePath ?? string.Empty,
+                    Sold = product.Sold
+                };
 
-            var productSummaries = await Task.WhenAll(items.Select(async p => await p.ToSummaryDTO(_commentRepository)));
+                // Lấy rating riêng lẻ cho từng sản phẩm
+                dto.Rating = (decimal)await _commentRepository.GetProductAverageRatingAsync(product.Id);
+                dto.RatingCount = await _commentRepository.GetProductRatingCountAsync(product.Id);
+
+                productSummaries.Add(dto);
+            }
 
             var result = new ProductPagiDTO
             {
@@ -256,16 +288,23 @@ namespace api.Services
             };
             _cacheService.Set(cacheKey, result, _pagedCacheDuration);
             return result;
-        }
-
+        }        
         public async Task<ProductColorDTO> CreateProductColorAsync(int productId, CreateColorDTO productColorDTO)
         {
-            foreach (var image in productColorDTO.Images)
+            // 1. Kiểm tra và xác thực dữ liệu đầu vào
+            if (productColorDTO.Images != null && productColorDTO.Images.Any())
             {
-                if (!image.IsImage())
-                    throw new BadRequestException("Invalid image format");
+                foreach (var image in productColorDTO.Images)
+                {
+                    if (!image.IsImage())
+                        throw new BadRequestException("Invalid image format");
+                }
             }
+            
+            // 2. Lấy thông tin sản phẩm
             var product = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
+            
+            // 3. Tạo đối tượng màu sắc mới
             var productColor = new ProductColor
             {
                 Name = productColorDTO.Name.Trim(),
@@ -273,19 +312,31 @@ namespace api.Services
                 ProductId = product.Id
             };
 
+            // 4. Lưu màu sắc vào cơ sở dữ liệu
             var savedColor = await _productRepository.AddColorAsync(productColor);
 
+            // 5. Xử lý thêm ảnh (nếu có)
             if (productColorDTO.Images != null && productColorDTO.Images.Any())
             {
+                // Xác định vị trí ảnh chính
+                int mainImageIndex = productColorDTO.MainImageIndex ?? 0;
+                
+                // Đảm bảo index nằm trong phạm vi hợp lệ
+                if (mainImageIndex >= productColorDTO.Images.Count)
+                {
+                    mainImageIndex = 0;
+                }
+
+                // Thêm từng ảnh vào cơ sở dữ liệu
                 for (int i = 0; i < productColorDTO.Images.Count; i++)
                 {
                     var image = productColorDTO.Images[i];
-                    var filePath = await ImageUtils.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024); // 5 MB max size
+                    var filePath = await ImageUtils.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024);
 
                     var productImage = new ProductImage
                     {
                         ImagePath = filePath,
-                        IsMain = i == productColorDTO.MainImageIndex,
+                        IsMain = i == mainImageIndex,
                         ColorId = savedColor.Id
                     };
 
@@ -293,6 +344,7 @@ namespace api.Services
                 }
             }
 
+            // 6. Xóa cache để cập nhật dữ liệu
             _cacheService.RemoveProductCache(productId);
             _cacheService.RemoveAllProductsCache();
 
@@ -338,6 +390,29 @@ namespace api.Services
             _cacheService.RemoveAllProductsCache();
 
             return result.ToProductDTO();
+        }
+        public async Task DeleteProductColorAsync(int productId, int colorId)
+        {
+            // 1. Kiểm tra sản phẩm và màu sắc tồn tại
+            var product = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
+            var productColor = await _productRepository.GetProductColorAsync(productId, colorId) ?? throw new NotFoundException("Product color not found");
+
+            // 2. Xóa tất cả ảnh liên quan trong hệ thống tệp tin
+            foreach (var image in productColor.Images)
+            {
+                var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
+                if (!deletedImg)
+                {
+                    Console.WriteLine($"[WARN]: Failed to delete image file: {image.ImagePath}");
+                }
+            }
+
+            // 3. Xóa màu sắc khỏi cơ sở dữ liệu
+            await _productRepository.DeleteColorAsync(productColor);
+
+            // 4. Xóa cache để cập nhật dữ liệu
+            _cacheService.RemoveProductCache(productId);
+            _cacheService.RemoveAllProductsCache();
         }
     }
 }
