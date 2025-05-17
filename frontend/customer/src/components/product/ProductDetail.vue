@@ -46,7 +46,6 @@
                 -{{ calculateDiscountPercentage() }}%
               </span>
             </div>
-  
             <!-- Chọn màu sắc -->
             <div class="color-selector" v-if="productData.colors && productData.colors.length > 0">
               <label>Màu sắc:</label>
@@ -466,16 +465,35 @@ async function checkAuth() {
     return true;
   }
   
-  const buyNow = async () => {
-    const isAuthen = await checkAuth();
-    if (isAuthen && checkValidInfor()) {
-      console.log('Mua ngay:', {
-        productId: productData.value.id,
-        colorId: selectedColorId.value,
-        quantity: quantity.value
-      });
-    } 
+const buyNow = async () => {
+  const isAuthen = await checkAuth();
+  console.log('isAuthennnnnn:', isAuthen);
+  if (isAuthen && checkValidInfor()) {
+    const selectedColor = productData.value.colors.find(c => c.id === selectedColorId.value);
+    
+    // Tạo object sản phẩm
+    const product = {
+      productId: productId,
+      colorId: selectedColorId.value,
+      productName: productData.value.name,
+      salePrice: productData.value.salePrice,
+      quantity: quantity.value,
+      colorName: selectedColor?.name || '',
+      imagePath: selectedColor?.images[0]?.imagePath || ''
+    };
+
+    // Chuyển thành JSON string rồi encode
+    const productsStr = encodeURIComponent(JSON.stringify([product]));
+    
+    router.push({
+      name: 'order',
+      query: {
+        direct: 'true',
+        products: productsStr
+      }
+    });
   }
+}
   
   onMounted(async() => {
     await fetchProduct(productId);

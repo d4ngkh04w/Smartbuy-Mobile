@@ -40,6 +40,15 @@ export const routes = [
         },
       },
       {
+        path: "order",
+        name: "order",
+        component: () => import("../views/Order.vue"),
+        meta: {
+          title: "Đặt hàng - SmartBuy Mobile",
+          requiresAuth: true,
+        },
+      },
+      {
         path: "account",
         name: "account",
         component: () => import("../views/AccountPage.vue"),
@@ -90,15 +99,6 @@ export const routes = [
         meta: {
           title: "Hoàn tất thông tin - SmartBuy Mobile",
           requiresAuth: true,
-        },
-      },
-      {
-        path: "order",
-        name: "order",
-        component: () => import("../views/Order.vue"),
-        meta: {
-          title: "Đặt hàng - SmartBuy Mobile",
-          requiresAuth: false,
         },
       },
       {
