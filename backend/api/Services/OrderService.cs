@@ -59,14 +59,14 @@ namespace api.Services
                 if (color.Quantity < item.Quantity)
                     throw new BadRequestException($"Not enough quantity available for product '{product.Name}' in the selected color");
 
+                var productDto = product.ToProductDTO();
                 // Tạo order item
                 var orderItem = new OrderItem
                 {
                     ProductId = item.ProductId,
                     ColorId = item.ColorId,
                     Quantity = item.Quantity,
-                    Price = product.SalePrice,
-                    Discount = 0 // Update later
+                    Price = productDto.Price
                 };
 
                 // Update total
@@ -93,7 +93,14 @@ namespace api.Services
             var cart = await _cartRepository.GetCartByUserIdAsync(userId);
             if (cart != null)
             {
-                await _cartRepository.RemoveAllCartItemsAsync(cart.Id);
+                foreach (var item in orderDTO.Items)
+                {
+                    var cartItem = cart.Items.FirstOrDefault(ci => ci.ProductId == item.ProductId && ci.ColorId == item.ColorId);
+                    if (cartItem != null)
+                    {
+                        await _cartRepository.RemoveCartItemAsync(cartItem);
+                    }
+                }
             }
 
             return createdOrder.ToOrderDTO();

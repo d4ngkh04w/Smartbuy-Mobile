@@ -65,11 +65,7 @@ namespace api.Services
 
             if (!string.IsNullOrEmpty(productLine.Image))
             {
-                var deleted = ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);
-                if (!deleted)
-                {
-                    throw new ServerException("Error deleting image");
-                }
+                ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);
                 productLine.Image = string.Empty;
             }
 
@@ -86,11 +82,7 @@ namespace api.Services
                             {
                                 if (!string.IsNullOrEmpty(image.ImagePath))
                                 {
-                                    var deleted = ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
-                                    if (!deleted)
-                                    {
-                                        throw new ServerException("Error deleting product color image");
-                                    }
+                                    ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
                                 }
                             }
                         }
@@ -170,11 +162,7 @@ namespace api.Services
 
                 if (!string.IsNullOrEmpty(productLine.Image))
                 {
-                    var deleted = ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);
-                    if (!deleted)
-                    {
-                        throw new ServerException("Error deleting old image");
-                    }
+                    ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);
                 }
                 var filePath = await ImageUtils.SaveImageAsync(productLineDTO.Image, _env.WebRootPath, "product-lines", 5 * 1024 * 1024);
 

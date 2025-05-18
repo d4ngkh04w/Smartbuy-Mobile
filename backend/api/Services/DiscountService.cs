@@ -10,10 +10,12 @@ namespace api.Services
     public class DiscountService : IDiscountService
     {
         private readonly IDiscountRepository _discountRepository;
+        private readonly ICacheService _cacheService;
 
-        public DiscountService(IDiscountRepository discountRepository)
+        public DiscountService(IDiscountRepository discountRepository, ICacheService cacheService)
         {
             _discountRepository = discountRepository;
+            _cacheService = cacheService;
         }
 
         public async Task<IEnumerable<DiscountDTO>> GetAllDiscountsAsync()
@@ -40,6 +42,12 @@ namespace api.Services
                 throw new BadRequestException("Start date must be earlier than end date");
             }
 
+            // Chỉ được phép discount amount hoặc discount percentage
+            if (discountDTO.DiscountAmount > 0 && discountDTO.DiscountPercentage > 0)
+            {
+                throw new BadRequestException("Only one of DiscountAmount or DiscountPercentage can be set");
+            }
+
             var createdDiscount = await _discountRepository.CreateDiscountAsync(discountDTO.ToModel());
             return createdDiscount.ToDTO();
         }
@@ -50,7 +58,7 @@ namespace api.Services
             if (existingDiscount == null)
             {
                 throw new NotFoundException($"Discount with ID {id} not found");
-            }            // Update only the provided fields
+            }
             if (discountDTO.DiscountPercentage.HasValue)
             {
                 existingDiscount.DiscountPercentage = discountDTO.DiscountPercentage.Value;
@@ -77,16 +85,28 @@ namespace api.Services
                 throw new BadRequestException("Start date must be earlier than end date");
             }
 
+            _cacheService.RemoveAllProductsCache();
+            foreach (var product in existingDiscount.Products)
+            {
+                _cacheService.RemoveProductCache(product.ProductId);
+            }
+
             var updatedDiscount = await _discountRepository.UpdateDiscountAsync(id, existingDiscount);
             return updatedDiscount?.ToDTO();
         }
 
         public async Task<bool> DeleteDiscountAsync(int id)
         {
-            var exists = await _discountRepository.IsDiscountExistAsync(id);
-            if (!exists)
+            var discount = await _discountRepository.GetDiscountByIdAsync(id);
+            if (discount == null)
             {
                 throw new NotFoundException($"Discount with ID {id} not found");
+            }
+
+            _cacheService.RemoveAllProductsCache();
+            foreach (var product in discount.Products)
+            {
+                _cacheService.RemoveProductCache(product.ProductId);
             }
 
             return await _discountRepository.DeleteDiscountAsync(id);
@@ -110,7 +130,10 @@ namespace api.Services
             {
                 var result = await _discountRepository.AddProductToDiscountAsync(discountId, productId);
                 results.Add(result);
+                _cacheService.RemoveProductCache(productId);
             }
+
+            _cacheService.RemoveAllProductsCache();
 
             return results.Any(r => r);
         }
@@ -122,6 +145,9 @@ namespace api.Services
             {
                 throw new NotFoundException($"Discount with ID {discountId} not found");
             }
+
+            _cacheService.RemoveProductCache(productId);
+            _cacheService.RemoveAllProductsCache();
 
             return await _discountRepository.RemoveProductFromDiscountAsync(discountId, productId);
         }

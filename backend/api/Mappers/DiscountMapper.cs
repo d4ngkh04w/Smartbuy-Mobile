@@ -1,7 +1,6 @@
 using api.DTOs.Discount;
 using api.Models;
 using api.Utils;
-using Microsoft.IdentityModel.Tokens;
 
 namespace api.Mappers
 {
@@ -15,7 +14,9 @@ namespace api.Mappers
                 DiscountPercentage = discount.DiscountPercentage,
                 DiscountAmount = discount.DiscountAmount,
                 StartDate = DateTimeUtils.FormatDateTime(discount.StartDate),
-                EndDate = DateTimeUtils.FormatDateTime(discount.EndDate)
+                EndDate = DateTimeUtils.FormatDateTime(discount.EndDate),
+                Status = DateTime.Now < discount.StartDate ? "Upcoming" :
+                         DateTime.Now > discount.EndDate ? "Expired" : "Active"
             };
         }
 

@@ -1,9 +1,4 @@
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using api.Exceptions;
-using Microsoft.AspNetCore.Http;
 
 namespace api.Utils
 {
@@ -66,26 +61,25 @@ namespace api.Utils
             }
         }
 
-        public static bool DeleteImage(string filePath)
+        public static void DeleteImage(string filePath)
         {
             try
             {
                 if (string.IsNullOrEmpty(filePath))
                 {
-                    return false;
+                    return;
                 }
                 if (File.Exists(filePath))
                 {
                     File.Delete(filePath);
                     Console.WriteLine("[INF] File deleted successfully");
-                    return true;
+                    return;
                 }
                 Console.WriteLine("[ERR] File not found");
-                return false;
             }
             catch (Exception)
             {
-                return false;
+                return;
             }
         }
 

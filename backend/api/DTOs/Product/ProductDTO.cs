@@ -9,6 +9,7 @@ namespace api.DTOs.Product
         public int Stock { get; set; }
         public decimal ImportPrice { get; set; }
         public decimal SalePrice { get; set; }
+        public decimal Price { get; set; }
         public string Description { get; set; } = string.Empty;
         public decimal Rating { get; set; }
         public int RatingCount { get; set; }

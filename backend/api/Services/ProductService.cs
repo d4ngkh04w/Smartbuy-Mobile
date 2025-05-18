@@ -18,7 +18,7 @@ namespace api.Services
         private readonly IWebHostEnvironment _env;
         private readonly ICacheService _cacheService;
         private readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(10);
-        private readonly TimeSpan _pagedCacheDuration = TimeSpan.FromMinutes(5);
+        // private readonly TimeSpan _pagedCacheDuration = TimeSpan.FromMinutes(5);
         public ProductService(IProductRepository productRepository,
                               IProductLineRepository productLineRepository,
                               ICommentRepository commentRepository,
@@ -31,7 +31,7 @@ namespace api.Services
             _env = webHostEnvironment;
             _cacheService = cacheService;
         }
-       public async Task<IEnumerable<ProductDTO>> GetProductsAsync()
+        public async Task<IEnumerable<ProductDTO>> GetProductsAsync()
         {
             string cacheKey = CacheKeyManager.GetAllProductsKey();
 
@@ -178,15 +178,13 @@ namespace api.Services
                     {
                         if (img.IsMain) wasMainDeleted = true;
 
-                        if (!ImageUtils.DeleteImage(_env.WebRootPath + img.ImagePath))
-                            Console.WriteLine($"[WARN]: Failed to delete image file: {img.ImagePath}");
-
+                        ImageUtils.DeleteImage(_env.WebRootPath + img.ImagePath);
                         color.Images.Remove(img);
                     }
                 }
             }
 
-            // Cập nhật ảnh chính            
+            // Cập nhật ảnh chính
             if (dto.MainImageId.HasValue)
             {
                 var newMain = color.Images.FirstOrDefault(i => i.Id == dto.MainImageId.Value)
@@ -194,12 +192,12 @@ namespace api.Services
 
                 foreach (var img in color.Images) img.IsMain = false;
                 newMain.IsMain = true;
-                
+
             }
             else if (wasMainDeleted && color.Images.Any())
             {
                 color.Images.First().IsMain = true;
-                
+
             }
 
             // Thêm ảnh mới
@@ -245,13 +243,6 @@ namespace api.Services
         }
         public async Task<ProductPagiDTO> GetPagedProductsAsync(ProductQuery productQuery)
         {
-            string cacheKey = CacheKeyManager.GetPagedProductsKey(productQuery);
-
-            if (_cacheService.TryGetValue(cacheKey, out ProductPagiDTO? cachedResult) && cachedResult != null)
-            {
-                return cachedResult;
-            }
-
             var (items, totalItems) = await _productRepository.GetPagedProductsAsync(productQuery);
 
             if (items == null || !items.Any())
@@ -261,7 +252,8 @@ namespace api.Services
                     TotalItems = 0,
                     Items = new List<ProductSummaryDTO>()
                 };
-            }            // Thay đổi từ Task.WhenAll sang xử lý tuần tự để tránh lỗi DbContext Concurrency
+            }
+
             var productSummaries = new List<ProductSummaryDTO>();
             foreach (var product in items)
             {
@@ -286,12 +278,11 @@ namespace api.Services
                 TotalItems = totalItems,
                 Items = productSummaries.ToList()
             };
-            _cacheService.Set(cacheKey, result, _pagedCacheDuration);
+
             return result;
-        }        
+        }
         public async Task<ProductColorDTO> CreateProductColorAsync(int productId, CreateColorDTO productColorDTO)
         {
-            // 1. Kiểm tra và xác thực dữ liệu đầu vào
             if (productColorDTO.Images != null && productColorDTO.Images.Any())
             {
                 foreach (var image in productColorDTO.Images)
@@ -300,11 +291,9 @@ namespace api.Services
                         throw new BadRequestException("Invalid image format");
                 }
             }
-            
-            // 2. Lấy thông tin sản phẩm
+
             var product = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
-            
-            // 3. Tạo đối tượng màu sắc mới
+
             var productColor = new ProductColor
             {
                 Name = productColorDTO.Name.Trim(),
@@ -312,15 +301,13 @@ namespace api.Services
                 ProductId = product.Id
             };
 
-            // 4. Lưu màu sắc vào cơ sở dữ liệu
             var savedColor = await _productRepository.AddColorAsync(productColor);
 
-            // 5. Xử lý thêm ảnh (nếu có)
             if (productColorDTO.Images != null && productColorDTO.Images.Any())
             {
                 // Xác định vị trí ảnh chính
                 int mainImageIndex = productColorDTO.MainImageIndex ?? 0;
-                
+
                 // Đảm bảo index nằm trong phạm vi hợp lệ
                 if (mainImageIndex >= productColorDTO.Images.Count)
                 {
@@ -344,7 +331,6 @@ namespace api.Services
                 }
             }
 
-            // 6. Xóa cache để cập nhật dữ liệu
             _cacheService.RemoveProductCache(productId);
             _cacheService.RemoveAllProductsCache();
 
@@ -400,11 +386,7 @@ namespace api.Services
             // 2. Xóa tất cả ảnh liên quan trong hệ thống tệp tin
             foreach (var image in productColor.Images)
             {
-                var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
-                if (!deletedImg)
-                {
-                    Console.WriteLine($"[WARN]: Failed to delete image file: {image.ImagePath}");
-                }
+                ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
             }
 
             // 3. Xóa màu sắc khỏi cơ sở dữ liệu

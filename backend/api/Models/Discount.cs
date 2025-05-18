@@ -22,5 +22,26 @@ namespace api.Models
         public DateTime EndDate { get; set; }
 
         public ICollection<ProductDiscount> Products { get; set; } = new HashSet<ProductDiscount>();
+
+        public decimal CalculateDiscountedPrice(decimal originalPrice)
+        {
+            decimal discountedPrice = originalPrice;
+
+            if (DateTime.Now < StartDate || DateTime.Now > EndDate)
+            {
+                return originalPrice;
+            }
+
+            if (DiscountPercentage > 0)
+            {
+                discountedPrice -= originalPrice * (DiscountPercentage / 100);
+            }
+            else if (DiscountAmount > 0)
+            {
+                discountedPrice -= DiscountAmount;
+            }
+
+            return Math.Max(discountedPrice, 0);
+        }
     }
 }

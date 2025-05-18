@@ -69,11 +69,7 @@ namespace api.Services
             var brand = await _repo.GetBrandByIdAsync(id) ?? throw new NotFoundException("Brand not found");
             if (!string.IsNullOrEmpty(brand.Logo))
             {
-                var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + brand.Logo);
-                if (!deletedImg)
-                {
-                    throw new ServerException("Error deleting old avatar image");
-                }
+                ImageUtils.DeleteImage(_env.WebRootPath + brand.Logo);
                 brand.Logo = string.Empty;
             }
 
@@ -95,11 +91,7 @@ namespace api.Services
                                     {
                                         if (!string.IsNullOrEmpty(image.ImagePath))
                                         {
-                                            var deleted = ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
-                                            if (!deleted)
-                                            {
-                                                throw new ServerException("Error deleting product color image");
-                                            }
+                                            ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
                                         }
                                     }
                                 }
@@ -108,11 +100,7 @@ namespace api.Services
                     }
                     if (!string.IsNullOrEmpty(productLine.Image))
                     {
-                        var deleted = ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);
-                        if (!deleted)
-                        {
-                            throw new ServerException("Error deleting product line image");
-                        }
+                        ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);
                     }
                 }
             }
@@ -176,9 +164,7 @@ namespace api.Services
 
                 if (!string.IsNullOrEmpty(brand.Logo))
                 {
-                    var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + brand.Logo);
-                    if (!deletedImg)
-                        throw new ServerException("Error deleting old logo image");
+                    ImageUtils.DeleteImage(_env.WebRootPath + brand.Logo);
                 }
 
                 var path = await ImageUtils.SaveImageAsync(brandDTO.Logo, _env.WebRootPath, "brands", 2 * 1024 * 1024);

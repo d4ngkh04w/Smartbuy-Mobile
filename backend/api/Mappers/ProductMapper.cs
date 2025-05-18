@@ -68,6 +68,10 @@ namespace api.Mappers
                 Discounts = product.Discounts.Select(d => d.Discount!.ToDTO()).ToHashSet(),
                 Colors = product.Colors.Select(c => c.ToProductColorDTO()).ToHashSet(),
                 Detail = product.Detail?.ToProductDetailDTO(),
+                Price = product.Discounts
+                    .Select(d => d.Discount!.CalculateDiscountedPrice(product.SalePrice))
+                    .DefaultIfEmpty(product.SalePrice)
+                    .Min(),
                 // Add tags when implementing tag functionality
                 // Tags = product.ProductTags.Select(pt => pt.Tag).ToHashSet()
             };
