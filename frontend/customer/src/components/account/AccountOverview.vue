@@ -49,19 +49,19 @@
         <div class="membership-tiers">
             <div class="tier-card">
                 <div class="tier-icon edu">
-                    <img src="" alt="Edu" />
+                    <!-- <img src="" alt="Edu" /> -->
                     <span>Edu</span>
                 </div>
             </div>
             <div class="tier-card">
                 <div class="tier-icon new">
-                    <img src="" alt="New" />
+                    <!-- <img src="" alt="New" /> -->
                     <span>New</span>
                 </div>
             </div>
             <div class="tier-card active">
                 <div class="tier-icon silver">
-                    <img src="" alt="Silver" />
+                    <!-- <img src="" alt="Silver" /> -->
                     <span>Silver</span>
                     <div class="tier-check">
                         <i class="fas fa-check-circle"></i>
@@ -70,13 +70,13 @@
             </div>
             <div class="tier-card">
                 <div class="tier-icon gold">
-                    <img src="" alt="Gold" />
+                    <!-- <img src="" alt="Gold" /> -->
                     <span>Gold</span>
                 </div>
             </div>
             <div class="tier-card">
                 <div class="tier-icon diamond">
-                    <img src="" alt="Diamond" />
+                    <!-- <img src="" alt="Diamond" /> -->
                     <span>Diamond</span>
                 </div>
             </div>
