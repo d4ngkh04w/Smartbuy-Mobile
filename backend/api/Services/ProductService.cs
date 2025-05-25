@@ -30,53 +30,31 @@ namespace api.Services
             _commentRepository = commentRepository;
             _env = webHostEnvironment;
             _cacheService = cacheService;
-        }        public async Task<IEnumerable<ProductDTO>> GetProductsAsync(bool? isActive = null, string? search = null)
+        }        public async Task<IEnumerable<ProductDTO>> GetProductsAsync(bool? isActive = null)
         {
             string cacheKey = CacheKeyManager.GetAllProductsKey();
-            
-            // Nếu có filter, không dùng cache
-            bool hasFilters = isActive.HasValue || !string.IsNullOrEmpty(search);
-            
+            bool hasFilters = isActive.HasValue;
             if (!hasFilters && _cacheService.TryGetValue(cacheKey, out IEnumerable<ProductDTO>? cachedProducts) && cachedProducts != null)
             {
                 return cachedProducts;
             }
-
             var products = await _productRepository.GetAllAsync();
-
             if (!products.Any())
                 return new List<ProductDTO>();
-
-            // Áp dụng filter
             if (isActive.HasValue)
             {
                 products = products.Where(p => p.IsActive == isActive.Value);
             }
-
-            if (!string.IsNullOrEmpty(search))
-            {
-                var searchLower = search.ToLower();
-                products = products.Where(p => 
-                    p.Name.ToLower().Contains(searchLower) ||
-                    (p.Description != null && p.Description.ToLower().Contains(searchLower)) ||
-                    (p.ProductLine != null && p.ProductLine.Name.ToLower().Contains(searchLower)) ||
-                    (p.ProductLine?.Brand != null && p.ProductLine.Brand.Name.ToLower().Contains(searchLower))
-                );
-            }
-
             var productDtos = products.Select(p => p.ToProductDTO()).ToList();
             foreach (var productDto in productDtos)
             {
                 productDto.Rating = (decimal)await _commentRepository.GetProductAverageRatingAsync(productDto.Id);
                 productDto.RatingCount = await _commentRepository.GetProductRatingCountAsync(productDto.Id);
             }
-
-            // Chỉ cache khi không có filter
             if (!hasFilters)
             {
                 _cacheService.Set(cacheKey, productDtos, _cacheDuration);
             }
-
             return productDtos;
         }
 
