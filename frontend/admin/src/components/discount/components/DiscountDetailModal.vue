@@ -170,7 +170,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from "vue";
+import {  defineEmits } from "vue";
 import discountService from "../../../services/discountService";
 import emitter from "../../../utils/evenBus.js";
 

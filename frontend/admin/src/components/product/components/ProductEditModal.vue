@@ -1,5 +1,5 @@
 <script setup>
-import { ref, defineProps, defineEmits, watch } from "vue";
+import { ref, defineEmits, watch } from "vue";
 import TechnicalSpecsForm from "./TechnicalSpecsForm.vue";
 import ColorManagerSection from "./ColorManagerSection.vue";
 import productService from "../../../services/productService.js";

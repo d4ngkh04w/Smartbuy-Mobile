@@ -12,12 +12,10 @@
 
 				<!-- Main content area -->
 				<div class="account-content">
-					<!-- Overview tab -->
-					<account-overview v-if="activeMenu === 'overview'" />
 
 					<!-- User Profile Tab -->
 					<profile-info
-						v-else-if="activeMenu === 'profile'"
+						v-if="activeMenu === 'profile'"
 						v-model:user-data="userData"
 						@change-password="activeMenu = 'change-password'"
 					/>
@@ -46,13 +44,12 @@ import authService from "@/services/authService";
 import meService from "@/services/meService";
 import emitter from "@/utils/evenBus";
 import SidebarMenu from "@/components/account/SidebarMenu.vue";
-import AccountOverview from "@/components/account/AccountOverview.vue";
 import ProfileInfo from "@/components/account/ProfileInfo.vue";
 import PasswordChange from "@/components/account/PasswordChange.vue";
 import DeleteAccount from "@/components/account/DeleteAccount.vue";
 
 const router = useRouter();
-const activeMenu = ref("overview");
+const activeMenu = ref("profile");
 const loading = ref(false);
 
 // Single source of truth for user data

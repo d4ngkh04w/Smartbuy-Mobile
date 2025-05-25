@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps, defineEmits, computed } from "vue";
+import { defineEmits, computed } from "vue";
 import productService from "../../../services/productService.js";
 
 const props = defineProps({
