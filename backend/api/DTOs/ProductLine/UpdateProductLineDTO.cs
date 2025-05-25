@@ -6,7 +6,7 @@ namespace api.DTOs.ProductLine
     public class UpdateProductLineDTO
     {
         [StringLength(100, MinimumLength = 2, ErrorMessage = "Product line name must be between 2 and 100 characters")]
-        [RegularExpression(@"^[a-zA-Z0-9\s]+$", ErrorMessage = "Product line name can only contain letters, numbers, and spaces")]
+        [RegularExpression(@"^[\p{L}0-9\s]+$", ErrorMessage = "Product line name can only contain letters, numbers, and spaces")]
         public string? Name { get; set; }
 
         [StringLength(2000, ErrorMessage = "Description must be less than 2000 characters")]
