@@ -459,7 +459,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits, computed, watch } from "vue";
+import { ref, defineEmits, computed, watch } from "vue";
 import productService from "../../../services/productService.js";
 import emitter from "../../../utils/evenBus.js";
 

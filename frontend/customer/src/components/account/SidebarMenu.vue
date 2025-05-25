@@ -3,13 +3,13 @@
         <div class="menu-section">
             <div
                 class="menu-item"
-                :class="{ active: activeMenu === 'overview' }"
-                @click="$emit('update:activeMenu', 'overview')"
+                :class="{ active: activeMenu === 'profile' }"
+                @click="$emit('update:activeMenu', 'profile')"
             >
-                <i class="fas fa-home"></i>
-                <span>Tổng quan</span>
+                <i class="fas fa-user-cog"></i>
+                <span>Thông tin cá nhân</span>
             </div>
-            <div class="menu-item">
+            <div class="menu-item" @click="router.push('/account/orders')">
                 <i class="fas fa-shopping-bag"></i>
                 <span>Đơn hàng của bạn</span>
             </div>
@@ -17,18 +17,11 @@
                 <i class="fas fa-ticket-alt"></i>
                 <span>Trung tâm voucher</span>
             </div>
-            <div class="menu-item">
+            <div class="menu-item" @click="router.push('/account/orders-history')">
                 <i class="fas fa-history"></i>
                 <span>Lịch sử mua hàng</span>
             </div>
-            <div
-                class="menu-item"
-                :class="{ active: activeMenu === 'profile' }"
-                @click="$emit('update:activeMenu', 'profile')"
-            >
-                <i class="fas fa-user-cog"></i>
-                <span>Thông tin cá nhân</span>
-            </div>
+            
             <div
                 class="menu-item"
                 :class="{ active: activeMenu === 'delete-account' }"
@@ -46,6 +39,8 @@
 </template>
 
 <script setup>
+import router from '@/router';
+
 defineProps({
     activeMenu: {
         type: String,

@@ -57,6 +57,24 @@ export const routes = [
           requiresAuth: true,
         },
       },
+      {
+        path: "account/orders",
+        name: "orders-management",
+        component: () => import("../views/OrderManagement.vue"),
+        meta: {
+          title: "Quản lý đơn hàng - SmartBuy Mobile",
+          requiresAuth: true,
+        },
+      },
+      {
+        path: "account/orders-history",
+        name: "orders-history",
+        component: () => import("../views/PurchaseHistory.vue"),
+        meta: {
+          title: "Lịch sử đơn hàng - SmartBuy Mobile",
+          requiresAuth: true,
+        },
+      }
     ],
   },
 
@@ -128,6 +146,15 @@ export const routes = [
           requiresAuth: false,
         },
       },
+      {
+        path: '/:pathMatch(.*)*',
+        name: "not-found",
+        component: () => import("../components/common/NotFound.vue"),
+        meta: {
+          title: "404 - Không tìm thấy trang",
+          requiresAuth: false,
+        },
+      }
     ],
   },
 ];

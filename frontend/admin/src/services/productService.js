@@ -9,7 +9,7 @@ class ProductService {
 
 	// ===== Image Utilities =====
 	getUrlImage(url) {
-		const baseUrl = import.meta.env.VITE_IMAGE_BASE_URL || "";
+		const baseUrl = (import.meta.env.VITE_API_URL).replace("/api/v1","") || "";
 		return url?.startsWith("http") ? url : `${baseUrl}${url}`;
 	}
 

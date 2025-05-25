@@ -191,7 +191,8 @@ const fetchProducts = async (page = 1) => {
   products.value = data.data.items
   totalProducts.value = data.data.totalItems
   isLoading.value = false
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  // window.scrollTo({ top: 0, behavior: 'smooth' })
+  // console.log('products.value', products.value)
 }
 
 const selectBrand = (brandName) => {

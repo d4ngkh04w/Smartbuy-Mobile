@@ -177,17 +177,27 @@ function submitOrder() {
         colorId: product.colorId,
       })),
     };
+
     productService.createOrder(orderData)
       .then(response => {
         console.log('Đặt hàng thành công:', response);
         step.value = 3;
         emitter.emit('cart-updated');
 
+        // Kiểm tra tồn kho sau khi đặt hàng
+        Promise.all(
+          orderData.items.map(item =>
+            productService.checkQuantityToToggleStatus(item.productId)
+          )
+        ).then(() => {
+          console.log("Đã cập nhật trạng thái sản phẩm.");
+        });
+
       })
       .catch(error => {
         emitter.emit('show-notification', {
-          status: 'error', 
-          message: 'Dặt hàng thất bại. Vui lòng thử lại sau.',
+          status: 'error',
+          message: 'Đặt hàng thất bại. Vui lòng thử lại sau.',
         });
         console.error('Lỗi khi đặt hàng:', error);
       });

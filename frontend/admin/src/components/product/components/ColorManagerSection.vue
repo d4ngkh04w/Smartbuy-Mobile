@@ -1,5 +1,5 @@
 <script setup>
-import { ref, defineProps, defineEmits, onMounted, watch } from "vue";
+import { ref, defineEmits, onMounted, watch } from "vue";
 import productService from "../../../services/productService.js";
 import emitter from "../../../utils/evenBus.js";
 

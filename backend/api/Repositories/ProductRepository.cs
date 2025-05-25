@@ -107,7 +107,7 @@ namespace api.Repositories
                 }
             }
 
-            if (productQuery.MinPrice.HasValue)
+            if (productQuery.MinPrice.HasValue) 
             {
                 query = query.Where(p => p.SalePrice >= productQuery.MinPrice.Value);
             }
