@@ -17,13 +17,11 @@ namespace api.Controllers
         public ProductController(IProductService productService)
         {
             _productService = productService;
-        }
-
-        [HttpGet]
+        }        [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> GetProducts()
+        public async Task<IActionResult> GetProducts([FromQuery] bool? isActive)
         {
-            var products = await _productService.GetProductsAsync();
+            var products = await _productService.GetProductsAsync(isActive);
             return ApiResponseHelper.Success("Products retrieved successfully", products);
         }
 

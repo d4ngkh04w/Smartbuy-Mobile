@@ -6,12 +6,25 @@ const props = defineProps({
         type: String,
         required: true,
     },
+    statusFilter: {
+        type: String,
+        required: true,
+        default: "all",
+    },
 });
 
-const emit = defineEmits(["update:searchQuery", "add-product"]);
+const emit = defineEmits([
+    "update:searchQuery",
+    "add-product",
+    "update:statusFilter",
+]);
 
 const updateSearchQuery = (e) => {
     emit("update:searchQuery", e.target.value);
+};
+
+const updateStatusFilter = (e) => {
+    emit("update:statusFilter", e.target.value);
 };
 </script>
 
@@ -30,6 +43,14 @@ const updateSearchQuery = (e) => {
                     @input="updateSearchQuery"
                     placeholder="Tìm kiếm sản phẩm..."
                 />
+            </div>
+            <div class="status-filter">
+                <i class="fas fa-filter"></i>
+                <select :value="statusFilter" @change="updateStatusFilter">
+                    <option value="all">Tất cả trạng thái</option>
+                    <option value="active">Đang bán</option>
+                    <option value="inactive">Ngừng bán</option>
+                </select>
             </div>
             <button
                 class="add-button"
@@ -140,5 +161,38 @@ const updateSearchQuery = (e) => {
 
 .add-button:hover {
     background-color: #e94e9c;
+}
+
+/* Status Filter Styling */
+.status-filter {
+    position: relative;
+    width: 200px;
+}
+
+.status-filter i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    pointer-events: none;
+}
+
+.status-filter select {
+    width: 100%;
+    padding: 0.6rem 0.6rem 0.6rem 2rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    appearance: none;
+}
+
+.status-filter select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(248, 110, 211, 0.1);
+    outline: none;
 }
 </style>
