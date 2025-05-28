@@ -1,4 +1,3 @@
-using api.DTOs.Auth;
 using api.DTOs.User;
 
 namespace api.Interfaces.Services

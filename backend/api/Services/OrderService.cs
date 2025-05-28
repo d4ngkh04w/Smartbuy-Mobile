@@ -12,15 +12,18 @@ namespace api.Services
         private readonly IOrderRepository _orderRepository;
         private readonly IProductRepository _productRepository;
         private readonly ICartRepository _cartRepository;
+        private readonly ICacheService _cacheService;
 
         public OrderService(
             IOrderRepository orderRepository,
             IProductRepository productRepository,
-            ICartRepository cartRepository)
+            ICartRepository cartRepository,
+            ICacheService cacheService)
         {
             _orderRepository = orderRepository;
             _productRepository = productRepository;
             _cartRepository = cartRepository;
+            _cacheService = cacheService;
         }
 
         public async Task<OrderDTO> CreateOrderAsync(CreateOrderDTO orderDTO, Guid userId)
@@ -78,6 +81,7 @@ namespace api.Services
 
                 color.Quantity -= item.Quantity;
                 await _productRepository.UpdateAsync(product);
+                _cacheService.RemoveProductCache(product.Id);
             }
 
             decimal shippingFee = CalculateShippingFee(totalAmount);
@@ -102,6 +106,8 @@ namespace api.Services
                     }
                 }
             }
+
+            _cacheService.RemoveAllProductsCache();
 
             return createdOrder.ToOrderDTO();
         }
@@ -153,23 +159,25 @@ namespace api.Services
                     {
                         color.Quantity += item.Quantity;
                         await _productRepository.UpdateAsync(product);
+                        _cacheService.RemoveProductCache(product.Id);
                     }
                 }
             }
 
             var updatedOrder = await _orderRepository.UpdateOrderAsync(order);
+            _cacheService.RemoveAllProductsCache();
 
             return updatedOrder.ToOrderDTO();
         }
 
-        public async Task DeleteOrderAsync(Guid id)
-        {
-            var result = await _orderRepository.DeleteOrderAsync(id);
-            if (!result)
-            {
-                throw new NotFoundException("Order not found");
-            }
-        }
+        // public async Task DeleteOrderAsync(Guid id)
+        // {
+        //     var result = await _orderRepository.DeleteOrderAsync(id);
+        //     if (!result)
+        //     {
+        //         throw new NotFoundException("Order not found");
+        //     }
+        // }
 
         public async Task<IEnumerable<OrderDTO>> GetAllOrdersAsync()
         {
@@ -226,8 +234,10 @@ namespace api.Services
                     {
                         product.Sold += item.Quantity;
                         await _productRepository.UpdateAsync(product);
+                        _cacheService.RemoveProductCache(product.Id);
                     }
                 }
+                _cacheService.RemoveAllProductsCache();
             }
 
             var result = await _orderRepository.UpdateOrderAsync(order);

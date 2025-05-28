@@ -20,8 +20,18 @@ namespace api.Annotations
                     return new ValidationResult(ErrorMessage ?? $"File extension must be one of: {string.Join(", ", _extensions)}");
                 }
             }
+            else if (value is IEnumerable<IFormFile> files)
+            {
+                foreach (var f in files)
+                {
+                    var extension = Path.GetExtension(f.FileName)?.ToLowerInvariant();
+                    if (string.IsNullOrEmpty(extension) || !_extensions.Contains(extension))
+                    {
+                        return new ValidationResult(ErrorMessage ?? $"File extension must be one of: {string.Join(", ", _extensions)}");
+                    }
+                }
+            }
             return ValidationResult.Success!;
-
         }
     }
 }

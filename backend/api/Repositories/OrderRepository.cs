@@ -21,16 +21,16 @@ namespace api.Repositories
             return order;
         }
 
-        public async Task<bool> DeleteOrderAsync(Guid id)
-        {
-            var order = await _context.Orders.FindAsync(id);
-            if (order == null)
-                return false;
+        // public async Task<bool> DeleteOrderAsync(Guid id)
+        // {
+        //     var order = await _context.Orders.FindAsync(id);
+        //     if (order == null)
+        //         return false;
 
-            _context.Orders.Remove(order);
-            await _context.SaveChangesAsync();
-            return true;
-        }
+        //     _context.Orders.Remove(order);
+        //     await _context.SaveChangesAsync();
+        //     return true;
+        // }
 
         public async Task<IEnumerable<Order>> GetAllOrdersAsync()
         {

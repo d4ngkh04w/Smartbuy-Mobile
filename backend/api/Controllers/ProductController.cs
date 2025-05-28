@@ -17,7 +17,9 @@ namespace api.Controllers
         public ProductController(IProductService productService)
         {
             _productService = productService;
-        }        [HttpGet]
+        }
+
+        [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> GetProducts([FromQuery] bool? isActive)
         {
@@ -68,7 +70,9 @@ namespace api.Controllers
         {
             var color = await _productService.CreateProductColorAsync(productId, productColorDTO);
             return ApiResponseHelper.Created("Product color created successfully", color);
-        }        [HttpPut("{productId:int}/color/{colorId:int}")]
+        }
+
+        [HttpPut("{productId:int}/color/{colorId:int}")]
         public async Task<IActionResult> UpdateProductColor([FromRoute] int productId, [FromRoute] int colorId, [FromForm] UpdateColorDTO productColorDTO)
         {
             var color = await _productService.UpdateProductColorAsync(productId, colorId, productColorDTO);

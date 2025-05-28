@@ -115,8 +115,9 @@
 								<div class="product-info">
 									<img
 										:src="
-											product.imageUrl ||
-											'https://via.placeholder.com/40'
+											productService.getProductMainImage(
+												product
+											)
 										"
 										:alt="product.name"
 										class="product-image"
@@ -170,8 +171,9 @@
 </template>
 
 <script setup>
-import {  defineEmits } from "vue";
+import { defineEmits } from "vue";
 import discountService from "../../../services/discountService";
+import productService from "../../../services/productService";
 import emitter from "../../../utils/evenBus.js";
 
 const props = defineProps({

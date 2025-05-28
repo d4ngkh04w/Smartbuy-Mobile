@@ -87,13 +87,5 @@ namespace api.Controllers
             var order = await _orderService.CancelOrderAsync(id, userId);
             return ApiResponseHelper.Success("Order canceled successfully", order);
         }
-
-        [HttpDelete("{id:guid}")]
-        [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
-        public async Task<IActionResult> DeleteOrder([FromRoute] Guid id)
-        {
-            await _orderService.DeleteOrderAsync(id);
-            return NoContent();
-        }
     }
 }

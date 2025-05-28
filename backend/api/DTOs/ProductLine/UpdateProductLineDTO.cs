@@ -13,7 +13,7 @@ namespace api.DTOs.ProductLine
         public string? Description { get; set; }
 
         [DataType(DataType.Upload)]
-        [AllowFileExtension(extensions: [".jpg", ".jpeg", ".png"], ErrorMessage = "Image must be a valid image (jpg, jpeg, png)")]
+        [AllowFileExtension([".jpg", ".jpeg", ".png", ".svg", ".webp"])]
         public IFormFile? Image { get; set; } = null;
 
         [Range(1, int.MaxValue, ErrorMessage = "Brand ID must be a positive integer")]

@@ -30,7 +30,9 @@ namespace api.Services
             _commentRepository = commentRepository;
             _env = webHostEnvironment;
             _cacheService = cacheService;
-        }        public async Task<IEnumerable<ProductDTO>> GetProductsAsync(bool? isActive = null)
+        }
+
+        public async Task<IEnumerable<ProductDTO>> GetProductsAsync(bool? isActive = null)
         {
             string cacheKey = CacheKeyManager.GetAllProductsKey();
             bool hasFilters = isActive.HasValue;
@@ -282,6 +284,7 @@ namespace api.Services
 
             return result;
         }
+
         public async Task<ProductColorDTO> CreateProductColorAsync(int productId, CreateColorDTO productColorDTO)
         {
             if (productColorDTO.Images != null && productColorDTO.Images.Any())
