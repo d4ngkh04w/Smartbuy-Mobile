@@ -106,7 +106,11 @@ const editingColor = ref({
     newImages: [],
     newImagePreviews: [],
     mainImageIndex: 0,
+    newMainImageIndex: undefined,
     removeImageIds: [],
+    mainImageId: null,
+    originalName: "",
+    existingImages: [],
 });
 
 // Delete confirmation modal state
@@ -251,7 +255,7 @@ const addNewColor = async () => {
         // Show notification
         showSuccessNotification("Đã thêm màu mới thành công");
     } catch (error) {
-        showErrorNotification("Có lỗi xảy ra khi thêm màu sản phẩm.");       
+        showErrorNotification("Có lỗi xảy ra khi thêm màu sản phẩm.");
     } finally {
         addingColor.value = false;
     }
@@ -295,7 +299,11 @@ const cancelEditColor = () => {
         newImages: [],
         newImagePreviews: [],
         mainImageIndex: 0,
+        newMainImageIndex: undefined,
         removeImageIds: [],
+        mainImageId: null,
+        originalName: "",
+        existingImages: [],
     };
 };
 
@@ -326,13 +334,15 @@ const saveColorChanges = async (colorId) => {
         }
 
         // Always append quantity
-        formData.append("Quantity", editingColor.value.quantity.toString());
-
-        // Add main image ID if exists
+        formData.append("Quantity", editingColor.value.quantity.toString()); // Add main image ID if exists (for existing images)
         if (editingColor.value.mainImageId) {
             formData.append(
                 "MainImageId",
                 editingColor.value.mainImageId.toString()
+            );
+            console.log(
+                "Setting main image from existing:",
+                editingColor.value.mainImageId
             );
         }
 
@@ -344,6 +354,7 @@ const saveColorChanges = async (colorId) => {
             for (const id of editingColor.value.removeImageIds) {
                 formData.append("RemoveImageIds", id.toString());
             }
+            console.log("Removing images:", editingColor.value.removeImageIds);
         }
 
         // Add new images if any
@@ -361,9 +372,13 @@ const saveColorChanges = async (colorId) => {
                     "MainImageIndex",
                     editingColor.value.newMainImageIndex.toString()
                 );
+                console.log(
+                    "Setting main image from new images at index:",
+                    editingColor.value.newMainImageIndex
+                );
             }
-        } 
-       
+        }
+
         const formEntries = [...formData.entries()].map(([key, value]) => {
             return `${key}: ${value instanceof File ? value.name : value}`;
         });
@@ -373,8 +388,6 @@ const saveColorChanges = async (colorId) => {
             colorId,
             formData
         );
-
-       
 
         // Emit event to refresh product data and close modal
         emit("color-updated");
@@ -386,7 +399,6 @@ const saveColorChanges = async (colorId) => {
         showSuccessNotification("Đã cập nhật màu sản phẩm thành công");
     } catch (error) {
         showErrorNotification("Có lỗi xảy ra khi cập nhật màu sản phẩm.");
-        
     } finally {
         updatingColors[colorId] = false;
     }
@@ -420,7 +432,7 @@ const deleteColor = async () => {
         // Show notification
         showSuccessNotification("Đã xóa màu sản phẩm thành công");
     } catch (error) {
-        showErrorNotification("Có lỗi xảy ra khi xóa màu sản phẩm.");        
+        showErrorNotification("Có lỗi xảy ra khi xóa màu sản phẩm.");
     } finally {
         deletingColor.value = null;
         colorToDelete.value = { id: null, name: "" };
@@ -434,6 +446,12 @@ const cancelDeleteColor = () => {
 
 const setMainImage = (imageId) => {
     editingColor.value.mainImageId = imageId;
+    editingColor.value.newMainImageIndex = undefined; // Clear new image main selection
+};
+
+const setMainImageForNewImage = (index) => {
+    editingColor.value.newMainImageIndex = index;
+    editingColor.value.mainImageId = null; // Clear existing image main selection
 };
 
 const removeExistingImage = (imageId) => {
@@ -442,6 +460,11 @@ const removeExistingImage = (imageId) => {
     }
 
     editingColor.value.removeImageIds.push(imageId);
+
+    // If removing the current main image, clear the main selection
+    if (editingColor.value.mainImageId === imageId) {
+        editingColor.value.mainImageId = null;
+    }
 };
 
 const removeNewImage = (index) => {
@@ -452,14 +475,10 @@ const removeNewImage = (index) => {
     editingColor.value.newImagePreviews.splice(index, 1);
 
     // Adjust main image index if needed
-    if (
-        editingColor.value.newMainImageIndex >=
-        editingColor.value.newImages.length
-    ) {
-        editingColor.value.newMainImageIndex = Math.max(
-            0,
-            editingColor.value.newImages.length - 1
-        );
+    if (editingColor.value.newMainImageIndex === index) {
+        editingColor.value.newMainImageIndex = undefined;
+    } else if (editingColor.value.newMainImageIndex > index) {
+        editingColor.value.newMainImageIndex--;
     }
 };
 </script>
@@ -802,8 +821,9 @@ const removeNewImage = (index) => {
                                             <button
                                                 type="button"
                                                 @click.stop="
-                                                    editingColor.newMainImageIndex =
+                                                    setMainImageForNewImage(
                                                         index
+                                                    )
                                                 "
                                                 :class="[
                                                     'set-main-btn',

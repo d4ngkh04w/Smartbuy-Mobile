@@ -29,24 +29,7 @@ const avatarPreview = ref(null);
 const userAvatar = computed(() => {
     if (avatarPreview.value) return avatarPreview.value;
     if (userData.value && userData.value.avatar) {
-        // Nếu avatar đã là URL đầy đủ (bắt đầu bằng http hoặc https)
-        if (userData.value.avatar.startsWith("http")) {
-            return userData.value.avatar;
-        }
-
-        // Lấy base URL từ cấu hình API
-        const apiUrl = import.meta.env.VITE_API_URL || "";
-        const baseUrl = apiUrl.includes("/api") ? apiUrl.split("/api")[0] : "";
-
-        // Chuẩn hóa đường dẫn file (chuyển \ thành /)
-        const normalizedPath = userData.value.avatar.replace(/\\/g, "/");
-
-        // Kiểm tra xem có prefix / hay không
-        const avatarPath = normalizedPath.startsWith("/")
-            ? normalizedPath
-            : `/${normalizedPath}`;
-
-        return `${baseUrl}${avatarPath}`;
+        return meService.getUrlImage(userData.value.avatar);
     }
     return "https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg";
 });
@@ -66,9 +49,8 @@ onMounted(async () => {
 const fetchUserData = async () => {
     loading.value = true;
     try {
-        // Fetch admin data from API
-        const data = await meService.getMe();        
-        console.log("Response data:", data);
+        const data = await meService.getMe();
+
         // Format date if needed
         if (data.createdAt) {
             const date = new Date(data.createdAt);
@@ -81,7 +63,7 @@ const fetchUserData = async () => {
             avatarFile: null,
         };
     } catch (error) {
-        console.error("Error fetching admin profile:", error);
+        console.error("Error fetching user profile:", error);
         emitter.emit("show-notification", {
             status: "error",
             message: "Không thể tải thông tin tài khoản",
@@ -97,21 +79,11 @@ const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Kiểm tra định dạng file
-    const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
-    if (!allowedTypes.includes(file.type)) {
+    const validation = meService.validateAvatarFile(file);
+    if (!validation.valid) {
         emitter.emit("show-notification", {
             status: "error",
-            message: "Chỉ chấp nhận file hình ảnh (jpg, jpeg, png)",
-        });
-        return;
-    }
-
-    // Giới hạn kích thước file (15MB)
-    if (file.size > 15 * 1024 * 1024) {
-        emitter.emit("show-notification", {
-            status: "error",
-            message: "Kích thước file quá lớn (tối đa 15MB)",
+            message: validation.message,
         });
         return;
     }
@@ -137,7 +109,7 @@ const enableEditing = () => {
 // Cancel editing
 const cancelEditing = () => {
     isEditing.value = false;
-    avatarPreview.value = null;
+    avatarPreview.value = "";
 
     // Fetch lại dữ liệu để đảm bảo dữ liệu hiển thị là mới nhất
     fetchUserData();
@@ -151,61 +123,33 @@ const cancelEditing = () => {
 const saveProfile = async () => {
     loading.value = true;
     try {
-        // Tạo đối tượng FormData để gửi lên server (giống cách trong BrandManagement.vue)
-        const formData = new FormData();
-
-        // Thêm các trường thông tin vào formData
-        formData.append("name", userData.value.name || "");
-        formData.append("email", userData.value.email || "");
-
-        if (userData.value.gender) {
-            formData.append("gender", userData.value.gender);
-        }
-
-        if (userData.value.address) {
-            formData.append("address", userData.value.address);
-        }
-
-        // Nếu có avatar mới, thêm vào formData
-        if (userData.value.avatarFile) {
-            formData.append("avatar", userData.value.avatarFile);
-        }
+        // Sử dụng utility method từ meService để chuẩn bị FormData
+        const formData = meService.prepareProfileFormData(userData.value);
 
         // Gọi API cập nhật thông tin với FormData
         const data = await meService.updateUserProfile(formData);
 
-        if (data) {
-            // Lấy dữ liệu từ response
-            console.log("Response data:", data);
-
-            // Format date if needed
-            if (data.createdAt) {
-                const date = new Date(data.createdAt);
-                data.createdAt = date.toLocaleDateString("vi-VN");
-            }
-
-            // Cập nhật userData với dữ liệu mới từ server
-            userData.value = {
-                ...data,
-                avatarFile: null,
-            };
-
-            // Hiển thị thông báo thành công
-            emitter.emit("show-notification", {
-                status: "success",
-                message: "Cập nhật thông tin thành công",
-            });
-        } else {
-            emitter.emit("show-notification", {
-                status: "warning",
-                message: "Dữ liệu trả về không hợp lệ",
-            });
+        // Format date if needed
+        if (data.createdAt) {
+            const date = new Date(data.createdAt);
+            data.createdAt = date.toLocaleDateString("vi-VN");
         }
+
+        // Cập nhật userData với dữ liệu mới từ server
+        userData.value = {
+            ...data,
+            avatarFile: null,
+        };
+
+        // Hiển thị thông báo thành công
+        emitter.emit("show-notification", {
+            status: "success",
+            message: "Cập nhật thông tin thành công",
+        });
 
         // Reset state
         isEditing.value = false;
-        avatarPreview.value = null;
-
+        avatarPreview.value = "";
         if (fileInput.value) {
             fileInput.value.value = "";
         }
@@ -223,22 +167,12 @@ const saveProfile = async () => {
 
 // Change password
 const changePassword = async () => {
-    // Validate password
-    if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
+    // Validate password using meService utility
+    const validation = meService.validatePasswordForm(passwordForm.value);
+    if (!validation.valid) {
         emitter.emit("show-notification", {
             status: "error",
-            message: "Mật khẩu xác nhận không khớp",
-        });
-        return;
-    }
-
-    if (
-        !passwordForm.value.currentPassword ||
-        !passwordForm.value.newPassword
-    ) {
-        emitter.emit("show-notification", {
-            status: "error",
-            message: "Vui lòng điền đầy đủ thông tin",
+            message: validation.message,
         });
         return;
     }

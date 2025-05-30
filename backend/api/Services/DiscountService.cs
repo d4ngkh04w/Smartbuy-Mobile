@@ -1,4 +1,5 @@
 using api.DTOs.Discount;
+using api.DTOs.Product;
 using api.Exceptions;
 using api.Interfaces.Repositories;
 using api.Interfaces.Services;
@@ -152,15 +153,10 @@ namespace api.Services
             return await _discountRepository.RemoveProductFromDiscountAsync(discountId, productId);
         }
 
-        public async Task<IEnumerable<Product>> GetProductsByDiscountIdAsync(int discountId)
+        public async Task<IEnumerable<ProductDTO>> GetProductsByDiscountIdAsync(int discountId)
         {
-            var exists = await _discountRepository.IsDiscountExistAsync(discountId);
-            if (!exists)
-            {
-                throw new NotFoundException($"Discount with ID {discountId} not found");
-            }
-
-            return await _discountRepository.GetProductsByDiscountIdAsync(discountId);
+            var products = await _discountRepository.GetProductsByDiscountIdAsync(discountId);
+            return products.Select(p => p.ToProductDTO());
         }
 
         public async Task<IEnumerable<DiscountDTO>> GetDiscountsByProductIdAsync(int productId)

@@ -1,5 +1,4 @@
 <script setup>
-
 const props = defineProps({
     totalProducts: {
         type: Number,
@@ -18,6 +17,16 @@ const props = defineProps({
 // Format currency function
 const formatCurrency = (value) => {
     if (!value) return "0 ₫";
+
+    // Convert to shorter format for large numbers
+    if (value >= 1000000000) {
+        return (value / 1000000000).toFixed(1) + "B ₫";
+    } else if (value >= 1000000) {
+        return (value / 1000000).toFixed(1) + "M ₫";
+    } else if (value >= 1000) {
+        return (value / 1000).toFixed(1) + "K ₫";
+    }
+
     return new Intl.NumberFormat("vi-VN", {
         style: "currency",
         currency: "VND",
@@ -63,7 +72,7 @@ const formatCurrency = (value) => {
 /* Status Cards Styling */
 .status-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
@@ -100,11 +109,14 @@ const formatCurrency = (value) => {
     font-size: 1.5rem;
     margin: 0 0 0.25rem 0;
     color: #333;
+    word-break: break-word;
+    line-height: 1.2;
 }
 
 .status-content p {
     margin: 0;
     color: #666;
     font-size: 0.85rem;
+    line-height: 1.2;
 }
 </style>

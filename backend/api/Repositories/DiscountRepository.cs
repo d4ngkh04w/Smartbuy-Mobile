@@ -118,11 +118,21 @@ namespace api.Repositories
 
         public async Task<IEnumerable<Product>> GetProductsByDiscountIdAsync(int discountId)
         {
+            // return await _context.ProductDiscounts
+            //     .Where(pd => pd.DiscountId == discountId)
+            //     .Select(pd => pd.Product!)
+            //     .Include(p => p.Colors)
+            //         .ThenInclude(c => c.Images)
+            //     .ToListAsync();
             return await _context.ProductDiscounts
                 .Where(pd => pd.DiscountId == discountId)
+                .Include(pd => pd.Product!)
+                .ThenInclude(p => p.Colors)
+                    .ThenInclude(c => c.Images)
                 .Select(pd => pd.Product!)
                 .ToListAsync();
         }
+        
 
         public async Task<IEnumerable<Discount>> GetDiscountsByProductIdAsync(int productId)
         {

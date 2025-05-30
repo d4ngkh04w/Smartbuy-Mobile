@@ -6,11 +6,9 @@ class ProductService {
 		data instanceof FormData
 			? { headers: { "Content-Type": "multipart/form-data" } }
 			: {};
-
 	// ===== Image Utilities =====
 	getUrlImage(url) {
-		const baseUrl =
-			import.meta.env.VITE_API_URL.replace("/api/v1", "") || "";
+		const baseUrl = import.meta.env.VITE_API_URL.replace("/api/v1", "") || "";
 		return url?.startsWith("http") ? url : `${baseUrl}${url}`;
 	}
 
@@ -190,8 +188,7 @@ class ProductService {
 				error
 			);
 			throw error;
-		}
-	}
+		}	}
 
 	// ===== Misc =====
 	getProductMainImage(product) {

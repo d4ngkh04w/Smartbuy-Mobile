@@ -115,9 +115,7 @@
 								<div class="product-info">
 									<img
 										:src="
-											productService.getProductMainImage(
-												product
-											)
+											getProductMainImage(product)
 										"
 										:alt="product.name"
 										class="product-image"
@@ -244,6 +242,13 @@ const removeProduct = async (productId) => {
 			"Có lỗi xảy ra khi xóa sản phẩm khỏi mã giảm giá"
 		);
 	}
+};
+
+const getProductMainImage = (product) => {
+	console .log("Getting main image for product:", product);
+    const url = productService.getProductMainImage(product);
+	console.log("Product main image URL:", url);
+	return url || "https://via.placeholder.com/150"; // Fallback image if no main image is available
 };
 </script>
 

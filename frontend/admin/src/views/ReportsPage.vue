@@ -82,6 +82,7 @@ import RevenueOverTime from "../components/reports/RevenueOverTime.vue";
 import FrequentCustomers from "../components/reports/FrequentCustomers.vue";
 import { getCurrentDate, getLastMonthDate } from "../utils/dateTimeUtils.js";
 import emitter from "../utils/evenBus.js";
+import dashboardService from "../services/dashboardService.js";
 
 // State
 const timeFilter = ref("month");
@@ -94,131 +95,23 @@ const loading = ref({
 });
 
 // Data
-const bestSellingProducts = ref([
-    // Mẫu dữ liệu - sẽ được thay thế bằng API thực tế
-    {
-        id: 1,
-        name: "iPhone 15 Pro Max",
-        sku: "IP15PM",
-        quantity: 89,
-        revenue: 267000000,
-        firstSoldDate: "2025-01-15",
-    },
-    {
-        id: 2,
-        name: "Samsung Galaxy S25 Ultra",
-        sku: "SGS25U",
-        quantity: 72,
-        revenue: 216000000,
-        firstSoldDate: "2025-02-01",
-    },
-    {
-        id: 3,
-        name: "Xiaomi 14 Pro",
-        sku: "XM14P",
-        quantity: 65,
-        revenue: 130000000,
-        firstSoldDate: "2025-01-10",
-    },
-    {
-        id: 4,
-        name: "OPPO Find X7 Ultra",
-        sku: "OPX7U",
-        quantity: 58,
-        revenue: 174000000,
-        firstSoldDate: "2025-02-15",
-    },
-    {
-        id: 5,
-        name: "Google Pixel 9 Pro",
-        sku: "GP9P",
-        quantity: 45,
-        revenue: 126000000,
-        firstSoldDate: "2025-03-01",
-    },
-]);
+const bestSellingProducts = ref([]);
 
 const revenueData = ref({
-    labels: [
-        "01/03",
-        "02/03",
-        "03/03",
-        "04/03",
-        "05/03",
-        "06/03",
-        "07/03",
-        "08/03",
-        "09/03",
-        "10/03",
-        "11/03",
-        "12/03",
-        "13/03",
-        "14/03",
-        "15/03",
-    ],
+    labels: [],
     datasets: [
         {
-            data: [
-                15000000, 17500000, 14000000, 21000000, 19500000, 23000000,
-                18500000, 24500000, 29000000, 27500000, 22000000, 25000000,
-                30500000, 28000000, 32000000,
-            ],
+            data: [],
         },
     ],
     totals: {
-        revenue: 347000000,
-        orders: 137,
-        avgOrderValue: 2532847,
+        revenue: 0,
+        orders: 0,
+        avgOrderValue: 0,
     },
 });
 
-const frequentCustomers = ref([
-    {
-        id: 1,
-        name: "Nguyễn Văn A",
-        email: "nguyenvana@example.com",
-        phone: "0901234567",
-        orderCount: 8,
-        totalSpent: 45600000,
-        lastOrderDate: "2025-03-15",
-    },
-    {
-        id: 2,
-        name: "Trần Thị B",
-        email: "tranthib@example.com",
-        phone: "0912345678",
-        orderCount: 6,
-        totalSpent: 32400000,
-        lastOrderDate: "2025-03-10",
-    },
-    {
-        id: 3,
-        name: "Lê Văn C",
-        email: "levanc@example.com",
-        phone: "0923456789",
-        orderCount: 5,
-        totalSpent: 27500000,
-        lastOrderDate: "2025-03-05",
-    },
-    {
-        id: 4,
-        name: "Phạm Thị D",
-        email: "phamthid@example.com",
-        phone: "0934567890",
-        orderCount: 4,
-        totalSpent: 19200000,
-        lastOrderDate: "2025-03-12",
-    },
-    {
-        id: 5,
-        name: "Hoàng Văn E",
-        email: "hoangvane@example.com",
-        phone: "0945678901",
-        orderCount: 4,
-        totalSpent: 18800000,
-        lastOrderDate: "2025-03-08",
-    },
-]);
+const frequentCustomers = ref([]);
 
 const router = useRouter();
 
@@ -287,22 +180,40 @@ const applyFilters = async () => {
  */
 const fetchBestSellingProducts = async () => {
     try {
-        // Giả lập API call
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        loading.value.bestSelling = true;
 
-        // Khi có API thực, thay thế bằng:
-        // const params = {
-        //   timeFilter: timeFilter.value,
-        //   startDate: timeFilter.value === 'custom' ? startDate.value : null,
-        //   endDate: timeFilter.value === 'custom' ? endDate.value : null
-        // };
-        // const response = await axios.get('/api/reports/best-selling', { params });
-        // bestSellingProducts.value = response.data;
+        // Lấy date range từ timeFilter
+        const dateRange = dashboardService.getDateRange(
+            timeFilter.value,
+            startDate.value,
+            endDate.value
+        );
 
-        // Kết thúc loading
+        // Gọi API với parameters
+        const data = await dashboardService.getTopProducts({
+            startDate: dateRange.startDate,
+            endDate: dateRange.endDate,
+            limit: 5, // Lấy top 5 sản phẩm
+        });
+
+        // Transform data to match component format
+        bestSellingProducts.value = data.map((product) => ({
+            id: product.productId,
+            name: product.productName,
+            sku: product.sku || `SKU${product.productId}`, // Fallback nếu không có SKU
+            quantity: product.quantitySold,
+            revenue: product.totalRevenue,
+            firstSoldDate:
+                product.firstSoldDate || new Date().toISOString().split("T")[0],
+        }));
+
         loading.value.bestSelling = false;
     } catch (error) {
         console.error("Lấy dữ liệu sản phẩm bán chạy thất bại:", error);
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Không thể tải dữ liệu sản phẩm bán chạy",
+        });
         loading.value.bestSelling = false;
     }
 };
@@ -312,22 +223,75 @@ const fetchBestSellingProducts = async () => {
  */
 const fetchRevenueData = async () => {
     try {
-        // Giả lập API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        loading.value.revenue = true;
 
-        // Khi có API thực, thay thế bằng:
-        // const params = {
-        //   timeFilter: timeFilter.value,
-        //   startDate: timeFilter.value === 'custom' ? startDate.value : null,
-        //   endDate: timeFilter.value === 'custom' ? endDate.value : null
-        // };
-        // const response = await axios.get('/api/reports/revenue', { params });
-        // revenueData.value = response.data;
+        // Lấy date range và period từ timeFilter
+        const dateRange = dashboardService.getDateRange(
+            timeFilter.value,
+            startDate.value,
+            endDate.value
+        );
+        const period = dashboardService.getPeriodFromTimeFilter(
+            timeFilter.value
+        );
 
-        // Kết thúc loading
+        // Gọi API với parameters
+        const data = await dashboardService.getRevenue({
+            startDate: dateRange.startDate,
+            endDate: dateRange.endDate,
+            period: period,
+        });
+
+        // Transform data to match component format
+        const labels = data.map((item) => {
+            const date = new Date(item.date);
+            if (period === "daily") {
+                return `${date.getDate().toString().padStart(2, "0")}/${(
+                    date.getMonth() + 1
+                )
+                    .toString()
+                    .padStart(2, "0")}`;
+            } else if (period === "weekly") {
+                return `Tuần ${Math.ceil(date.getDate() / 7)}`;
+            } else if (period === "monthly") {
+                return `${date.getMonth() + 1}/${date.getFullYear()}`;
+            }
+            return item.date;
+        });
+
+        const revenueValues = data.map((item) => item.totalRevenue);
+        const totalRevenue = revenueValues.reduce(
+            (sum, value) => sum + value,
+            0
+        );
+        const totalOrders = data.reduce(
+            (sum, item) => sum + (item.orderCount || 0),
+            0
+        );
+        const avgOrderValue =
+            totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+
+        revenueData.value = {
+            labels: labels,
+            datasets: [
+                {
+                    data: revenueValues,
+                },
+            ],
+            totals: {
+                revenue: totalRevenue,
+                orders: totalOrders,
+                avgOrderValue: avgOrderValue,
+            },
+        };
+
         loading.value.revenue = false;
     } catch (error) {
         console.error("Lấy dữ liệu doanh thu thất bại:", error);
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Không thể tải dữ liệu doanh thu",
+        });
         loading.value.revenue = false;
     }
 };
@@ -337,22 +301,45 @@ const fetchRevenueData = async () => {
  */
 const fetchFrequentCustomers = async () => {
     try {
-        // Giả lập API call
-        await new Promise((resolve) => setTimeout(resolve, 1200));
+        loading.value.customers = true;
 
-        // Khi có API thực, thay thế bằng:
-        // const params = {
-        //   timeFilter: timeFilter.value,
-        //   startDate: timeFilter.value === 'custom' ? startDate.value : null,
-        //   endDate: timeFilter.value === 'custom' ? endDate.value : null
-        // };
-        // const response = await axios.get('/api/reports/customers', { params });
-        // frequentCustomers.value = response.data;
+        // Lấy date range từ timeFilter
+        const dateRange = dashboardService.getDateRange(
+            timeFilter.value,
+            startDate.value,
+            endDate.value
+        );
 
-        // Kết thúc loading
+        // Gọi API với parameters
+        const data = await dashboardService.getFrequentCustomers({
+            startDate: dateRange.startDate,
+            endDate: dateRange.endDate,
+            limit: 5, // Lấy top 5 khách hàng
+        });
+
+        // Transform data to match component format
+        frequentCustomers.value = data.map((customer) => ({
+            id: customer.id,
+            name:
+                customer.fullName ||
+                customer.name ||
+                `Khách hàng ${customer.id}`,
+            email: customer.email || "",
+            phone: customer.phoneNumber || customer.phone || "",
+            orderCount: customer.orderCount || 0,
+            totalSpent: customer.totalSpent || 0,
+            lastOrderDate: customer.lastOrderDate
+                ? new Date(customer.lastOrderDate).toISOString().split("T")[0]
+                : new Date().toISOString().split("T")[0],
+        }));
+
         loading.value.customers = false;
     } catch (error) {
         console.error("Lấy dữ liệu khách hàng thất bại:", error);
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Không thể tải dữ liệu khách hàng",
+        });
         loading.value.customers = false;
     }
 };
