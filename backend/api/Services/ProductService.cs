@@ -383,20 +383,16 @@ namespace api.Services
         }
         public async Task DeleteProductColorAsync(int productId, int colorId)
         {
-            // 1. Kiểm tra sản phẩm và màu sắc tồn tại
-            var product = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
+            _ = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
             var productColor = await _productRepository.GetProductColorAsync(productId, colorId) ?? throw new NotFoundException("Product color not found");
 
-            // 2. Xóa tất cả ảnh liên quan trong hệ thống tệp tin
             foreach (var image in productColor.Images)
             {
                 ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
             }
 
-            // 3. Xóa màu sắc khỏi cơ sở dữ liệu
             await _productRepository.DeleteColorAsync(productColor);
 
-            // 4. Xóa cache để cập nhật dữ liệu
             _cacheService.RemoveProductCache(productId);
             _cacheService.RemoveAllProductsCache();
         }
