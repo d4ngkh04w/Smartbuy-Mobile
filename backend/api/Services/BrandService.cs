@@ -64,51 +64,6 @@ namespace api.Services
             return createdBrand.ToDTO();
         }
 
-        public async Task DeleteBrandAsync(int id)
-        {
-            var brand = await _repo.GetBrandByIdAsync(id) ?? throw new NotFoundException("Brand not found");
-            if (!string.IsNullOrEmpty(brand.Logo))
-            {
-                ImageUtils.DeleteImage(_env.WebRootPath + brand.Logo);
-                brand.Logo = string.Empty;
-            }
-
-            var productLines = await _productLineRepo.GetProductLinesByBrandIdAsync(id);
-            if (productLines != null && productLines.Any())
-            {
-                foreach (var productLine in productLines)
-                {
-                    var products = await _productRepo.GetProductsByProductLineIdAsync(productLine.Id);
-                    if (products != null && products.Any())
-                    {
-                        foreach (var product in products)
-                        {
-                            foreach (var color in product.Colors)
-                            {
-                                if (color.Images != null && color.Images.Any())
-                                {
-                                    foreach (var image in color.Images)
-                                    {
-                                        if (!string.IsNullOrEmpty(image.ImagePath))
-                                        {
-                                            ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (!string.IsNullOrEmpty(productLine.Image))
-                    {
-                        ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);
-                    }
-                }
-            }
-            await _repo.DeleteBrandAsync(brand);
-
-            _cacheService.RemoveBrandCache(id);
-            _cacheService.RemoveAllBrandsCache();
-        }
         public async Task<BrandDTO> GetBrandByIdAsync(int id, BrandQuery query)
         {
             string cacheKey = CacheKeyManager.GetBrandKey(id);
@@ -164,7 +119,7 @@ namespace api.Services
 
                 if (!string.IsNullOrEmpty(brand.Logo))
                 {
-                    ImageUtils.DeleteImage(_env.WebRootPath + brand.Logo);
+                    await ImageUtils.DeleteImageAsync(_env.WebRootPath + brand.Logo);
                 }
 
                 var path = await ImageUtils.SaveImageAsync(brandDTO.Logo, _env.WebRootPath, "brands", 2 * 1024 * 1024);

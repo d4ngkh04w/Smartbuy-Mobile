@@ -123,26 +123,6 @@ namespace api.Services
                 if (dto.SimSlots.HasValue) product.Detail.SimSlots = dto.SimSlots.Value;
             }
 
-            // Thêm màu mới nếu có
-            if (dto.UpdateColorData?.Any() == true)
-            {
-                foreach (var colorDto in dto.UpdateColorData)
-                {
-                    if (!string.IsNullOrWhiteSpace(colorDto.Name) && colorDto.Quantity.HasValue)
-                    {
-                        var newColor = new CreateColorDTO
-                        {
-                            Name = colorDto.Name,
-                            Quantity = colorDto.Quantity.Value,
-                            Images = colorDto.AddImages ?? new List<IFormFile>(),
-                            MainImageIndex = colorDto.MainImageIndex ?? 0
-                        };
-
-                        await CreateProductColorAsync(id, newColor);
-                    }
-                }
-            }
-
             var updated = await _productRepository.UpdateAsync(product);
             _cacheService.RemoveProductCache(id);
             _cacheService.RemoveAllProductsCache();
@@ -174,16 +154,29 @@ namespace api.Services
             bool wasMainDeleted = false;
             if (dto.RemoveImageIds?.Any() == true)
             {
-                foreach (var id in dto.RemoveImageIds)
-                {
-                    var img = color.Images.FirstOrDefault(i => i.Id == id);
-                    if (img != null)
-                    {
-                        if (img.IsMain) wasMainDeleted = true;
+                // foreach (var id in dto.RemoveImageIds)
+                // {
+                //     var img = color.Images.FirstOrDefault(i => i.Id == id);
+                //     if (img != null)
+                //     {
+                //         if (img.IsMain) wasMainDeleted = true;
 
-                        ImageUtils.DeleteImage(_env.WebRootPath + img.ImagePath);
-                        color.Images.Remove(img);
-                    }
+                //         ImageUtils.DeleteImage(_env.WebRootPath + img.ImagePath);
+                //         color.Images.Remove(img);
+                //     }
+                // }
+
+                var imagesToDelete = color.Images.Where(i => dto.RemoveImageIds.Contains(i.Id)).ToList();
+
+                wasMainDeleted = imagesToDelete.Any(i => i.IsMain);
+
+                await Task.WhenAll(imagesToDelete.Select(img =>
+                    ImageUtils.DeleteImageAsync(_env.WebRootPath + img.ImagePath)
+                ));
+
+                foreach (var img in imagesToDelete)
+                {
+                    color.Images.Remove(img);
                 }
             }
 
@@ -200,7 +193,6 @@ namespace api.Services
             else if (wasMainDeleted && color.Images.Any())
             {
                 color.Images.First().IsMain = true;
-
             }
 
             // Thêm ảnh mới
@@ -211,18 +203,29 @@ namespace api.Services
                     foreach (var img in color.Images) img.IsMain = false;
                 }
 
-                for (int i = 0; i < dto.AddImages.Count; i++)
-                {
-                    var file = dto.AddImages[i];
-                    var path = await ImageUtils.SaveImageAsync(file, _env.WebRootPath, "products", 5 * 1024 * 1024);
+                // for (int i = 0; i < dto.AddImages.Count; i++)
+                // {
+                //     var file = dto.AddImages[i];
+                //     var path = await ImageUtils.SaveImageAsync(file, _env.WebRootPath, "products", 5 * 1024 * 1024);
 
+                //     color.Images.Add(new ProductImage
+                //     {
+                //         ImagePath = path,
+                //         IsMain = dto.MainImageIndex == i,
+                //         ColorId = color.Id
+                //     });
+                // }
+                var tasks = dto.AddImages.Select(async (file, i) =>
+                {
+                    var path = await ImageUtils.SaveImageAsync(file, _env.WebRootPath, "products", 5 * 1024 * 1024);
                     color.Images.Add(new ProductImage
                     {
                         ImagePath = path,
                         IsMain = dto.MainImageIndex == i,
                         ColorId = color.Id
                     });
-                }
+                });
+                await Task.WhenAll(tasks);
             }
 
             // Đảm bảo có ảnh chính
@@ -319,20 +322,32 @@ namespace api.Services
                 }
 
                 // Thêm từng ảnh vào cơ sở dữ liệu
-                for (int i = 0; i < productColorDTO.Images.Count; i++)
-                {
-                    var image = productColorDTO.Images[i];
-                    var filePath = await ImageUtils.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024);
+                // for (int i = 0; i < productColorDTO.Images.Count; i++)
+                // {
+                //     var image = productColorDTO.Images[i];
+                //     var filePath = await ImageUtils.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024);
 
-                    var productImage = new ProductImage
+                //     var productImage = new ProductImage
+                //     {
+                //         ImagePath = filePath,
+                //         IsMain = i == mainImageIndex,
+                //         ColorId = savedColor.Id
+                //     };
+
+                //     await _productRepository.AddImageAsync(productImage);
+                // }
+                var productImageTasks = productColorDTO.Images.Select(async (image, i) =>
+                {
+                    var filePath = await ImageUtils.SaveImageAsync(image, _env.WebRootPath, "products", 5 * 1024 * 1024);
+                    return new ProductImage
                     {
                         ImagePath = filePath,
                         IsMain = i == mainImageIndex,
                         ColorId = savedColor.Id
                     };
-
-                    await _productRepository.AddImageAsync(productImage);
-                }
+                });
+                var productImages = await Task.WhenAll(productImageTasks);
+                await _productRepository.AddImagesAsync(productImages);
             }
 
             _cacheService.RemoveProductCache(productId);
@@ -386,10 +401,13 @@ namespace api.Services
             _ = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
             var productColor = await _productRepository.GetProductColorAsync(productId, colorId) ?? throw new NotFoundException("Product color not found");
 
-            foreach (var image in productColor.Images)
-            {
-                ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
-            }
+            // foreach (var image in productColor.Images)
+            // {
+            //     ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
+            // }
+            await Task.WhenAll(productColor.Images.Select(img =>
+                ImageUtils.DeleteImageAsync(_env.WebRootPath + img.ImagePath)
+            ));
 
             await _productRepository.DeleteColorAsync(productColor);
 

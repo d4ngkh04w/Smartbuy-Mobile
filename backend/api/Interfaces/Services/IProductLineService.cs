@@ -9,7 +9,6 @@ namespace api.Interfaces.Services
         Task<IEnumerable<ProductLineDTO>> GetProductLinesAsync(ProductLineQuery query);
         Task<ProductLineDTO> CreateProductLineAsync(CreateProductLineDTO productLineDTO);
         Task<ProductLineDTO> UpdateProductLineAsync(int id, UpdateProductLineDTO productLineDTO);
-        Task DeleteProductLineAsync(int id);
         Task<ProductLineDTO> ActivateProductLineAsync(int id);
         Task<ProductLineDTO> DeactivateProductLineAsync(int id);
     }

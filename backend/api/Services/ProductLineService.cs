@@ -59,42 +59,6 @@ namespace api.Services
             return createdProductLine.ToDTO();
         }
 
-        public async Task DeleteProductLineAsync(int id)
-        {
-            var productLine = await _productLineRepository.GetProductLineByIdAsync(id) ?? throw new NotFoundException("Product line not found");
-
-            if (!string.IsNullOrEmpty(productLine.Image))
-            {
-                ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);
-                productLine.Image = string.Empty;
-            }
-
-            var products = await _productRepository.GetProductsByProductLineIdAsync(id);
-            if (products != null && products.Any())
-            {
-                foreach (var product in products)
-                {
-                    foreach (var color in product.Colors)
-                    {
-                        if (color.Images != null && color.Images.Any())
-                        {
-                            foreach (var image in color.Images)
-                            {
-                                if (!string.IsNullOrEmpty(image.ImagePath))
-                                {
-                                    ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            await _productLineRepository.DeleteProductLineAsync(productLine);
-
-            _cacheService.RemoveProductLineCache(id);
-            _cacheService.RemoveAllProductLinesCache();
-        }
         public async Task<ProductLineDTO> GetProductLineByIdAsync(int id, ProductLineQuery? query = null)
         {
             string cacheKey = CacheKeyManager.GetProductLineKey(id, query);
@@ -162,7 +126,7 @@ namespace api.Services
 
                 if (!string.IsNullOrEmpty(productLine.Image))
                 {
-                    ImageUtils.DeleteImage(_env.WebRootPath + productLine.Image);
+                    await ImageUtils.DeleteImageAsync(_env.WebRootPath + productLine.Image);
                 }
                 var filePath = await ImageUtils.SaveImageAsync(productLineDTO.Image, _env.WebRootPath, "product-lines", 5 * 1024 * 1024);
 

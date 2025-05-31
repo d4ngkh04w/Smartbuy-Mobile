@@ -30,8 +30,8 @@ export const sendVerificationEmail = async () => {
 	return await instance.post("/user/auth/send-verification-email");
 };
 
-export const deleteMyAccount = async () => {
-	return await instance.delete("/user/me");
+export const deleteMyAccount = async (data) => {
+	return await instance.delete("/user/me", { data });
 };
 
 export const meService = {
