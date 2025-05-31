@@ -224,9 +224,8 @@ const handleBrandChange = () => {
 };
 
 // Xử lý sự kiện khi màu sản phẩm được cập nhật
-const handleColorUpdated = () => {    
+const handleColorUpdated = () => {
     emit("product-updated");
-    
 };
 
 const validateBasicInfo = () => {
@@ -792,7 +791,7 @@ const saveTechnicalSpecs = async () => {
     margin-bottom: 2rem;
     padding: 1.5rem;
     border-radius: 8px;
-    background-color: #f8f9fa;
+    background-color: #ffffff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     transition: all 0.3s;
 }
@@ -1045,7 +1044,7 @@ textarea {
     gap: 0.5rem;
     cursor: pointer;
     transition: all 0.2s;
-    background-color: #f9f9f9;
+    background-color: #ffffff;
     border: 1px solid #ddd;
     color: #666;
 }

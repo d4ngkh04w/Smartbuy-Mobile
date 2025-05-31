@@ -34,20 +34,13 @@ namespace api.Controllers
             var comments = await _commentService.GetCommentsByProductIdAsync(productId, page, pageSize);
             return ApiResponseHelper.Success("Comments retrieved successfully", comments);
         }
+
         [HttpGet("product/{productId:int}/rating")]
         [AllowAnonymous]
         public async Task<IActionResult> GetProductRatingStats(int productId)
         {
             var ratingStats = await _commentService.GetProductRatingStatsAsync(productId);
             return ApiResponseHelper.Success("Product rating statistics retrieved successfully", ratingStats);
-        }
-
-        [HttpGet("product/{productId:int}/average-rating")]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetProductAverageRating(int productId)
-        {
-            var rating = await _commentService.GetProductAverageRatingAsync(productId);
-            return ApiResponseHelper.Success("Product average rating retrieved successfully", rating);
         }
 
         [HttpPost]

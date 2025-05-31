@@ -1,68 +1,75 @@
 import axiosInstance from "./axiosConfig";
 
 class ProductService {
-    async getProducts(page, limit, filters = {}) {
-        try {
-            const {
-                search = "",
-                sortBy = "newest",
-                brandName = null,
-                minPrice = null,
-                maxPrice = null,
-            } = filters;
+	async getProducts(page, limit, filters = {}) {
+		try {
+			const {
+				search = "",
+				sortBy = "newest",
+				brandName = null,
+				minPrice = null,
+				maxPrice = null,
+			} = filters;
 
-            const params = new URLSearchParams({
-                page,
-                pageSize: limit,
-            });
+			const params = new URLSearchParams({
+				page,
+				pageSize: limit,
+			});
 
-            if (search) params.append("search", search);
-            if (sortBy) params.append("sortBy", sortBy);
-            if (brandName) params.append("brandName", brandName);
-            if (minPrice !== null) params.append("minPrice", minPrice);
-            if (maxPrice !== null) params.append("maxPrice", maxPrice);
-            const response = await axiosInstance.get(`/product/page?${params.toString()}`);
-            if (response) {
-                return response.data;
-                
-            }
-        } catch (error) {
-            console.error("Error fetching products:", error);
-            throw error;
-        }
-    }
-    async getProductById(id) {
-        return await axiosInstance.get(`/product/${id}`)
-            .then(response => {
-                if (response) {
-                    return response.data.data;
-                }
-            })
-            .catch(error => {
-                console.error("Error fetching product by ID:", error);
-                throw error;
-            });
-    }
-    async getQuantityProduct(productId, colorId) {
-        const product = await this.getProductById(productId);
-        if (product) {
-            const productColorData = product.colors.find(color => color.id === colorId);
-            if (productColorData) {
-                return productColorData.quantity;
-            }
-        }
-    }
-    async createOrder(orderData) {
-    return await axiosInstance.post('/order', orderData)
-      .then(response => {
-        return response.data.data; 
-      })
-      .catch(error => {
-        console.error("Error creating order:", error.response?.data || error);
-        throw error;
-      });
-  }
-
+			if (search) params.append("search", search);
+			if (sortBy) params.append("sortBy", sortBy);
+			if (brandName) params.append("brandName", brandName);
+			if (minPrice !== null) params.append("minPrice", minPrice);
+			if (maxPrice !== null) params.append("maxPrice", maxPrice);
+			const response = await axiosInstance.get(
+				`/product/page?${params.toString()}`
+			);
+			if (response) {
+				return response.data;
+			}
+		} catch (error) {
+			console.error("Error fetching products:", error);
+			throw error;
+		}
+	}
+	async getProductById(id) {
+		return await axiosInstance
+			.get(`/product/${id}`)
+			.then((response) => {
+				if (response) {
+					return response.data.data;
+				}
+			})
+			.catch((error) => {
+				console.error("Error fetching product by ID:", error);
+				throw error;
+			});
+	}
+	async getQuantityProduct(productId, colorId) {
+		const product = await this.getProductById(productId);
+		if (product) {
+			const productColorData = product.colors.find(
+				(color) => color.id === colorId
+			);
+			if (productColorData) {
+				return productColorData.quantity;
+			}
+		}
+	}
+	async createOrder(orderData) {
+		return await axiosInstance
+			.post("/order", orderData)
+			.then((response) => {
+				return response.data.data;
+			})
+			.catch((error) => {
+				console.error(
+					"Error creating order:",
+					error.response?.data || error
+				);
+				throw error;
+			});
+	}
 
     async getBrands() {
         return await axiosInstance.get("/brand")

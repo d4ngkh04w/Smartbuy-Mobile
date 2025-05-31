@@ -1,6 +1,5 @@
 <template>
-	<div class="comments-section">
-		<h3 class="section-title">Đánh giá sản phẩm</h3>
+	<div class="comments-section">		
 		<!-- Rating Summary -->
 		<div
 			class="reviews-summary"
@@ -19,15 +18,13 @@
 					<i
 						v-for="i in 5"
 						:key="i"
-						:class="
-							i <= Math.round(averageRating)
-								? 'fas fa-star'
-								: 'far fa-star'
-						"
+						:class="getStarClass(i, averageRating)"
 						:style="{
 							fontSize: '20px',
 							color:
-								i <= Math.round(averageRating)
+								i <= Math.floor(averageRating) ||
+								(i === Math.ceil(averageRating) &&
+									averageRating % 1 >= 0.5)
 									? '#ffc107'
 									: '#ccc',
 						}"
@@ -56,7 +53,6 @@
 				</div>
 			</div>
 		</div>
-
 		<!-- Filter Section -->
 		<div class="filter-section">
 			<div class="filter-options">
@@ -72,7 +68,6 @@
 					class="filter-option"
 					:class="{ active: currentFilter === star }"
 					@click="filterComments(star)"
-					v-if="getStarCount(star) > 0"
 				>
 					<div class="filter-stars">
 						<i v-for="i in star" :key="i" class="fas fa-star"></i>
@@ -88,7 +83,7 @@
 		</div>
 		<!-- Add Comment Form for logged-in users -->
 		<div v-if="isLoggedIn" class="add-comment-form">
-			<h4>Viết đánh giá của bạn</h4>
+			<h4>Viết bình luận của bạn</h4>
 			<div class="rating-selector">
 				<span>Đánh giá của bạn (tùy chọn):</span>
 				<div class="star-rating">
@@ -121,15 +116,6 @@
 				placeholder="Nhập nội dung đánh giá của bạn..."
 				rows="3"
 			></textarea>
-			<div class="form-validation-feedback">
-				<div
-					v-if="newComment.content.trim().length === 0"
-					class="validation-message"
-				>
-					<i class="fas fa-exclamation-circle"></i> Vui lòng nhập nội
-					dung đánh giá
-				</div>
-			</div>
 			<button
 				class="submit-comment-btn"
 				@click="submitComment"
@@ -144,7 +130,7 @@
 			<p>
 				Vui lòng
 				<a href="/login" @click.prevent="redirectToLogin">đăng nhập</a>
-				để đánh giá sản phẩm.
+				để bình luận.
 			</p>
 			<button class="login-btn" @click="redirectToLogin">
 				<i class="fas fa-sign-in-alt"></i> Đăng nhập ngay
@@ -170,12 +156,17 @@
 							<i
 								v-for="star in 5"
 								:key="star"
-								:class="
-									star <= comment.rating
-										? 'fas fa-star'
-										: 'far fa-star'
-								"
-								style="font-size: 16px; margin-right: 2px"
+								:class="getStarClass(star, comment.rating)"
+								:style="{
+									fontSize: '16px',
+									marginRight: '2px',
+									color:
+										star <= Math.floor(comment.rating) ||
+										(star === Math.ceil(comment.rating) &&
+											comment.rating % 1 >= 0.5)
+											? '#ffc107'
+											: '#ccc',
+								}"
 							></i>
 						</div>
 					</div>
@@ -437,10 +428,6 @@ const props = defineProps({
 		type: Boolean,
 		default: false,
 	},
-	currentUserId: {
-		type: String,
-		default: "",
-	},
 });
 
 const emit = defineEmits(["ratingUpdated"]);
@@ -521,6 +508,20 @@ const ratingPercentages = computed(() => {
 
 	return result;
 });
+
+// Tính toán lớp CSS cho hiển thị sao dựa trên điểm đánh giá
+function getStarClass(position, rating) {
+	if (position <= Math.floor(rating)) {
+		// Sao đầy đủ khi vị trí <= phần nguyên của rating
+		return "fas fa-star";
+	} else if (position === Math.ceil(rating) && rating % 1 >= 0.5) {
+		// Nửa sao khi vị trí = phần nguyên + 1 và phần thập phân >= 0.5
+		return "fas fa-star-half-alt";
+	} else {
+		// Sao trống
+		return "far fa-star";
+	}
+}
 
 // Average rating
 const averageRating = computed(() => {
@@ -845,7 +846,7 @@ async function submitComment() {
 	if (!props.isLoggedIn) {
 		emitter.emit("show-notification", {
 			status: "warning",
-			message: "Vui lòng đăng nhập để đánh giá sản phẩm",
+			message: "Vui lòng đăng nhập để bình luận",
 		});
 		redirectToLogin();
 		return;
@@ -873,11 +874,10 @@ async function submitComment() {
 					rating: 0,
 				};
 				hoverRating.value = 0;
-
 				emitter.emit("show-notification", {
 					status: "success",
 					message:
-						"Đã đăng đánh giá thành công! Cảm ơn bạn đã đánh giá sản phẩm.",
+						"Đã đăng bình luận thành công! Cảm ơn bạn đã bình luận về sản phẩm.",
 				});
 
 				// Update product rating after new comment with a longer delay to ensure backend processing
@@ -1116,34 +1116,16 @@ watch(
 onMounted(() => {
 	fetchComments();
 	fetchProductRating(true);
-
-	// Thiết lập interval để refresh đánh giá định kỳ
-	const ratingRefreshInterval = setInterval(() => {
-		if (document.visibilityState === "visible") {
-			console.log("Periodic rating refresh");
-			fetchProductRating(true);
-		}
-	}, 10000); // Refresh mỗi 10 giây nếu tab đang mở
-
-	// Cleanup interval khi component bị hủy
-	return () => {
-		clearInterval(ratingRefreshInterval);
-	};
 });
 </script>
 
 <style scoped>
 .comments-section {
-	margin: 50px 0;
+	margin: 0px 0;
 	position: relative;
 }
 
-.section-title {
-	font-size: 24px;
-	margin-bottom: 20px;
-	padding-bottom: 10px;
-	border-bottom: 1px solid #eaeaea;
-}
+
 
 /* Rating Summary Styles */
 .reviews-summary {
@@ -1177,8 +1159,9 @@ onMounted(() => {
 	align-items: center;
 }
 
-.stars .fa-star {
-	color: #ffc107; /* Màu vàng cho sao đã chọn */
+.stars .fa-star,
+.stars .fa-star-half-alt {
+	color: #ffc107; /* Màu vàng cho sao đã chọn và nửa sao */
 }
 
 .stars .far.fa-star {
@@ -1302,9 +1285,15 @@ onMounted(() => {
 }
 
 /* Đảm bảo nút "Tất cả" không có sao */
-.filter-option:first-child {
-	min-width: 70px;
+/* Ensure consistent width for star filters */
+.filter-option {
+	min-width: 100px;
 	justify-content: center;
+}
+
+/* Special styling for "All" button */
+.filter-option.all-filter {
+	min-width: 70px;
 }
 
 /* Comment Form Styles */
@@ -1502,7 +1491,8 @@ textarea {
 	align-items: center;
 }
 
-.comment-rating .fa-star {
+.comment-rating .fa-star,
+.comment-rating .fa-star-half-alt {
 	color: #ffc107;
 }
 
@@ -1792,10 +1782,10 @@ textarea {
 	.filter-options {
 		gap: 8px;
 	}
-
 	.filter-option {
-		padding: 8px 12px;
+		padding: 8px 10px;
 		font-size: 13px;
+		min-width: 60px;
 	}
 
 	.filter-stars .fas.fa-star,

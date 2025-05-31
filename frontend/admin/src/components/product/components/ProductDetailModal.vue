@@ -397,7 +397,7 @@ const formatImageUrl = (imagePath) => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #f9f9f9;
+    background-color: #ffffff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
@@ -521,9 +521,10 @@ const formatImageUrl = (imagePath) => {
 }
 
 .spec-item {
-    background-color: #f9fafb;
+    background-color: #ffffff;
     padding: 1rem;
     border-radius: 8px;
+    border: 1px solid #f0f0f0;
 }
 
 .spec-label {
@@ -547,9 +548,10 @@ const formatImageUrl = (imagePath) => {
 }
 
 .color-detail-item {
-    background-color: #f9fafb;
+    background-color: #ffffff;
     border-radius: 8px;
     padding: 1rem;
+    border: 1px solid #f0f0f0;
 }
 
 .color-header-detail {
