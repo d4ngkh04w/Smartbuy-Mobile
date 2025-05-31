@@ -107,7 +107,7 @@ namespace api.Repositories
                 }
             }
 
-            if (productQuery.MinPrice.HasValue) 
+            if (productQuery.MinPrice.HasValue)
             {
                 query = query.Where(p => p.SalePrice >= productQuery.MinPrice.Value);
             }
@@ -171,7 +171,8 @@ namespace api.Repositories
                 .Where(c => c.ProductId == productId && c.Id == colorId)
                 .Include(c => c.Images)
                 .FirstOrDefaultAsync();
-        }        public async Task<ProductColor> UpdateColorAsync(ProductColor color)
+        }
+        public async Task<ProductColor> UpdateColorAsync(ProductColor color)
         {
             _db.Colors.Update(color);
             await _db.SaveChangesAsync();
@@ -182,6 +183,13 @@ namespace api.Repositories
         {
             _db.Colors.Remove(color);
             await _db.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<ProductImage>> AddImagesAsync(IEnumerable<ProductImage> images)
+        {
+            _db.ProductImages.AddRange(images);
+            await _db.SaveChangesAsync();
+            return images;
         }
     }
 }

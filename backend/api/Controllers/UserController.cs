@@ -31,7 +31,7 @@ namespace api.Controllers
             var user = await _userService.GetUserByIdAsync(id);
             return ApiResponseHelper.Success("User retrieved successfully", user);
         }
-        
+
         [HttpGet("me")]
         public async Task<IActionResult> GetCurrentUser()
         {
@@ -51,10 +51,10 @@ namespace api.Controllers
 
         [HttpDelete("me")]
         [Authorize(AuthenticationSchemes = "user", Roles = "user")]
-        public async Task<IActionResult> DeleteCurrentUser()
+        public async Task<IActionResult> DeleteCurrentUser([FromBody] DeleteAccountDTO deleteAccountDTO)
         {
             var id = HttpContextHelper.CurrentUserId;
-            await _userService.DeleteUserAsync(id);
+            await _userService.DeleteUserAsync(id, deleteAccountDTO.Password);
             CookieHelper.RemoveAuthUserTokens();
             return NoContent();
         }

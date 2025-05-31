@@ -10,6 +10,7 @@ namespace api.DTOs.Product
         public decimal ImportPrice { get; set; }
         public decimal SalePrice { get; set; }
         public decimal Price { get; set; }
+        public string Discount { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public decimal Rating { get; set; }
         public int RatingCount { get; set; }

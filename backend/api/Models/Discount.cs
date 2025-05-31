@@ -43,5 +43,24 @@ namespace api.Models
 
             return Math.Max(discountedPrice, 0);
         }
+
+        public override string ToString()
+        {
+            if (DateTime.Now < StartDate || DateTime.Now > EndDate)
+            {
+                return string.Empty;
+            }
+
+            if (DiscountPercentage > 0)
+            {
+                return $"-{DiscountPercentage}%";
+            }
+            else if (DiscountAmount > 0)
+            {
+                return $"-{DiscountAmount.ToString("N0", new System.Globalization.CultureInfo("vi-VN"))}₫";
+            }
+
+            return string.Empty;
+        }
     }
 }
