@@ -76,21 +76,19 @@
                     <!-- Thông tin giá -->
                     <div class="price-section">
                         <span class="current-price"
-                            >{{
-                                format.formatPrice(productData.salePrice)
-                            }}₫</span
+                            >{{ format.formatPrice(productData.price) }}₫</span
                         >
                         <span
-                            v-if="productData.discounts.length > 0"
+                            v-if="productData.discount"
                             class="original-price"
                         >
-                            {{ format.formatPrice(productData.importPrice) }}₫
+                            {{ format.formatPrice(productData.salePrice) }}₫
                         </span>
                         <span
-                            v-if="productData.discounts.length > 0"
+                            v-if="productData.discount"
                             class="discount-badge"
                         >
-                            -{{ calculateDiscountPercentage() }}%
+                            {{ productData.discount }}
                         </span>
                     </div>
                     <!-- Hiển thị các màu sắc có sẵn dưới dạng danh sách (3 màu/hàng) -->
@@ -262,7 +260,7 @@
                     </div>
                 </div>
                 <!-- Thông số kỹ thuật tab -->
-                <div v-if="activeTab === 'specs'" class="tab-pane">                    
+                <div v-if="activeTab === 'specs'" class="tab-pane">
                     <div class="specs-grid">
                         <!-- Bộ nhớ trong -->
                         <div
@@ -677,16 +675,6 @@ const validateQuantity = (event) => {
         quantity.value = value;
     }
 };
-
-const calculateDiscountPercentage = () => {
-    if (!productData.value) return 0;
-    return Math.round(
-        ((productData.value.salePrice - productData.value.importPrice) /
-            productData.value.importPrice) *
-            100
-    );
-};
-
 const increaseQuantity = () => {
     if (quantity.value < getQuanity.value) quantity.value++;
     else {
@@ -1080,7 +1068,7 @@ const scrollToReviewForm = () => {
 .current-price {
     font-size: 28px;
     font-weight: bold;
-    color: #ef4444;
+    color: var(--primary-color);
     margin-right: 10px;
 }
 
@@ -1092,7 +1080,7 @@ const scrollToReviewForm = () => {
 }
 
 .discount-badge {
-    background-color: #ef4444;
+    background-color: var(--primary-color);
     color: white;
     padding: 3px 8px;
     border-radius: 4px;
@@ -1622,7 +1610,7 @@ const scrollToReviewForm = () => {
 
 .stars {
     margin: 5px 0;
-    color: #ffc107;
+    color: #ff8fcf; /* Lighter pink color that still stands out for stars */
 }
 
 .total-reviews {
@@ -1707,7 +1695,7 @@ const scrollToReviewForm = () => {
 }
 
 .review-rating {
-    color: #ffc107;
+    color: #ff8fcf; /* Lighter pink color for stars, matching the other star ratings */
 }
 
 .review-date {
