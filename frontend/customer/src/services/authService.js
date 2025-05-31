@@ -1,67 +1,92 @@
 import instance from "./axiosConfig";
 import emitter from "../utils/evenBus.js";
 class AuthService {
-    async verifyUser() {
-        return await instance.get("/user/auth/verify");
-    }
+	async verifyUser() {
+		try {
+			const response = await instance.get("/user/auth/verify");
+			if (response.data && response.data.success) {
+				localStorage.setItem("isLogin", "true");
+			}
+			return response;
+		} catch (error) {
+			localStorage.removeItem("isLogin");
+			throw error;
+		}
+	}
 
-    async login(phoneNumber, password) {
-        return await instance.post(
-            "/user/auth/login",
-            { phoneNumber, password },
-            {
-                isLoginRequest: true, // Flag to handle login-specific errors
-            }
-        );
-    }
+	async login(phoneNumber, password) {
+		const response = await instance.post(
+			"/user/auth/login",
+			{ phoneNumber, password },
+			{
+				isLoginRequest: true, // Flag to handle login-specific errors
+			}
+		);
 
-    async googleLogin(tokenData) {      
-        return await instance.post(
-            "/user/auth/google-login",
-            {
-                Token: tokenData.Token,
-            },
-            {
-                isLoginRequest: true, // Flag to handle login-specific errors
-            }
-        );
-    }
+		if (response.data && response.data.success) {
+			localStorage.setItem("isLogin", "true");
+		}
+		return response;
+	}
 
-    async register(userInfo) {
-        return await instance.post("/user/auth/register", userInfo, {
-            isLoginRequest: true, // Handle registration like login for error handling
-        });
-    }
+	async googleLogin(tokenData) {
+		const response = await instance.post(
+			"/user/auth/google-login",
+			{
+				Token: tokenData.Token,
+			},
+			{
+				isLoginRequest: true, // Flag to handle login-specific errors
+			}
+		);
 
-    async refreshToken() {
-        return await instance.post(
-            "/auth/refresh-token",
-            {},
-            {
-                isRefreshRequest: true,
-            }
-        );
-    }
+		if (response.data && response.data.success) {
+			localStorage.setItem("isLogin", "true");
+		}
+		return response;
+	}
 
-    async forgotPassword(data) {
-        return await instance.post("/auth/forgot-password", data);
-    }
+	async register(userInfo) {
+		const response = await instance.post("/user/auth/register", userInfo, {
+			isLoginRequest: true, // Handle registration like login for error handling
+		});
 
-    async resetPassword(resetData) {
-        return await instance.post("/auth/reset-password", resetData);
-    }
+		if (response.data && response.data.success) {
+			localStorage.setItem("isLogin", "true");
+		}
+		return response;
+	}
 
-    async logout() {
-        emitter.emit("logout");
-        return await instance.post("/auth/logout");
-    }
+	async refreshToken() {
+		return await instance.post(
+			"/auth/refresh-token",
+			{},
+			{
+				isRefreshRequest: true,
+			}
+		);
+	}
 
-    async sendVerificationEmail() {
-        return await instance.post("/user/auth/send-verification-email");
-    }
+	async forgotPassword(data) {
+		return await instance.post("/auth/forgot-password", data);
+	}
 
-    async verifyEmail(verificationData) {
-        return await instance.post("/user/auth/verify-email", verificationData);
-    }
+	async resetPassword(resetData) {
+		return await instance.post("/auth/reset-password", resetData);
+	}
+
+	async logout() {
+		emitter.emit("logout");
+		localStorage.removeItem("isLogin");
+		return await instance.post("/auth/logout");
+	}
+
+	async sendVerificationEmail() {
+		return await instance.post("/user/auth/send-verification-email");
+	}
+
+	async verifyEmail(verificationData) {
+		return await instance.post("/user/auth/verify-email", verificationData);
+	}
 }
 export default new AuthService();

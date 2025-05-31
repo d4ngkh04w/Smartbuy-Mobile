@@ -240,13 +240,6 @@ namespace api.Services
             return comment!.ToCommentDTO();
         }
 
-        public async Task<double> GetProductAverageRatingAsync(int productId)
-        {
-            _ = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
-            double averageRating = await _commentRepository.GetProductAverageRatingAsync(productId);
-
-            return averageRating;
-        }
         public async Task<ProductRatingStatsDTO> GetProductRatingStatsAsync(int productId)
         {
             string cacheKey = CacheKeyManager.GetProductRatingStatsKey(productId);
@@ -269,7 +262,7 @@ namespace api.Services
             var ratingDetails = new Dictionary<int, RatingDetailDTO>();
             foreach (var kvp in ratingDistribution)
             {
-                double percentage = totalRatings > 0 ? ((double)kvp.Value / totalRatings) * 100 : 0;
+                double percentage = totalRatings > 0 ? (double)kvp.Value / totalRatings * 100 : 0;
                 ratingDetails[kvp.Key] = new RatingDetailDTO
                 {
                     Count = kvp.Value,

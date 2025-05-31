@@ -222,7 +222,6 @@
 		<ProductComments
 			:productId="Number(productId)"
 			:isLoggedIn="isLoggedIn"
-			:currentUserId="currentUserId"
 		/>
 	</div>
 </template>
@@ -500,16 +499,7 @@ onMounted(async () => {
 	}
 });
 // User authentication status
-const isLoggedIn = computed(() => localStorage.getItem("token") !== null);
-const currentUserId = computed(() => {
-	try {
-		const userInfo = JSON.parse(localStorage.getItem("user") || "{}");
-		return userInfo.id || "";
-	} catch (error) {
-		console.error("Error parsing user info:", error);
-		return "";
-	}
-});
+const isLoggedIn = computed(() => localStorage.getItem("isLogin") !== null);
 
 // Xem ảnh lớn
 const openImagePreview = (imgUrl) => {

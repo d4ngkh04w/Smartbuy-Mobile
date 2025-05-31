@@ -24,20 +24,14 @@
 				<p>{{ format.formatPrice(product.price) }}₫</p>
 			</div>
 			<div class="rating">
-				<div class="stars" v-if="product.ratingCount > 0">
+				<div class="stars">
 					<i
 						v-for="i in 5"
 						:key="i"
-						class="fas fa-star"
-						:class="{ active: i <= Math.round(product.rating) }"
+						:class="getStarClass(i, product.rating)"
 					></i>
-					<span class="rating-count"
-						>({{ product.ratingCount }})</span
-					>
 				</div>
-				<div class="no-rating" v-else>
-					<span>Chưa có đánh giá</span>
-				</div>
+				<span class="rating-count">({{ product.ratingCount }})</span>
 			</div>
 
 			<!-- Số lượt đã bán -->
@@ -71,6 +65,20 @@ const props = defineProps({
 // Hàm lấy link ảnh
 const getUrlImg = (url) => {
 	return productService.getUrlImage(url);
+};
+
+// Tính toán lớp CSS cho hiển thị sao dựa trên điểm đánh giá
+const getStarClass = (position, rating) => {
+	if (position <= Math.floor(rating)) {
+		// Sao đầy đủ khi vị trí <= phần nguyên của rating
+		return "fas fa-star active";
+	} else if (position === Math.ceil(rating) && rating % 1 >= 0.5) {
+		// Nửa sao khi vị trí = phần nguyên + 1 và phần thập phân >= 0.5
+		return "fas fa-star-half-alt active";
+	} else {
+		// Sao trống
+		return "far fa-star";
+	}
 };
 </script>
 
@@ -175,15 +183,13 @@ const getUrlImg = (url) => {
 	color: #ffd700; /* vàng */
 }
 
+.stars .fa-star-half-alt.active {
+	color: #ffd700; /* vàng cho nửa sao */
+}
+
 .rating-count {
 	font-size: 13px;
 	color: #555;
-}
-
-.no-rating {
-	font-size: 13px;
-	color: #888;
-	font-style: italic;
 }
 
 /* Số lượng đã bán */
