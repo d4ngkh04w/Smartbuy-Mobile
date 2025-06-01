@@ -3,6 +3,7 @@
     <div
         v-if="productData && productData.isActive"
         class="product-detail-container"
+        :id="`product-detail-${productId}`"
     >
         <h2 class="product-title">{{ productData.name }}</h2>
         <div class="product-main-content">
@@ -219,7 +220,9 @@
                                 :disabled="getQuanity <= 0"
                             >
                                 <span class="buy-now-text">MUA NGAY</span>
-
+                                <span class="delivery-note"
+                                    >(Giao tận nhà hoặc nhận tại cửa hàng)</span
+                                >
                             </button>
                         </div>
                     </div>
@@ -452,10 +455,18 @@ import format from "../../utils/format.js";
 import Loading from "../common/Loading.vue";
 import ProductComments from "./ProductComments.vue";
 
+// Define props to accept the id passed from the router
+const props = defineProps({
+    id: {
+        type: [String, Number],
+        required: true,
+    },
+});
+
 const route = useRoute();
 const router = useRouter();
 
-const productId = route.params.id;
+const productId = props.id || route.params.id;
 const productData = ref(null);
 const selectedColorId = ref(null);
 const selectedImgId = ref(null);
@@ -1580,13 +1591,15 @@ const scrollToReviewForm = () => {
 .spec-info {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    overflow: hidden;
 }
 
 .spec-name {
     font-weight: 500;
     color: #666;
-    font-size: 14px;
-    margin-bottom: 4px;
+    font-size: 13px;
+    margin-bottom: 3px;
 }
 
 .spec-value {
