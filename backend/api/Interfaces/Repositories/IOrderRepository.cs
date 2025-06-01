@@ -10,6 +10,5 @@ namespace api.Interfaces.Repositories
         Task<Order?> GetOrderByIdAsync(Guid id);
         Task<Order> CreateOrderAsync(Order order);
         Task<Order> UpdateOrderAsync(Order order);
-
     }
 }

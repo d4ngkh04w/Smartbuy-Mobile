@@ -31,16 +31,5 @@ namespace api.Utils
                 return Convert.ToHexString(bytes).ToLower();
             }
         }
-
-        public static bool VerifyToken(string token, string tokenHash)
-        {
-            string computedHash = HashToken(token);
-            return computedHash == tokenHash;
-        }
-
-        public static bool IsTokenValid(DateTime expiryDate)
-        {
-            return DateTime.Now <= expiryDate;
-        }
     }
 }

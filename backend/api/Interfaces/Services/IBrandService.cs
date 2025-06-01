@@ -8,7 +8,6 @@ namespace api.Interfaces.Services
         Task<IEnumerable<BrandDTO>> GetBrandsAsync(BrandQuery query);
         Task<BrandDTO> GetBrandByIdAsync(int id, BrandQuery query);
         Task<BrandDTO> CreateBrandAsync(CreateBrandDTO brandDTO);
-        Task DeleteBrandAsync(int id);
         Task<BrandDTO> UpdateBrandAsync(int id, UpdateBrandDTO brandDTO);
         Task<BrandDTO> ActivateBrandAsync(int id);
         Task<BrandDTO> DeactivateBrandAsync(int id);

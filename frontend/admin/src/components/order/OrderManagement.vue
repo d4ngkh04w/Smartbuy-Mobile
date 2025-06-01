@@ -11,8 +11,6 @@ const searchQuery = ref("");
 const showModal = ref(false);
 const selectedOrder = ref(null);
 const newStatus = ref("");
-const statusReason = ref("");
-const deliveryDate = ref("");
 
 // Filter options
 const statusFilter = ref("all");
@@ -107,11 +105,7 @@ const closeModal = () => {
     showModal.value = false;
     selectedOrder.value = null;
     newStatus.value = "";
-    statusReason.value = "";
-    deliveryDate.value = "";
-};
-
-// Update order status
+}; // Update order status
 const updateOrder = async () => {
     if (!selectedOrder.value || !newStatus.value) {
         emitter.emit("show-notification", {
@@ -124,31 +118,24 @@ const updateOrder = async () => {
     loading.value = true;
     try {
         const statusData = orderService.prepareStatusUpdateData(
-            newStatus.value,
-            deliveryDate.value
+            newStatus.value
         );
 
         await orderService.updateOrderStatus(
             selectedOrder.value.id,
             statusData
         );
-        await fetchOrders();
 
-        // Get updated order details
-        const response = await orderService.getOrderById(
-            selectedOrder.value.id
-        );
-        selectedOrder.value = response.data.data;
+        // Close modal first
+        closeModal();
+
+        // Then refresh orders
+        await fetchOrders();
 
         emitter.emit("show-notification", {
             status: "success",
             message: "Đã cập nhật trạng thái đơn hàng thành công",
         });
-
-        // Reset fields
-        newStatus.value = "";
-        statusReason.value = "";
-        deliveryDate.value = "";
     } catch (error) {
         console.error("Error updating order status:", error);
         emitter.emit("show-notification", {
@@ -168,6 +155,54 @@ const getStatusClass = (status) => {
 // Get available status options based on current status
 const getAvailableStatusOptions = (currentStatus) => {
     return orderService.getAvailableStatusOptions(currentStatus);
+};
+
+// Check if status is completed in the workflow
+const isStatusCompleted = (status) => {
+    const statusOrder = [
+        "Chờ xác nhận",
+        "Đã xác nhận",
+        "Đang giao hàng",
+        "Đã giao hàng",
+        "Hoàn thành",
+    ];
+
+    // If current status is "Hoàn thành", all statuses are considered completed
+    if (selectedOrder.value?.status === "Hoàn thành") {
+        return true;
+    }
+
+    // If current status is "Đã huỷ", "Đã hoàn tiền", or "Đã trả hàng",
+    // only consider the statuses up to the last valid one as completed
+    if (
+        ["Đã huỷ", "Đã hoàn tiền", "Đã trả hàng"].includes(
+            selectedOrder.value?.status
+        )
+    ) {
+        return false;
+    }
+
+    const currentIndex = statusOrder.indexOf(selectedOrder.value?.status);
+    const statusIndex = statusOrder.indexOf(status);
+
+    // Return true if the status index is less than the current status index
+    return statusIndex < currentIndex;
+};
+
+// Get icon for status
+const getStatusIcon = (status) => {
+    const statusIcons = {
+        "Chờ xác nhận": "fas fa-clock",
+        "Đã xác nhận": "fas fa-check-circle",
+        "Đang giao hàng": "fas fa-shipping-fast",
+        "Đã giao hàng": "fas fa-box",
+        "Hoàn thành": "fas fa-flag-checkered",
+        "Đã huỷ": "fas fa-ban",
+        "Đã hoàn tiền": "fas fa-money-bill-wave",
+        "Đã trả hàng": "fas fa-undo",
+    };
+
+    return statusIcons[status] || "fas fa-question-circle";
 };
 
 // Reset filters
@@ -682,8 +717,8 @@ onUnmounted(() => {
                                             formatCurrency(
                                                 selectedOrder?.shippingFee
                                             )
-                                        }}
-                                    </span>
+                                        }}</span
+                                    >
                                 </div>
                                 <div class="summary-row total">
                                     <span class="summary-label"
@@ -694,8 +729,8 @@ onUnmounted(() => {
                                             formatCurrency(
                                                 selectedOrder?.totalAmount
                                             )
-                                        }}
-                                    </span>
+                                        }}</span
+                                    >
                                 </div>
                             </div>
                         </div>
@@ -709,61 +744,230 @@ onUnmounted(() => {
                             "
                         >
                             <h5 class="detail-section-title">
-                                <i class="fas fa-edit"></i>
-                                Cập nhật trạng thái
+                                <i class="fas fa-exchange-alt"></i>
+                                Thay đổi trạng thái đơn hàng
                             </h5>
 
-                            <div class="status-form">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>
-                                            <i class="fas fa-tasks"></i>
-                                            Trạng thái mới
-                                        </label>
-                                        <select v-model="newStatus">
-                                            <option value="">
-                                                Chọn trạng thái mới
-                                            </option>
-                                            <option
-                                                v-for="status in getAvailableStatusOptions(
-                                                    selectedOrder.status
-                                                )"
-                                                :key="status"
-                                                :value="status"
-                                            >
-                                                {{ status }}
-                                            </option>
-                                        </select>
+                            <!-- Status Timeline -->
+                            <div class="status-timeline">
+                                <div
+                                    class="timeline-item"
+                                    :class="{
+                                        completed:
+                                            isStatusCompleted('Chờ xác nhận'),
+                                        current:
+                                            selectedOrder.status ===
+                                            'Chờ xác nhận',
+                                    }"
+                                >
+                                    <div class="timeline-icon">
+                                        <i class="fas fa-clock"></i>
                                     </div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-status">
+                                            Chờ xác nhận
+                                        </div>
+                                    </div>
+                                    <div class="timeline-tooltip">
+                                        Đơn hàng đang chờ xác nhận từ quản trị
+                                        viên
+                                    </div>
+                                </div>
 
-                                    <div
-                                        class="form-group"
-                                        v-if="newStatus === 'Đã giao hàng'"
+                                <div
+                                    class="timeline-connector"
+                                    :class="{
+                                        completed:
+                                            isStatusCompleted('Đã xác nhận'),
+                                    }"
+                                ></div>
+
+                                <div
+                                    class="timeline-item"
+                                    :class="{
+                                        completed:
+                                            isStatusCompleted('Đã xác nhận'),
+                                        current:
+                                            selectedOrder.status ===
+                                            'Đã xác nhận',
+                                    }"
+                                >
+                                    <div class="timeline-icon">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-status">
+                                            Đã xác nhận
+                                        </div>
+                                    </div>
+                                    <div class="timeline-tooltip">
+                                        Đơn hàng đã được xác nhận và đang chuẩn
+                                        bị
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="timeline-connector"
+                                    :class="{
+                                        completed:
+                                            isStatusCompleted('Đang giao hàng'),
+                                    }"
+                                ></div>
+
+                                <div
+                                    class="timeline-item"
+                                    :class="{
+                                        completed:
+                                            isStatusCompleted('Đang giao hàng'),
+                                        current:
+                                            selectedOrder.status ===
+                                            'Đang giao hàng',
+                                    }"
+                                >
+                                    <div class="timeline-icon">
+                                        <i class="fas fa-shipping-fast"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-status">
+                                            Đang giao hàng
+                                        </div>
+                                    </div>
+                                    <div class="timeline-tooltip">
+                                        Đơn hàng đang được vận chuyển đến khách
+                                        hàng
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="timeline-connector"
+                                    :class="{
+                                        completed:
+                                            isStatusCompleted('Đã giao hàng'),
+                                    }"
+                                ></div>
+
+                                <div
+                                    class="timeline-item"
+                                    :class="{
+                                        completed:
+                                            isStatusCompleted('Đã giao hàng'),
+                                        current:
+                                            selectedOrder.status ===
+                                            'Đã giao hàng',
+                                    }"
+                                >
+                                    <div class="timeline-icon">
+                                        <i class="fas fa-box"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-status">
+                                            Đã giao hàng
+                                        </div>
+                                    </div>
+                                    <div class="timeline-tooltip">
+                                        Đơn hàng đã được giao đến khách hàng
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="timeline-connector"
+                                    :class="{
+                                        completed:
+                                            isStatusCompleted('Hoàn thành'),
+                                    }"
+                                ></div>
+
+                                <div
+                                    class="timeline-item"
+                                    :class="{
+                                        completed:
+                                            isStatusCompleted('Hoàn thành'),
+                                        current:
+                                            selectedOrder.status ===
+                                            'Hoàn thành',
+                                    }"
+                                >
+                                    <div class="timeline-icon">
+                                        <i class="fas fa-flag-checkered"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-status">
+                                            Hoàn thành
+                                        </div>
+                                    </div>
+                                    <div class="timeline-tooltip">
+                                        Đơn hàng đã hoàn thành toàn bộ quy trình
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="status-selection-container">
+                                <h6 class="status-selection-title">
+                                    <i class="fas fa-exchange-alt"></i> Chọn
+                                    trạng thái mới:
+                                </h6>
+                                <div class="status-options">
+                                    <button
+                                        v-for="status in getAvailableStatusOptions(
+                                            selectedOrder.status
+                                        )"
+                                        :key="status"
+                                        @click="newStatus = status"
+                                        :class="[
+                                            'status-option-button',
+                                            getStatusClass(status),
+                                            { selected: newStatus === status },
+                                        ]"
+                                        type="button"
                                     >
-                                        <label>
-                                            <i class="fas fa-calendar-alt"></i>
-                                            Ngày giao hàng
-                                        </label>
-                                        <input
-                                            type="datetime-local"
-                                            v-model="deliveryDate"
-                                        />
+                                        <div class="status-option-icon">
+                                            <i
+                                                :class="getStatusIcon(status)"
+                                            ></i>
+                                        </div>
+                                        <div class="status-option-label">
+                                            {{ status }}
+                                        </div>
+                                    </button>
+                                </div>
+
+                                <!-- Status Transition Indicator -->
+                                <div
+                                    class="status-transition-indicator"
+                                    v-if="newStatus"
+                                >
+                                    <div
+                                        :class="[
+                                            'current-status',
+                                            getStatusClass(
+                                                selectedOrder.status
+                                            ),
+                                        ]"
+                                    >
+                                        <i
+                                            :class="
+                                                getStatusIcon(
+                                                    selectedOrder.status
+                                                )
+                                            "
+                                        ></i>
+                                        {{ selectedOrder.status }}
+                                    </div>
+                                    <div class="status-arrow">
+                                        <i class="fas fa-arrow-right"></i>
+                                    </div>
+                                    <div
+                                        :class="[
+                                            'new-status',
+                                            getStatusClass(newStatus),
+                                        ]"
+                                    >
+                                        <i
+                                            :class="getStatusIcon(newStatus)"
+                                        ></i>
+                                        {{ newStatus }}
                                     </div>
                                 </div>
-
-                                <div class="form-group">
-                                    <label>
-                                        <i class="fas fa-sticky-note"></i>
-                                        Ghi chú (tùy chọn)
-                                    </label>
-                                    <textarea
-                                        v-model="statusReason"
-                                        placeholder="Thêm ghi chú về việc thay đổi trạng thái"
-                                        rows="3"
-                                    ></textarea>
-                                </div>
-
-                                <div class="form-actions">
+                                <div class="update-button-container">
                                     <button
                                         @click="updateOrder"
                                         class="update-status-button"
@@ -774,8 +978,8 @@ onUnmounted(() => {
                                             class="spinner small"
                                         ></span>
                                         <template v-else>
-                                            <i class="fas fa-check"></i> Cập
-                                            nhật trạng thái
+                                            <i class="fas fa-check-circle"></i>
+                                            Cập nhật trạng thái
                                         </template>
                                     </button>
                                 </div>
@@ -1238,22 +1442,22 @@ onUnmounted(() => {
 
 .modal-container {
     background-color: white;
-    border-radius: 12px;
-    width: 95%;
-    max-width: 800px;
-    max-height: 90vh;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 900px;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     overflow: hidden;
 }
 
 .order-modal {
-    max-width: 1000px;
+    max-width: 900px;
 }
 
 .modal-header {
-    padding: 1.25rem 1.5rem;
+    padding: 0.7rem 1rem;
     border-bottom: 1px solid #eee;
     display: flex;
     justify-content: space-between;
@@ -1267,8 +1471,9 @@ onUnmounted(() => {
 
 .modal-header h3 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 0.95rem;
     color: #333;
+    font-weight: 600;
 }
 
 .close-button {
@@ -1292,15 +1497,15 @@ onUnmounted(() => {
 }
 
 .modal-body {
-    padding: 1.5rem;
+    padding: 0.8rem;
     overflow-y: auto;
-    max-height: calc(90vh - 70px);
+    max-height: calc(85vh - 60px);
 }
 
 .order-detail-content {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1rem;
 }
 
 /* Order Detail Header */
@@ -1308,33 +1513,34 @@ onUnmounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 12px;
-    border-left: 4px solid var(--primary-color);
+    padding: 0.7rem;
+    background-color: #ffffff;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .order-detail-badge {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.6rem;
 }
 
 .badge-icon {
-    width: 60px;
-    height: 60px;
+    width: 38px;
+    height: 38px;
     background: var(--primary-color);
-    border-radius: 12px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1rem;
     color: white;
 }
 
 .order-detail-id {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: 1.05rem;
     color: #333;
     font-weight: 600;
 }
@@ -1342,13 +1548,13 @@ onUnmounted(() => {
 .order-date {
     margin: 0;
     color: #666;
-    font-size: 0.9rem;
+    font-size: 0.75rem;
 }
 
 .status-badge-large {
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1357,35 +1563,35 @@ onUnmounted(() => {
 /* Order Summary Cards */
 .order-summary-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.6rem;
 }
 
 .summary-card {
     background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
+    border-radius: 8px;
+    padding: 0.75rem;
     display: flex;
     align-items: center;
-    gap: 1rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    gap: 0.6rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
     border: 1px solid #f0f0f0;
     transition: all 0.3s ease;
 }
 
 .summary-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
 }
 
 .card-icon {
-    width: 50px;
-    height: 50px;
-    border-radius: 10px;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    font-size: 0.95rem;
 }
 
 .payment-card .card-icon {
@@ -1404,8 +1610,8 @@ onUnmounted(() => {
 }
 
 .card-label {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.85rem;
+    margin: 0 0 0.25rem 0;
+    font-size: 0.75rem;
     color: #666;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1413,34 +1619,34 @@ onUnmounted(() => {
 
 .card-value {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     color: #333;
 }
 
 .total-amount {
     color: var(--primary-color);
-    font-size: 1.3rem;
+    font-size: 1.1rem;
 }
 
 /* Order Detail Sections */
 .order-detail-section {
     background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    padding: 0.8rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
     border: 1px solid #f0f0f0;
 }
 
 .detail-section-title {
-    margin: 0 0 1.5rem 0;
-    font-size: 1.1rem;
+    margin: 0 0 0.8rem 0;
+    font-size: 0.9rem;
     color: #333;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    border-bottom: 2px solid #f0f0f0;
-    padding-bottom: 0.75rem;
+    gap: 0.4rem;
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 0.5rem;
 }
 
 .detail-section-title i {
@@ -1450,35 +1656,37 @@ onUnmounted(() => {
 /* Customer Details */
 .customer-detail-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
 }
 
 .customer-detail-item {
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 8px;
-    border-left: 3px solid var(--primary-color);
+    background: #ffffff;
+    padding: 0.6rem;
+    border-radius: 6px;
+    border-left: 2px solid var(--primary-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .customer-detail-address {
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 8px;
-    border-left: 3px solid var(--primary-color);
-    margin-top: 1rem;
+    background: #ffffff;
+    padding: 0.6rem;
+    border-radius: 6px;
+    border-left: 2px solid var(--primary-color);
+    margin-top: 0.6rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .detail-label {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
     color: #666;
-    font-size: 0.85rem;
-    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    margin-bottom: 0.3rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
 }
 
 .detail-label i {
@@ -1488,56 +1696,41 @@ onUnmounted(() => {
 .detail-value {
     font-weight: 500;
     color: #333;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 /* Order Items */
 .order-items-list {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.6rem;
 }
 
 .order-item-card {
     display: flex;
-    gap: 1rem;
-    padding: 1.25rem;
-    background: #f8f9fa;
-    border-radius: 12px;
+    gap: 0.6rem;
+    padding: 0.75rem;
+    background: #ffffff;
+    border-radius: 8px;
     border: 1px solid #e9ecef;
     transition: all 0.3s ease;
-}
-
-.order-item-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border-color: var(--primary-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .item-image {
-    width: 80px;
-    height: 80px;
-    border-radius: 8px;
+    width: 50px;
+    height: 50px;
+    border-radius: 6px;
     overflow: hidden;
     flex-shrink: 0;
-    border: 2px solid white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid white;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .item-image img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
-}
-
-.item-image .no-image {
-    width: 100%;
-    height: 100%;
-    background: #e9ecef;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #6c757d;
-    font-size: 1.5rem;
+    object-fit: contain;
 }
 
 .item-details {
@@ -1545,42 +1738,43 @@ onUnmounted(() => {
 }
 
 .item-name {
-    margin: 0 0 0.75rem 0;
-    font-size: 1.1rem;
+    margin: 0 0 0.4rem 0;
+    font-size: 0.9rem;
     font-weight: 600;
     color: #333;
-    line-height: 1.3;
+    line-height: 1.2;
 }
 
 .item-info-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.35rem;
 }
 
 .item-info-row.total-row {
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
     border-top: 1px solid #dee2e6;
 }
 
 .item-label {
     color: #666;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
 }
 
 .item-value {
     font-weight: 500;
     color: #333;
+    font-size: 0.85rem;
 }
 
 .item-value.quantity {
     background: #e3f2fd;
     color: #1976d2;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.85rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
 }
 
 .item-value.discount {
@@ -1590,35 +1784,37 @@ onUnmounted(() => {
 .item-value.item-total {
     color: var(--primary-color);
     font-weight: 600;
-    font-size: 1.05rem;
+    font-size: 0.9rem;
 }
 
 /* Order Summary */
 .order-summary {
-    margin-top: 1.5rem;
-    padding: 1.25rem;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 12px;
+    margin-top: 0.8rem;
+    padding: 0.75rem;
+    background: #ffffff;
+    border-radius: 8px;
     border: 1px solid #dee2e6;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .summary-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.4rem;
 }
 
 .summary-row.total {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 2px solid #dee2e6;
-    font-size: 1.1rem;
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid #dee2e6;
+    font-size: 0.95rem;
     font-weight: 600;
 }
 
 .summary-label {
     color: #666;
+    font-size: 0.85rem;
 }
 
 .summary-row.total .summary-label {
@@ -1629,224 +1825,556 @@ onUnmounted(() => {
 .summary-value {
     font-weight: 500;
     color: #333;
+    font-size: 0.85rem;
 }
 
 .summary-row.total .summary-value {
     color: var(--primary-color);
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: 700;
 }
 
 /* Update Status Section */
 .update-status-section {
-    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
-    border-left: 4px solid #ff9800;
+    background-color: #ffffff;
+    border-left: 3px solid var(--primary-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-}
-
-.form-group {
-    margin-bottom: 1rem;
-}
-
-.form-group label {
+/* Status Timeline */
+.status-timeline {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
-    font-weight: 500;
+    justify-content: space-between;
+    margin: 1rem 0 1.5rem;
+    position: relative;
+    padding: 1rem;
+    background-color: #ffffff;
+    border-radius: 6px;
+    border: 1px solid #e8e8e8;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.timeline-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    transition: transform 0.15s ease;
+}
+
+.timeline-item:hover {
+    transform: translateY(-2px);
+}
+
+.timeline-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
     margin-bottom: 0.5rem;
-    color: #333;
+    transition: all 0.2s ease;
+    border: 1px solid #e0e0e0;
+    box-shadow: none;
 }
 
-.form-group label i {
-    color: var(--primary-color);
-}
-
-.form-group select,
-.form-group input[type="datetime-local"],
-.form-group textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    transition: all 0.3s ease;
-    background: white;
-}
-
-.form-group select:focus,
-.form-group input[type="datetime-local"]:focus,
-.form-group textarea:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(248, 110, 211, 0.1);
-    outline: none;
-}
-
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 1.5rem;
-}
-
-.update-status-button {
-    padding: 0.75rem 1.5rem;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(248, 110, 211, 0.3);
-}
-
-.update-status-button:hover {
-    background: #e94e9c;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(248, 110, 211, 0.4);
-}
-
-.update-status-button:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.text-center {
+.timeline-content {
     text-align: center;
 }
 
-.modal-actions {
-    padding: 1.25rem 1.5rem;
-    border-top: 1px solid #eee;
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
+.timeline-status {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #666;
+    max-width: 80px;
+    white-space: normal;
+    text-align: center;
 }
 
-.cancel-button {
-    padding: 0.75rem 1.25rem;
-    background-color: #f9f9f9;
-    border: 1px solid #ddd;
-    color: #666;
+.timeline-connector {
+    flex-grow: 1;
+    height: 2px;
+    background-color: #e0e0e0;
+    position: relative;
+    z-index: 1;
+}
+
+/* Current Status */
+.timeline-item.current .timeline-icon {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: scale(1.05);
+}
+
+.timeline-item.current .timeline-status {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Completed Status */
+.timeline-item.completed .timeline-icon {
+    background-color: #4caf50;
+    color: white;
+    border-color: #4caf50;
+}
+
+.timeline-item.completed .timeline-status {
+    color: #4caf50;
+    font-weight: 500;
+}
+
+.timeline-connector.completed {
+    background-color: #4caf50;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Status Selection */
+.status-selection-container {
+    background-color: white;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-top: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    border: 1px solid #eaeaea;
+}
+
+.status-selection-title {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.9rem;
+    color: #333;
+    position: relative;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.status-option-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.6rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 90px;
+    box-shadow: none;
+}
+
+.status-option-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Status options with colors matching the status badges */
+.status-option-button.pending {
+    background-color: #fff8e1;
+    color: #ff8f00;
+    border-color: #ffe082;
+}
+
+.status-option-button.confirmed {
+    background-color: #e3f2fd;
+    color: #1565c0;
+    border-color: #bbdefb;
+}
+
+.status-option-button.shipping {
+    background-color: #e1f5fe;
+    color: #0288d1;
+    border-color: #b3e5fc;
+}
+
+.status-option-button.delivered {
+    background-color: #e8f5e9;
+    color: #43a047;
+    border-color: #c8e6c9;
+}
+
+.status-option-button.completed {
+    background-color: #f1f8e9;
+    color: #388e3c;
+    border-color: #dcedc8;
+}
+
+.status-option-button.canceled {
+    background-color: #ffebee;
+    color: #c62828;
+    border-color: #ffcdd2;
+}
+
+.status-option-button.refunded {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+    border-color: #e1bee7;
+}
+
+.status-option-button.returned {
+    background-color: #ede7f6;
+    color: #512da8;
+    border-color: #d1c4e9;
+}
+
+.status-option-button.selected {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(248, 110, 211, 0.2);
+}
+
+.status-option-icon {
+    font-size: 1.1rem;
+    margin-bottom: 0.4rem;
+}
+
+/* Colored buttons should have matching icon colors */
+.status-option-button.pending .status-option-icon,
+.status-option-button.confirmed .status-option-icon,
+.status-option-button.shipping .status-option-icon,
+.status-option-button.delivered .status-option-icon,
+.status-option-button.completed .status-option-icon,
+.status-option-button.canceled .status-option-icon,
+.status-option-button.refunded .status-option-icon,
+.status-option-button.returned .status-option-icon {
+    color: inherit;
+}
+
+.status-option-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+/* Tooltip */
+.timeline-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #444;
+    color: white;
+    padding: 0.3rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease;
+    width: max-content;
+    max-width: 150px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.timeline-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 3px;
+    border-style: solid;
+    border-color: #444 transparent transparent transparent;
+}
+
+.timeline-item:hover .timeline-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Enhanced Update Button */
+.update-button-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.update-status-button {
+    padding: 0.6rem 1.2rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: background-color 0.2s ease;
+    box-shadow: none;
+    min-width: 140px;
+}
+
+.update-status-button:hover {
+    background-color: #e5348e;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.update-status-button:active {
+    transform: translateY(1px);
+}
+
+.update-status-button:disabled {
+    background-color: #cccccc;
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.update-status-button i {
+    font-size: 0.9rem;
+}
+
+/* Additional styles */
+.form-helper {
+    font-size: 0.75rem;
+    color: #777;
+    margin-top: 0.4rem;
+    font-style: normal;
+}
+
+/* Status transition visualization */
+.status-transition-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0.75rem 0;
+    padding: 0.6rem;
+    background-color: #ffffff;
     border-radius: 8px;
+    border: 1px solid #e8e8e8;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.current-status,
+.new-status {
+    padding: 0.5rem 0.8rem;
+    border-radius: 20px;
     font-weight: 500;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    cursor: pointer;
-    transition: all 0.2s;
+    font-size: 0.85rem;
 }
 
-.cancel-button:hover {
-    background-color: #f0f0f0;
+/* Apply the same color scheme as the status badges */
+.current-status.pending,
+.new-status.pending {
+    background-color: #fff8e1;
+    color: #ff8f00;
 }
 
-/* Responsive */
+.current-status.confirmed,
+.new-status.confirmed {
+    background-color: #e3f2fd;
+    color: #1565c0;
+}
+
+.current-status.shipping,
+.new-status.shipping {
+    background-color: #e1f5fe;
+    color: #0288d1;
+}
+
+.current-status.delivered,
+.new-status.delivered {
+    background-color: #e8f5e9;
+    color: #43a047;
+}
+
+.current-status.completed,
+.new-status.completed {
+    background-color: #f1f8e9;
+    color: #388e3c;
+}
+
+.current-status.canceled,
+.new-status.canceled {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.current-status.refunded,
+.new-status.refunded {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.current-status.returned,
+.new-status.returned {
+    background-color: #ede7f6;
+    color: #512da8;
+}
+
+.current-status i,
+.new-status i {
+    font-size: 0.95rem;
+}
+
+.status-arrow {
+    margin: 0 0.8rem;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    animation: arrowPulse 1s infinite ease-in-out;
+    display: flex;
+    align-items: center;
+}
+
+@keyframes arrowPulse {
+    0% {
+        transform: translateX(0);
+    }
+    50% {
+        transform: translateX(3px);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* Standalone status transition for "Chọn trạng thái mới" */
+.status-change-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0.5rem 0;
+    padding: 0.3rem;
+    border-radius: 20px;
+    background: white;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.status-change-row .status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-change-row .arrow {
+    padding: 0 0.5rem;
+    color: var(--primary-color);
+    animation: arrowPulse 1s infinite ease-in-out;
+}
+
+/* Status colors for standalone displays */
+.status-item.delivered {
+    background-color: #e8f5e9;
+    color: #43a047;
+}
+
+.status-item.returned {
+    background-color: #ede7f6;
+    color: #512da8;
+}
+
+.status-item.pending {
+    background-color: #fff8e1;
+    color: #ff8f00;
+}
+
+.status-item.confirmed {
+    background-color: #e3f2fd;
+    color: #1565c0;
+}
+
+.status-item.shipping {
+    background-color: #e1f5fe;
+    color: #0288d1;
+}
+
+.status-item.completed {
+    background-color: #f1f8e9;
+    color: #388e3c;
+}
+
+.status-item.canceled {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.status-item.refunded {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+}
+
+/* Mobile responsiveness for new elements */
 @media (max-width: 768px) {
-    .section-header {
-        flex-direction: column;
-        align-items: flex-start;
+    .timeline-tooltip {
+        max-width: 120px;
+        font-size: 0.65rem;
+        padding: 0.25rem 0.4rem;
     }
 
-    .right-section {
-        width: 100%;
-        flex-direction: column;
+    .status-timeline {
+        padding: 0.75rem 0.5rem;
     }
 
-    .search-box {
-        width: 100%;
+    .timeline-icon {
+        width: 26px;
+        height: 26px;
+        font-size: 0.8rem;
     }
 
-    .filter-section {
-        width: 100%;
-        flex-direction: column;
-        align-items: flex-start;
+    .timeline-status {
+        font-size: 0.7rem;
+        max-width: 70px;
     }
 
-    .filter-group {
-        width: 100%;
+    .status-options {
+        justify-content: space-around;
+        gap: 0.5rem;
     }
 
-    .status-cards {
-        grid-template-columns: 1fr;
+    .status-option-button {
+        width: calc(33.33% - 0.5rem);
+        min-width: 80px;
+        padding: 0.5rem 0.3rem;
     }
 
-    .data-table {
-        display: block;
-        overflow-x: auto;
+    .status-option-icon {
+        font-size: 1rem;
     }
 
-    /* Modal responsive */
-    .modal-container {
-        width: 98%;
-        max-height: 95vh;
+    .status-option-label {
+        font-size: 0.75rem;
     }
 
-    .order-detail-header {
-        flex-direction: column;
-        text-align: center;
-        gap: 1rem;
-    }
-
-    .order-summary-cards {
-        grid-template-columns: 1fr;
-    }
-
-    .customer-detail-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .order-item-card {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .item-image {
-        align-self: center;
-    }
-
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-
-    .form-actions {
-        justify-content: center;
+    .delivery-date-input {
+        padding: 0.6rem;
     }
 
     .update-status-button {
         width: 100%;
-        justify-content: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .modal-body {
-        padding: 1rem;
-    }
-
-    .order-detail-section {
-        padding: 1rem;
-    }
-
-    .order-summary-cards {
-        gap: 0.75rem;
-    }
-
-    .summary-card {
-        padding: 1rem;
-    }
-
-    .order-item-card {
-        padding: 1rem;
+        padding: 0.5rem 1rem;
     }
 }
 </style>

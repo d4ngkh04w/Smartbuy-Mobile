@@ -18,14 +18,18 @@ namespace api.Services
             _userRepository = userRepository;
         }
 
-        public async Task DeleteUserAsync(Guid id)
+        public async Task DeleteUserAsync(Guid id, string password)
         {
             var user = await _userRepository.GetUserByIdAsync(id) ?? throw new NotFoundException("User not found");
 
-            // Xóa ảnh đại diện của người dùng nếu tồn tại
+            if (!BCrypt.Net.BCrypt.Verify(password, user.Password))
+            {
+                throw new UnauthorizedException("Password is incorrect");
+            }
+
             if (!string.IsNullOrEmpty(user.Avatar))
             {
-                ImageUtils.DeleteImage(_env.WebRootPath + user.Avatar);
+                await ImageUtils.DeleteImageAsync(_env.WebRootPath + user.Avatar);
             }
 
             await _userRepository.DeleteUserAsync(user);
@@ -109,7 +113,7 @@ namespace api.Services
                 // Xóa ảnh đại diện cũ nếu tồn tại
                 if (!string.IsNullOrEmpty(user.Avatar))
                 {
-                    ImageUtils.DeleteImage(_env.WebRootPath + user.Avatar);
+                    await ImageUtils.DeleteImageAsync(_env.WebRootPath + user.Avatar);
                 }
 
                 // Lưu ảnh đại diện mới

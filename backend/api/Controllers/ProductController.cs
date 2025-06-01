@@ -49,13 +49,6 @@ namespace api.Controllers
             return ApiResponseHelper.Success("Product updated successfully", product);
         }
 
-        // [HttpDelete("{id:int}")]
-        // public async Task<IActionResult> DeleteProduct(int id)
-        // {
-        //     await _productService.DeleteProductAsync(id);
-        //     return NoContent();
-        // }
-
         [HttpGet("page")]
         [AllowAnonymous]
         public async Task<IActionResult> GetPagedProducts([FromQuery] ProductQuery productQuery)

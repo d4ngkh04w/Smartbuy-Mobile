@@ -1,45 +1,50 @@
 import instance from "./axiosConfig";
-export const getMe = async (options = {}) => {
-	const config = { ...options };
-	try {
-		const response = await instance.get("/user/me", config); // Gọi API để lấy thông tin người dùng
-		return response.data.data; // Trả về dữ liệu người dùng
-	} catch (error) {
-		console.error("Error fetching user data:", error);
-		throw error; // Để xử lý lỗi ở các phần khác nếu cần
+
+class MeService {
+    // Utility methods
+    getHeaders = (data) =>
+        data instanceof FormData
+            ? { headers: { "Content-Type": "multipart/form-data" } }
+            : {};
+
+    getUrlImage(url) {
+		const baseUrl =
+			import.meta.env.VITE_API_URL.replace("/api/v1", "") || "";
+		return url?.startsWith("http") ? url : `${baseUrl}${url}`;
 	}
-};
 
-export const changePassword = async (passwordData) => {
-	return await instance.post("/auth/change-password", passwordData);
-};
+    // API methods
+    async getMe(options = {}) {
+        const config = { ...options };
+        try {
+            const response = await instance.get("/user/me", config);
+            return response.data.data;
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+            throw error;
+        }
+    }
 
-// Cập nhật thông tin profile admin
-export const updateUserProfile = async (userInfo) => {
-	return (
-		await instance.put("/user/me", userInfo, {
-			headers: {
-				"Content-Type": "multipart/form-data",
-			},
-		})
-	).data.data; // Trả về thông tin người dùng đã cập nhật
-};
+    async changePassword(passwordData) {
+        return await instance.post("/auth/change-password", passwordData);
+    }
 
-// Gửi email xác thực
-export const sendVerificationEmail = async () => {
-	return await instance.post("/user/auth/send-verification-email");
-};
+    async updateUserProfile(userInfo) {
+        return (
+            await instance.put("/user/me", userInfo, this.getHeaders(userInfo))
+        ).data.data;
+    }
 
-export const deleteMyAccount = async () => {
-	return await instance.delete("/user/me");
-};
+    async sendVerificationEmail() {
+        return await instance.post("/user/auth/send-verification-email");
+    }
 
-export const meService = {
-	getMe,
-	updateUserProfile,
-	changePassword,
-	sendVerificationEmail,
-	deleteMyAccount,
-};
+    async deleteMyAccount() {
+        return await instance.delete("/user/me");
+    }
+  
+}
 
+const meService = new MeService();
 export default meService;
+

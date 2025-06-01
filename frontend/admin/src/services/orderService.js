@@ -159,16 +159,9 @@ class OrderService {
         }
 
         return pages;
-    }
-
-    // ===== Status Update Utilities =====
-    prepareStatusUpdateData(status, deliveryDate = null) {
+    } // ===== Status Update Utilities =====
+    prepareStatusUpdateData(status) {
         const statusData = { status };
-
-        if (status === "Đã giao hàng") {
-            statusData.deliveryDate = deliveryDate || new Date().toISOString();
-        }
-
         return statusData;
     }
 
