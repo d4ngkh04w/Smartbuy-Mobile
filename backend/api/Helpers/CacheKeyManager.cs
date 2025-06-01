@@ -234,6 +234,9 @@ namespace api.Helpers
         public static string GetProductAverageRatingKey(int productId) =>
             RegisterCommentKey($"product-{productId}-rating");
 
+        public static string GetProductRatingStatsKey(int productId) =>
+            RegisterCommentKey($"product-{productId}-rating-stats");
+
         public static HashSet<string> GetAllCommentKeys()
         {
             HashSet<string> allKeys = new();

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import productService from "../../services/productService.js";
 import productLineService from "../../services/productLineService.js";
 import brandService from "../../services/brandService.js";
@@ -23,6 +23,7 @@ const productLines = ref([]);
 // UI state
 const loading = ref(false);
 const searchQuery = ref("");
+const statusFilter = ref("all");
 
 // Utility functions
 const showErrorNotification = (message) => {
@@ -85,7 +86,14 @@ const totalValue = computed(() => {
 const fetchProducts = async () => {
     loading.value = true;
     try {
-        const response = await productService.getProducts();
+        const filters = {};
+
+        // Add status filter only
+        if (statusFilter.value !== "all") {
+            filters.isActive = statusFilter.value === "active";
+        }
+
+        const response = await productService.getProducts(filters);
         if (response.data && response.data.data) {
             products.value = response.data.data;
         } else {
@@ -293,6 +301,11 @@ onMounted(async () => {
     await fetchProducts();
     await fetchBrands();
 });
+
+// Watch for changes in status filter only
+watch(statusFilter, async () => {
+    await fetchProducts();
+});
 </script>
 
 <template>
@@ -300,6 +313,7 @@ onMounted(async () => {
         <!-- Header Section -->
         <ProductManagementHeader
             v-model:searchQuery="searchQuery"
+            v-model:statusFilter="statusFilter"
             @add-product="openAddProductModal"
         />
 

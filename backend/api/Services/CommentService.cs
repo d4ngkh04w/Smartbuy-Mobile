@@ -117,11 +117,12 @@ namespace api.Services
 
             var commentDto = createdComment.ToCommentDTO();
 
-            _cacheService.RemoveCommentsByProductCache(commentDTO.ProductId);
-            if (commentDTO.Rating.HasValue)
+            _cacheService.RemoveCommentsByProductCache(commentDTO.ProductId); if (commentDTO.Rating.HasValue)
             {
                 string ratingCacheKey = CacheKeyManager.GetProductAverageRatingKey(commentDTO.ProductId);
+                string ratingStatsCacheKey = CacheKeyManager.GetProductRatingStatsKey(commentDTO.ProductId);
                 _cacheService.Remove(ratingCacheKey);
+                _cacheService.Remove(ratingStatsCacheKey);
                 _cacheService.RemoveProductCache(commentDTO.ProductId);
                 _cacheService.RemoveAllProductsCache();
             }
@@ -172,11 +173,12 @@ namespace api.Services
             {
                 _cacheService.RemoveCommentCache(comment.ParentId.Value);
             }
-
             if (ratingChanged)
             {
                 string ratingCacheKey = CacheKeyManager.GetProductAverageRatingKey(comment.ProductId);
+                string ratingStatsCacheKey = CacheKeyManager.GetProductRatingStatsKey(comment.ProductId);
                 _cacheService.Remove(ratingCacheKey);
+                _cacheService.Remove(ratingStatsCacheKey);
                 _cacheService.RemoveProductCache(comment.ProductId);
                 _cacheService.RemoveAllProductsCache();
             }
@@ -205,11 +207,12 @@ namespace api.Services
             {
                 _cacheService.RemoveCommentCache(comment.ParentId.Value);
             }
-
             if (comment.Rating.HasValue)
             {
                 string ratingCacheKey = CacheKeyManager.GetProductAverageRatingKey(comment.ProductId);
+                string ratingStatsCacheKey = CacheKeyManager.GetProductRatingStatsKey(comment.ProductId);
                 _cacheService.Remove(ratingCacheKey);
+                _cacheService.Remove(ratingStatsCacheKey);
                 _cacheService.RemoveProductCache(comment.ProductId);
                 _cacheService.RemoveAllProductsCache();
             }
@@ -237,22 +240,48 @@ namespace api.Services
             return comment!.ToCommentDTO();
         }
 
-        public async Task<double> GetProductAverageRatingAsync(int productId)
+        public async Task<ProductRatingStatsDTO> GetProductRatingStatsAsync(int productId)
         {
-            string cacheKey = CacheKeyManager.GetProductAverageRatingKey(productId);
+            string cacheKey = CacheKeyManager.GetProductRatingStatsKey(productId);
 
-            if (_cacheService.TryGetValue(cacheKey, out double cachedRating))
+            // Try to get from cache first
+            if (_cacheService.TryGetValue(cacheKey, out ProductRatingStatsDTO? cachedStats) && cachedStats != null)
             {
-                return cachedRating;
+                return cachedStats;
             }
 
+            // Check if product exists
             _ = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
-            double? averageRating = await _commentRepository.GetProductAverageRatingAsync(productId);
-            double rating = averageRating ?? 0.0;
 
-            _cacheService.Set(cacheKey, rating, _cacheDuration);
+            // Get all necessary data
+            double averageRating = await _commentRepository.GetProductAverageRatingAsync(productId);
+            int totalRatings = await _commentRepository.GetProductRatingCountAsync(productId);
+            Dictionary<int, int> ratingDistribution = await _commentRepository.GetProductRatingDistributionAsync(productId);
 
-            return rating;
+            // Create rating distribution details with percentage calculation
+            var ratingDetails = new Dictionary<int, RatingDetailDTO>();
+            foreach (var kvp in ratingDistribution)
+            {
+                double percentage = totalRatings > 0 ? (double)kvp.Value / totalRatings * 100 : 0;
+                ratingDetails[kvp.Key] = new RatingDetailDTO
+                {
+                    Count = kvp.Value,
+                    Percentage = percentage
+                };
+            }
+
+            // Create the stats object
+            var stats = new ProductRatingStatsDTO
+            {
+                AverageRating = averageRating,
+                TotalRatings = totalRatings,
+                RatingDistribution = ratingDetails
+            };
+
+            // Store in cache
+            _cacheService.Set(cacheKey, stats, _cacheDuration);
+
+            return stats;
         }
     }
 }

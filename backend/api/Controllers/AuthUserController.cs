@@ -1,5 +1,4 @@
 using api.DTOs.Auth;
-using api.Exceptions;
 using api.Helpers;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;

@@ -6,7 +6,7 @@ namespace api.DTOs.Product
     {
         [Required(ErrorMessage = "Name is required")]
         [StringLength(100, ErrorMessage = "Name must be less than 100 characters")]
-        [RegularExpression(@"^[\p{L}\p{N}\s\-\/]+$", ErrorMessage = "Name can only contain letters, numbers, spaces, hyphens, and slashes")]
+       [RegularExpression(@"^[\p{L}\p{N}\s\-\/\(\)]+$", ErrorMessage = "Name can only contain letters, numbers, spaces, hyphens, slashes, and parentheses")]
         public string Name { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Import price is required")]

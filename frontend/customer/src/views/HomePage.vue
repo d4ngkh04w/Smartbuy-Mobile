@@ -115,7 +115,6 @@ import ProductCard from '../components/product/ProductCard.vue'
 import Pagi from '../components/common/Pagination.vue'
 import productService from '../services/productService.js'
 import Loading from '../components/common/Loading.vue'
-import authService from '@/services/authService'
 
 const route = useRoute()
 const searchKeyword = ref(route.query.search || null)

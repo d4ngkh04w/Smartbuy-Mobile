@@ -1,5 +1,6 @@
 using api.DTOs.Discount;
-using api.Models;
+using api.DTOs.Product;
+
 
 namespace api.Interfaces.Services
 {
@@ -12,7 +13,7 @@ namespace api.Interfaces.Services
         Task<bool> DeleteDiscountAsync(int id);
         Task<bool> AddProductsToDiscountAsync(int discountId, AddProductToDiscountDTO productIds);
         Task<bool> RemoveProductFromDiscountAsync(int discountId, int productId);
-        Task<IEnumerable<Product>> GetProductsByDiscountIdAsync(int discountId);
+        Task<IEnumerable<ProductDTO>> GetProductsByDiscountIdAsync(int discountId);
         Task<IEnumerable<DiscountDTO>> GetDiscountsByProductIdAsync(int productId);
     }
 }

@@ -10,6 +10,6 @@ namespace api.Interfaces.Services
         Task<CommentDTO> UpdateCommentAsync(int id, UpdateCommentDTO commentDTO, Guid userId);
         Task DeleteCommentAsync(int id, Guid userId);
         Task<CommentDTO> AddReactionAsync(int commentId, CommentReactionDTO reactionDTO, Guid userId);
-        Task<double> GetProductAverageRatingAsync(int productId);
+        Task<ProductRatingStatsDTO> GetProductRatingStatsAsync(int productId);
     }
 }

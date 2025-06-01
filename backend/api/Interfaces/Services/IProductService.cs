@@ -2,10 +2,9 @@ using api.DTOs.Product;
 using api.Queries;
 
 namespace api.Interfaces.Services
-{
-    public interface IProductService
+{    public interface IProductService
     {
-        Task<IEnumerable<ProductDTO>> GetProductsAsync();
+        Task<IEnumerable<ProductDTO>> GetProductsAsync(bool? isActive = null);
         Task<ProductDTO> GetProductByIdAsync(int id);
         Task<ProductDTO> CreateProductAsync(CreateProductDTO productDTO);
         Task DeleteProductAsync(int id);

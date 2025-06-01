@@ -1,77 +1,86 @@
 <template>
-  <div
-    class="product-card"
-    :style="{
-      '--card-bg': cardColor,
-      '--button-bg': buttonColor,
-      '--height': height
-    }"
-  >
-    <router-link 
-      :to="{ name: 'product-detail', params: { id: product.id } }"
-      class="product-top-link"
-    >
-      <div class="product-top">
-        <img 
-          v-lazy="getUrlImg(product.imageUrl)" 
-          alt="product image" 
-          class="product-img"
-        />
-      </div>
+	<div
+		class="product-card"
+		:style="{
+			'--card-bg': cardColor,
+			'--button-bg': buttonColor,
+			'--height': height,
+		}"
+	>
+		<router-link
+			:to="{ name: 'product-detail', params: { id: product.id } }"
+			class="product-top-link"
+		>
+			<div class="product-top">
+				<img
+					v-lazy="getUrlImg(product.imageUrl)"
+					alt="product image"
+					class="product-img"
+				/>
+			</div>
 
-      <div class="product-middle">
-        <h3>{{ product.name }}</h3>
-        <p>{{ format.formatPrice(product.price) }}₫</p>
-        </div>
-        <div class="rating">
-        <div class="stars">
-          <i 
-            v-for="i in 5" 
-            :key="i" 
-            class="fas fa-star" 
-            :class="{ 'active': i <= Math.round(product.rating) }"
-          ></i>
-        </div>
-        <span class="rating-count">({{ product.ratingCount }})</span>
-      </div>
-    
-    <!-- Số lượt đã bán -->
-    <div class="sold-count">Đã bán: {{ product.sold }}</div>
-    </router-link>
+			<div class="product-middle">
+				<h3>{{ product.name }}</h3>
+				<p>{{ format.formatPrice(product.price) }}₫</p>
+			</div>
+			<div class="rating">
+				<div class="stars">
+					<i
+						v-for="i in 5"
+						:key="i"
+						:class="getStarClass(i, product.rating)"
+					></i>
+				</div>
+				<span class="rating-count">({{ product.ratingCount }})</span>
+			</div>
 
-    
-  </div>
+			<!-- Số lượt đã bán -->
+			<div class="sold-count">Đã bán: {{ product.sold }}</div>
+		</router-link>
+	</div>
 </template>
 
-  
-  <script setup>
-  import productService  from '../../services/productService.js'
-  import format from '@/utils/format.js'
-  
-  const props = defineProps({
-    product: {
-      type: Object,
-      required: true
-    },
-    cardColor: {
-      type: String,
-      default: '#fff'
-    },
-    buttonColor: {
-      type: String,
-      default: '#3b82f6'
-    },
-    height: {
-      type: String,
-      default: '370px'
-    }
-  })
-    // Hàm lấy link ảnh
-  const getUrlImg = (url) => {
-      return productService.getUrlImage(url)
-  }
+<script setup>
+import productService from "../../services/productService.js";
+import format from "@/utils/format.js";
 
-  </script>
+const props = defineProps({
+	product: {
+		type: Object,
+		required: true,
+	},
+	cardColor: {
+		type: String,
+		default: "#fff",
+	},
+	buttonColor: {
+		type: String,
+		default: "#3b82f6",
+	},
+	height: {
+		type: String,
+		default: "370px",
+	},
+});
+// Hàm lấy link ảnh
+const getUrlImg = (url) => {
+	return productService.getUrlImage(url);
+};
+
+// Tính toán lớp CSS cho hiển thị sao dựa trên điểm đánh giá
+const getStarClass = (position, rating) => {
+	if (position <= Math.floor(rating)) {
+		// Sao đầy đủ khi vị trí <= phần nguyên của rating
+		return "fas fa-star active";
+	} else if (position === Math.ceil(rating) && rating % 1 >= 0.5) {
+		// Nửa sao khi vị trí = phần nguyên + 1 và phần thập phân >= 0.5
+		return "fas fa-star-half-alt active";
+	} else {
+		// Sao trống
+		return "far fa-star";
+	}
+};
+</script>
 
 <style scoped>
 .product-card {
@@ -146,75 +155,78 @@
 	background-color: #fff;
 }
 .product-card {
-  display: block;
-  text-decoration: none;
-  color: inherit;
+	display: block;
+	text-decoration: none;
+	color: inherit;
 }
 /* Đánh giá sản phẩm */
 .rating {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 4px 0;
-  font-size: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	padding: 4px 0;
+	font-size: 14px;
 }
 
 .stars {
-  display: flex;
-  gap: 2px;
+	display: flex;
+	gap: 2px;
 }
 
 .stars i {
-  color: #ccc;
-  font-size: 14px;
+	color: #ccc;
+	font-size: 14px;
 }
 
 .stars i.active {
-  color: #FFD700; /* vàng */
+	color: #ffd700; /* vàng */
+}
+
+.stars .fa-star-half-alt.active {
+	color: #ffd700; /* vàng cho nửa sao */
 }
 
 .rating-count {
-  font-size: 13px;
-  color: #555;
+	font-size: 13px;
+	color: #555;
 }
 
 /* Số lượng đã bán */
 .sold-count {
-  text-align: center;
-  font-size: 13px;
-  color: #666;
-  padding-bottom: 8px;
+	text-align: center;
+	font-size: 13px;
+	color: #666;
+	padding-bottom: 8px;
 }
 
 /* Responsive: Mobile */
 @media (max-width: 768px) {
-  .product-card {
-    width: 100%;
-    max-width: 100%;
-    height: auto;
-  }
+	.product-card {
+		width: 100%;
+		max-width: 100%;
+		height: auto;
+	}
 
-  .product-img {
-    height: 180px;
-  }
+	.product-img {
+		height: 180px;
+	}
 
-  .product-middle h3 {
-    font-size: 16px;
-  }
+	.product-middle h3 {
+		font-size: 16px;
+	}
 
-  .product-middle p {
-    font-size: 14px;
-  }
+	.product-middle p {
+		font-size: 14px;
+	}
 
-  .rating,
-  .sold-count {
-    font-size: 12px;
-  }
+	.rating,
+	.sold-count {
+		font-size: 12px;
+	}
 
-  .stars i {
-    font-size: 12px;
-  }
+	.stars i {
+		font-size: 12px;
+	}
 }
-
 </style>

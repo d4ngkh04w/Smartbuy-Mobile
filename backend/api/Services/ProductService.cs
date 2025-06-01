@@ -31,29 +31,32 @@ namespace api.Services
             _env = webHostEnvironment;
             _cacheService = cacheService;
         }
-        public async Task<IEnumerable<ProductDTO>> GetProductsAsync()
+
+        public async Task<IEnumerable<ProductDTO>> GetProductsAsync(bool? isActive = null)
         {
             string cacheKey = CacheKeyManager.GetAllProductsKey();
-
-            if (_cacheService.TryGetValue(cacheKey, out IEnumerable<ProductDTO>? cachedProducts) && cachedProducts != null)
+            bool hasFilters = isActive.HasValue;
+            if (!hasFilters && _cacheService.TryGetValue(cacheKey, out IEnumerable<ProductDTO>? cachedProducts) && cachedProducts != null)
             {
                 return cachedProducts;
             }
-
             var products = await _productRepository.GetAllAsync();
-
             if (!products.Any())
                 return new List<ProductDTO>();
-
-            // var productDtos = (await Task.WhenAll(products.Select(async p => await p.ToProductDTO(_commentRepository)))).ToList();
+            if (isActive.HasValue)
+            {
+                products = products.Where(p => p.IsActive == isActive.Value);
+            }
             var productDtos = products.Select(p => p.ToProductDTO()).ToList();
             foreach (var productDto in productDtos)
             {
                 productDto.Rating = (decimal)await _commentRepository.GetProductAverageRatingAsync(productDto.Id);
                 productDto.RatingCount = await _commentRepository.GetProductRatingCountAsync(productDto.Id);
             }
-            _cacheService.Set(cacheKey, productDtos, _cacheDuration);
-
+            if (!hasFilters)
+            {
+                _cacheService.Set(cacheKey, productDtos, _cacheDuration);
+            }
             return productDtos;
         }
 
@@ -281,6 +284,7 @@ namespace api.Services
 
             return result;
         }
+
         public async Task<ProductColorDTO> CreateProductColorAsync(int productId, CreateColorDTO productColorDTO)
         {
             if (productColorDTO.Images != null && productColorDTO.Images.Any())
@@ -379,20 +383,16 @@ namespace api.Services
         }
         public async Task DeleteProductColorAsync(int productId, int colorId)
         {
-            // 1. Kiểm tra sản phẩm và màu sắc tồn tại
-            var product = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
+            _ = await _productRepository.GetByIdAsync(productId) ?? throw new NotFoundException("Product not found");
             var productColor = await _productRepository.GetProductColorAsync(productId, colorId) ?? throw new NotFoundException("Product color not found");
 
-            // 2. Xóa tất cả ảnh liên quan trong hệ thống tệp tin
             foreach (var image in productColor.Images)
             {
                 ImageUtils.DeleteImage(_env.WebRootPath + image.ImagePath);
             }
 
-            // 3. Xóa màu sắc khỏi cơ sở dữ liệu
             await _productRepository.DeleteColorAsync(productColor);
 
-            // 4. Xóa cache để cập nhật dữ liệu
             _cacheService.RemoveProductCache(productId);
             _cacheService.RemoveAllProductsCache();
         }

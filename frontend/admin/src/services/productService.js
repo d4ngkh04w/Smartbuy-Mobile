@@ -6,16 +6,22 @@ class ProductService {
 		data instanceof FormData
 			? { headers: { "Content-Type": "multipart/form-data" } }
 			: {};
-
 	// ===== Image Utilities =====
 	getUrlImage(url) {
-		const baseUrl = (import.meta.env.VITE_API_URL).replace("/api/v1","") || "";
+		const baseUrl = import.meta.env.VITE_API_URL.replace("/api/v1", "") || "";
 		return url?.startsWith("http") ? url : `${baseUrl}${url}`;
 	}
 
 	// ===== File Validation =====
 	validateFileType(file) {
-		const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+		const allowedTypes = [
+			"image/jpeg",
+			"image/jpg",
+			"image/pjpeg",
+			"image/png",
+			"image/svg+xml",
+			"image/webp",
+		];
 		return allowedTypes.includes(file.type);
 	}
 
@@ -29,7 +35,8 @@ class ProductService {
 		if (!this.validateFileType(file)) {
 			return {
 				valid: false,
-				message: "Định dạng tệp không hợp lệ. Chỉ chấp nhận PNG, JPG.",
+				message:
+					"Định dạng tệp không hợp lệ. Chỉ chấp nhận PNG, JPG, SVG, WEBP.",
 			};
 		}
 
@@ -42,19 +49,14 @@ class ProductService {
 
 		return { valid: true };
 	}
-
 	// ===== Product API =====
 	async getProducts(filters = {}) {
 		try {
-			const { isActive, search } = filters;
+			const { isActive } = filters;
 			const params = new URLSearchParams();
 
 			if (isActive !== undefined) {
 				params.append("isActive", isActive);
-			}
-
-			if (search) {
-				params.append("search", search);
 			}
 
 			const queryString = params.toString();
@@ -186,8 +188,7 @@ class ProductService {
 				error
 			);
 			throw error;
-		}
-	}
+		}	}
 
 	// ===== Misc =====
 	getProductMainImage(product) {
