@@ -206,6 +206,16 @@ namespace api.Services
 
             return orders.Select(o => o.ToOrderDTO());
         }
+        public async Task<IEnumerable<OrderDTO>> GetCurrentOrdersByUserIdAsync(Guid userId)
+        {
+            var orders = await _orderRepository.GetCurrentOrdersByUserIdAsync(userId);
+            if (orders == null || !orders.Any())
+            {
+                throw new NotFoundException("Not found any orders for you");
+            }
+
+            return orders.Select(o => o.ToOrderDTO());
+        }
         public async Task<OrderDTO> UpdateOrderStatusAsync(Guid id, UpdateOrderStatusDTO updateOrderStatusDTO)
         {
             var order = await _orderRepository.GetOrderByIdAsync(id) ?? throw new NotFoundException("Order not found");

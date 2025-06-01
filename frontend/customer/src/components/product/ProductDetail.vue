@@ -219,9 +219,7 @@
                                 :disabled="getQuanity <= 0"
                             >
                                 <span class="buy-now-text">MUA NGAY</span>
-                                <span class="delivery-note"
-                                    >(Giao tận nhà hoặc nhận tại cửa hàng)</span
-                                >
+
                             </button>
                         </div>
                     </div>

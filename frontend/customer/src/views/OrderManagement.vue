@@ -3,7 +3,7 @@
     <h2 class="page-title">Đơn hàng của bạn</h2>
 
     <div v-if="loading" class="loading-state">
-      <i class="fas fa-spinner fa-spin"></i> Đang tải đơn hàng...
+      <Loading />
     </div>
 
     <div v-else-if="error" class="error-state">
@@ -11,39 +11,41 @@
     </div>
 
     <div v-else-if="orders.length === 0" class="empty-state">
-      <i class="fas fa-box-open"></i> Bạn chưa có đơn hàng nào đang chờ xử lý.
+      <i class="fas fa-box-open"></i> Hiện tại bạn không có đơn hàng nào.
     </div>
 
     <div v-else class="order-list">
       <div v-for="order in orders" :key="order.id" class="order-card">
         <div class="order-header">
-          <span class="order-id">Mã ĐH: #{{ order.id }}</span>
-          <span :class="['order-status', getStatusClass(order.status)]">
-            {{ getStatusText(order.status) }}
+          <span class="order-id">Mã đơn hàng: #{{ getOrderID(order.id) }}</span>
+          <span :class="['order-status', getStatusClass(order.status)]"><i :class= "['fa-solid', getStatusIcon(order.status)]"></i>
+            {{ order.status }}
           </span>
         </div>
         <div class="order-body">
           <div class="product-summary">
-            <div v-for="item in order.items.slice(0, 2)" :key="item.productId" class="product-item-preview">
-              <img :src="item.image" :alt="item.name" class="product-thumbnail" />
+            <div v-for="item in order.orderItems.slice(0, 2)" :key="item.id" class="product-item-preview">
+              <img :src=productService.getUrlImage(item.colorImage) :alt="item.name" class="product-thumbnail" />
               <div class="product-info-preview">
-                <p class="product-name">{{ item.name }}</p>
+                <p class="product-name">{{ item.product.name }}</p>
+                <p class="product-color">{{ item.colorName }}</p>
                 <p class="product-quantity">x{{ item.quantity }}</p>
               </div>
             </div>
-            <p v-if="order.items.length > 2" class="more-items">
-              và {{ order.items.length - 2 }} sản phẩm khác...
+            <p v-if="order.orderItems.length > 2" class="more-items">
+              và {{ order.orderItems.length - 2 }} sản phẩm khác...
             </p>
           </div>
           <div class="order-details">
-            <p class="order-date">Ngày đặt: {{ formatDate(order.orderDate) }}</p>
-            <p class="order-total">Tổng tiền: {{ formatCurrency(order.totalAmount) }}</p>
+            <p class="order-date">Ngày đặt: {{ format.formatDate(order.orderDate) }}</p>
+            <p class="order-total">Tổng tiền: {{ format.formatPrice(order.totalAmount) }}₫</p>
           </div>
         </div>
         <div class="order-actions">
           <button @click="showPopup(order)" class="btn btn-primary">Xem chi tiết</button>
-          <button v-if="canCancel(order.status)" @click="cancelOrder(order.id)" class="btn btn-secondary">Hủy đơn hàng</button>
-          <button v-if="canContact(order.status)" @click="contactSupport(order.id)" class="btn btn-info">Liên hệ hỗ trợ</button>
+          <button v-if="canCancel(order.status)" @click="cancelOrderConfirm(order)" class="btn btn-secondary">Hủy đơn hàng</button>
+          <button v-if="canConfirmOrReturn(order.status)" @click="confirmDelivery(order.id)" class="btn btn-confirm">Đã nhận hàng</button>
+          <button v-if="canConfirmOrReturn(order.status)" @click="returnOrderConfirm(order)" class="btn btn-return">Hoàn hàng</button>
         </div>
       </div>
     </div>
@@ -51,120 +53,136 @@
     <!-- Popup chi tiết đơn hàng -->
     <div v-if="popupVisible" class="popup-overlay" @click.self="closePopup">
       <div class="popup-content">
-        <h3>Chi tiết đơn hàng #{{ selectedOrder.id }}</h3>
-        <p><strong>Ngày đặt:</strong> {{ formatDate(selectedOrder.orderDate) }}</p>
-        <p><strong>Trạng thái:</strong> {{ getStatusText(selectedOrder.status) }}</p>
-        <p><strong>Tổng tiền:</strong> {{ formatCurrency(selectedOrder.totalAmount) }}</p>
+        <h3>Chi tiết đơn hàng #{{ getOrderID(selectedOrder.id) }}</h3>
+        <p><strong>Ngày đặt:</strong> {{ format.formatDate(selectedOrder.orderDate) }}</p>
+        <p><strong>Trạng thái:</strong> {{ selectedOrder.status }}</p>
+        <p><strong>Tổng tiền:</strong> {{ format.formatPrice(selectedOrder.totalAmount) }}₫</p>
 
         <h4>Sản phẩm:</h4>
         <ul class="popup-product-list">
-          <li v-for="item in selectedOrder.items" :key="item.productId" class="popup-product-item">
-            <img :src="item.image" :alt="item.name" class="popup-product-thumbnail" />
+          <li v-for="item in selectedOrder.orderItems" :key="item.id" class="popup-product-item">
+            <img :src=productService.getUrlImage(item.colorImage) :alt="item.product.name" class="popup-product-thumbnail" />
             <div>
-              <p class="popup-product-name">{{ item.name }}</p>
+              <p class="popup-product-name">{{ item.product.name }}</p>
+              <p>Màu sắc: {{ item.colorName }}</p>
               <p>Số lượng: {{ item.quantity }}</p>
-              <p>Giá: {{ formatCurrency(item.price) }}</p>
+              <p>Giá: {{ format.formatPrice(item.price) }}</p>
             </div>
           </li>
         </ul>
-
-        <button @click="closePopup" class="btn btn-close">Đóng</button>
+        <div class="container-btn">
+          <button @click="closePopup" class="btn btn-close">Đóng</button>
+        </div>
       </div>
     </div>
+      <!-- popup Cancer Order -->
+      <div v-if="popupCancel" class="popup-overlay" @click.self="closePopup">
+        <div class="confirm-cancel popup-content">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <p>Bạn có chắc chắn muốn hủy đơn hàng #{{ getOrderID(selectedOrder.id) }} không?</p>
+          <p>Hành động này sẽ không thể hoàn tác.</p>
+          <div class="order-actions">
+            <button @click="cancelOrder(selectedOrder.id)" class="btn btn-secondary">Xác nhận hủy</button>
+            <button @click="closePopup" class="btn btn-close">Quay lại</button>
+          </div>
+        </div>
+    </div>
+    <!-- popup Return Order -->
+      <div v-if="popupReturn" class="popup-overlay" @click.self="closePopup">
+        <div class="confirm-return popup-content">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <p>Bạn có chắc chắn muốn hoàn đơn hàng #{{ getOrderID(selectedOrder.id) }} không?</p>
+          <p>Hành động này sẽ không thể hoàn tác.</p>
+          <div class="order-actions">
+            <button @click="returnOrder(selectedOrder.id)" class="btn btn-secondary">Xác nhận hoàn</button>
+            <button @click="closePopup" class="btn btn-close">Quay lại</button>
+          </div>
+        </div>
+    </div>
+    <Pagi
+      :totalProducts="totalOrders"
+      :currentPage="currentPage"
+      :pageSize="pageSize"
+      @pageChanged="getOrdersInPage"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import Loading from "../components/common/Loading.vue"
+import format from '@/utils/format';
+import productService from '@/services/productService';
+import emitter from '../utils/evenBus.js';
+import router from '@/router';
+import Pagi from '../components/common/Pagination.vue';
 
 const orders = ref([]);
+const allOrders = ref([]); 
 const loading = ref(true);
 const error = ref(false);
 
 const popupVisible = ref(false);
 const selectedOrder = ref(null);
-
-// Dữ liệu giả lập đơn hàng (giữ nguyên như bạn có)
-const mockOrders = [
-  {
-    id: 'DH001',
-    orderDate: '2025-05-20T10:30:00Z',
-    totalAmount: 15000000,
-    status: 'processing',
-    items: [
-      { productId: 'SP001', name: 'iPhone 15 Pro Max 256GB', quantity: 1, price: 15000000, image: 'https://via.placeholder.com/60?text=iPhone' },
-    ],
-  },
-  {
-    id: 'DH002',
-    orderDate: '2025-05-18T14:45:00Z',
-    totalAmount: 2500000,
-    status: 'shipping',
-    items: [
-      { productId: 'SP003', name: 'Tai nghe Bluetooth Sony WF-1000XM5', quantity: 1, price: 2500000, image: 'https://via.placeholder.com/60?text=Headphone' },
-    ],
-  },
-  {
-    id: 'DH003',
-    orderDate: '2025-05-15T09:00:00Z',
-    totalAmount: 1800000,
-    status: 'pending',
-    items: [
-      { productId: 'SP004', name: 'Sạc dự phòng Anker PowerCore', quantity: 2, price: 900000, image: 'https://via.placeholder.com/60?text=Charger' },
-      { productId: 'SP004', name: 'Sạc dự phòng Anker PowerCore', quantity: 2, price: 900000, image: 'https://via.placeholder.com/60?text=Charger' },
-      { productId: 'SP004', name: 'Sạc dự phòng Anker PowerCore', quantity: 2, price: 900000, image: 'https://via.placeholder.com/60?text=Charger' },
-    ],
-  },
-];
+const popupCancel = ref(false);
+const popupReturn = ref(false);
+const pageSize = ref(5); 
+const currentPage = ref(1);
+const totalOrders = ref(0); 
 
 const fetchOrders = async () => {
   loading.value = true;
   error.value = false;
-  try {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    orders.value = mockOrders.filter(order => order.status !== 'delivered');
-  } catch (err) {
-    console.error("Failed to fetch orders:", err);
+  allOrders.value = await productService.getAllCurrentOrders();
+  if(!allOrders.value) {
     error.value = true;
-  } finally {
+    return;
+  }
+  else{
     loading.value = false;
   }
+  orders.value = allOrders.value.slice(0, pageSize.value);
+  totalOrders.value = allOrders.value.length;
+}
+
+const getOrdersInPage = (page = 1) => {
+  currentPage.value = page;
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  orders.value = allOrders.value.slice(start, end);
+  totalOrders.value = allOrders.value.length;
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  });
 };
 
-const formatDate = (dateString) => {
-  const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
-  return new Date(dateString).toLocaleDateString('vi-VN', options);
+const getOrderID = (order) => {
+  return order.toString().substring(0,8);
 };
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-};
-
-const getStatusText = (status) => {
-  switch (status) {
-    case 'pending': return 'Chờ xác nhận';
-    case 'processing': return 'Đang xử lý';
-    case 'shipping': return 'Đang vận chuyển';
-    case 'delivered': return 'Đã giao hàng';
-    case 'cancelled': return 'Đã hủy';
-    default: return 'Không rõ';
-  }
-};
-
 const getStatusClass = (status) => {
   switch (status) {
-    case 'pending': return 'status-pending';
-    case 'processing': return 'status-processing';
-    case 'shipping': return 'status-shipping';
-    case 'delivered': return 'status-delivered';
-    case 'cancelled': return 'status-cancelled';
+    case 'Chờ xác nhận': return 'status-pending' ;
+    case 'Đã xác nhận': return 'status-processing';
+    case 'Đang giao hàng': return 'status-shipping';
+    case 'Đã giao hàng': return 'status-delivered';
+    default: return '';
+  }
+};
+const getStatusIcon = (status) => {
+  switch (status) {
+    case 'Chờ xác nhận': return 'fa-circle-question';
+    case 'Đã xác nhận': return "fa-hourglass-half";
+    case 'Đang giao hàng': return 'fa-truck-fast';
+    case 'Đã giao hàng': return 'fa-circle-check';
     default: return '';
   }
 };
 
-const canCancel = (status) => ['pending', 'processing'].includes(status);
+const canCancel = (status) => ['Chờ xác nhận', 'Đã xác nhận'].includes(status);
+const canConfirmOrReturn = (status) => ['Đã giao hàng'].includes(status);
 
-const canContact = (status) => ['shipping', 'pending', 'processing'].includes(status);
+
 
 const showPopup = (order) => {
   selectedOrder.value = order;
@@ -173,19 +191,66 @@ const showPopup = (order) => {
 
 const closePopup = () => {
   popupVisible.value = false;
+  popupCancel.value = false;
   selectedOrder.value = null;
+  popupReturn.value = false;
+};
+
+const cancelOrderConfirm = (order) => {
+  selectedOrder.value = order;
+  popupCancel.value = true;
+};
+const returnOrderConfirm = (order) => {
+  selectedOrder.value = order;
+  popupReturn.value = true;  
+};
+const confirmDelivery = (orderId) => {
+  var status = 'Hoàn thành';
+  updateOrderStatus(orderId, status);
+};
+const updateOrderStatus = (orderId, status) => {
+  productService.updateStatusOrder(orderId, status)
+    .then(() => {
+      closePopup();
+      router.push({name: 'orders-history'});
+      emitter.emit('show-notification', {
+        status: 'success',
+        message: `Đã cập nhật trạng thái đơn hàng thành ${status}`
+      });
+    })
+    .catch((err) => {
+        emitter.emit('show-notification', {
+          status: 'error',
+          message: 'Đã xảy ra lỗi khi cập nhật trạng thái đơn hàng. Vui lòng thử lại sau.'
+        });
+      console.error('Error updating order status:', err);
+      error.value = true;
+    });
+};
+const returnOrder = (orderId) => {
+  var status = 'Đã trả hàng';
+  updateOrderStatus(orderId, status);
 };
 
 const cancelOrder = (orderId) => {
-  if (confirm(`Bạn có chắc chắn muốn hủy đơn hàng ${orderId}?`)) {
-    orders.value = orders.value.filter(order => order.id !== orderId);
-    alert(`Đơn hàng ${orderId} đã được hủy.`);
-  }
+  productService.cancelOrder(orderId)
+    .then(() => {
+      fetchOrders();
+      closePopup();
+      emitter.emit('show-notification', {
+        status: 'success',
+        message: 'Đã hủy đơn hàng'
+      });
+    })
+    .catch((err) => {
+        emitter.emit('show-notification', {
+          status: 'error',
+          message: 'Đã xảy ra lỗi khi hủy đơn hàng. Vui lòng thử lại sau.'
+        });
+      error.value = true;
+    });
 };
 
-const contactSupport = (orderId) => {
-  alert(`Bạn đã gửi yêu cầu hỗ trợ cho đơn hàng ${orderId}. Chúng tôi sẽ liên hệ lại sớm nhất!`);
-};
 
 onMounted(() => {
   fetchOrders();
@@ -195,7 +260,6 @@ onMounted(() => {
 <style scoped>
 .order-management {
   padding: 2rem;
-  background-color: #fff9fb;
   min-height: calc(100vh - 100px);
 }
 
@@ -270,24 +334,23 @@ onMounted(() => {
 }
 
 .status-pending {
-  background-color: #f59e0b;
+  background-color: #f3a3db;
 }
 
 .status-processing {
-  background-color: #3b82f6;
+  background-color: #ea5cbf;
+
 }
 
 .status-shipping {
-  background-color: #6366f1;
+  background-color: #e408a2;  
 }
 
 .status-delivered {
-  background-color: #22c55e;
+  background-color: #c1118c;
 }
 
-.status-cancelled {
-  background-color: #ef4444;
-}
+
 
 .order-body {
   display: flex;
@@ -334,7 +397,7 @@ onMounted(() => {
 .product-name {
   font-weight: 600;
   font-size: 1rem;
-  color: #ec4899;
+  /* color: #ec4899; */
   text-shadow: 1px 1px 3px #ffe4ef;
   user-select: none;
 }
@@ -352,11 +415,13 @@ onMounted(() => {
   user-select: none;
 }
 
+
 .order-details {
   flex: 1 1 40%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content:end;
+  align-items: end;
   gap: 0.4rem;
   font-weight: 600;
   font-size: 1.1rem;
@@ -384,21 +449,36 @@ onMounted(() => {
 }
 
 .btn-primary {
-  background-color: #d63384;
+  background-color: var(--primary-color);
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #c0266e;
+  background-color: var(--secondary-color);
 }
 
 .btn-secondary {
-  background-color: #6b7280;
+  background-color: #8e96a7;
   color: white;
 }
 
+.btn-confirm{
+  background-color: #10b981;
+  color: white;
+}
+.btn-confirm:hover {
+  background-color: #059669;
+}
+.btn-return {
+  background-color: #f59e0b;
+  color: white;
+}
+.btn-return:hover {
+  background-color: #d97706;
+}
+
 .btn-secondary:hover {
-  background-color: #4b5563;
+  background-color: #616d7d;
 }
 
 .btn-info {
@@ -438,7 +518,8 @@ onMounted(() => {
 
 .popup-content h3 {
   margin-bottom: 1rem;
-  color: #d63384;
+  color: var(--primary-color);
+  text-align: center;
   user-select: none;
 }
 
@@ -474,13 +555,16 @@ onMounted(() => {
 
 .popup-product-name {
   font-weight: 600;
-  color: #ec4899;
   margin-bottom: 0.2rem;
   user-select: none;
 }
+.container-btn{
+  text-align: end;
+}
 
 .btn-close {
-  background-color: #ef4444;
+  text-align: end;
+  background-color: var(--primary-color);
   color: white;
   padding: 0.6rem 1.6rem;
   border-radius: 30px;
@@ -492,6 +576,45 @@ onMounted(() => {
 }
 
 .btn-close:hover {
-  background-color: #b91c1c;
+  background-color: #eb2ddb;
 }
+.fa-circle-exclamation{
+  font-size: 3rem;
+  color: #f59e0b;
+  margin-bottom: 1rem;
+}
+.confirm-cancel{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.confirm-return{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.popup-content {
+  animation: popupFadeIn 0.3s ease-out;
+}
+
+@keyframes popupFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.order-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
 </style>

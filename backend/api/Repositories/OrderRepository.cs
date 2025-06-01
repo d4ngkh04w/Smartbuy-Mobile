@@ -1,4 +1,4 @@
-using api.Database;
+﻿using api.Database;
 using api.Interfaces.Repositories;
 using api.Models;
 using Microsoft.EntityFrameworkCore;
@@ -63,6 +63,20 @@ namespace api.Repositories
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Color)
+                        .ThenInclude(c => c!.Images)
+                .Where(o => o.UserId == userId)
+                .OrderByDescending(o => o.OrderDate)
+                .ToListAsync();
+        }
+        public async Task<IEnumerable<Order>> GetCurrentOrdersByUserIdAsync(Guid userId)
+        {
+            return await _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Where (o => o.Status == "Chờ xác nhận" || o.Status == "Đã xác nhận" || o.Status == "Đang giao hàng" || o.Status == "Đã giao hàng")
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Color)
                         .ThenInclude(c => c!.Images)

@@ -38,6 +38,18 @@ namespace api.Controllers
             return ApiResponseHelper.Success("User orders retrieved successfully", orders);
         }
 
+        [HttpGet("me-current")]
+        [Authorize(AuthenticationSchemes = "user", Roles = "user")]
+        public async Task<IActionResult> GetCurrentUserOrders()
+        {
+            var userId = HttpContextHelper.CurrentUserId;
+            if (userId == Guid.Empty)
+                throw new UnauthorizedException();
+
+            var orders = await _orderService.GetCurrentOrdersByUserIdAsync(userId);
+            return ApiResponseHelper.Success("User orders retrieved successfully", orders);
+        }
+
         [HttpGet("{id:guid}")]
         [Authorize(AuthenticationSchemes = "smart", Roles = "admin,user")]
         public async Task<IActionResult> GetOrderById([FromRoute] Guid id)
@@ -69,10 +81,19 @@ namespace api.Controllers
         }
 
         [HttpPut("{id:guid}/status")]
-        [Authorize(AuthenticationSchemes = "admin", Roles = "admin")]
+        [Authorize(AuthenticationSchemes = "smart", Roles = "admin,user")]
         public async Task<IActionResult> UpdateOrderStatus([FromRoute] Guid id, [FromBody] UpdateOrderStatusDTO updateOrderStatusDTO)
         {
-            var order = await _orderService.UpdateOrderStatusAsync(id, updateOrderStatusDTO);
+            bool isAdmin = HttpContextHelper.CurrentUserRole == "admin";
+            Guid userId = HttpContextHelper.CurrentUserId;
+
+            var order = await _orderService.GetOrderByIdAsync(id);
+
+            if (!isAdmin && order.UserId != userId && !(updateOrderStatusDTO.Status == "Hoàn thành" || updateOrderStatusDTO.Status == "Đã trả hàng") )
+            {
+                throw new ForbiddenException();
+            }
+            order = await _orderService.UpdateOrderStatusAsync(id, updateOrderStatusDTO);
             return ApiResponseHelper.Success("Order status updated successfully", order);
         }
 

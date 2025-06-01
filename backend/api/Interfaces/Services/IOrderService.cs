@@ -6,6 +6,7 @@ namespace api.Interfaces.Services
     {
         Task<IEnumerable<OrderDTO>> GetAllOrdersAsync();
         Task<IEnumerable<OrderDTO>> GetOrdersByUserIdAsync(Guid userId);
+        Task<IEnumerable<OrderDTO>> GetCurrentOrdersByUserIdAsync(Guid userId);
         Task<OrderDTO> GetOrderByIdAsync(Guid id);
         Task<OrderDTO> CreateOrderAsync(CreateOrderDTO orderDTO, Guid userId);
         Task<OrderDTO> UpdateOrderStatusAsync(Guid id, UpdateOrderStatusDTO updateOrderStatusDTO);
