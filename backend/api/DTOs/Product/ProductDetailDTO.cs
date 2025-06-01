@@ -2,7 +2,6 @@ namespace api.DTOs.Product
 {
     public class ProductDetailDTO
     {
-        public int? Id { get; set; }
         public string? Warranty { get; set; }
         public string? RAM { get; set; }
         public string? Storage { get; set; }

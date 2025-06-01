@@ -84,5 +84,28 @@ namespace api.Utils
             }
         }
 
+        public static async Task DeleteImageAsync(string filePath)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    return;
+                }
+                if (File.Exists(filePath))
+                {
+                    await Task.Run(() => File.Delete(filePath));
+                    Console.WriteLine("[INF] File deleted successfully");
+                    return;
+                }
+                Console.WriteLine("[ERR] File not found");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERR] Error deleting file: {ex.Message}");
+                return;
+            }
+        }
+
     }
 }

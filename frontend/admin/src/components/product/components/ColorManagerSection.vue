@@ -80,13 +80,12 @@ onMounted(() => {
 
 const emit = defineEmits(["color-updated"]);
 
-// Refs for file inputs
-const colorImageInput = ref(null);
-const existingColorImageInputs = ref([]);
-
 // Loading states
 const addingColor = ref(false);
 const updatingColors = ref({});
+
+// Delete confirmation state
+const colorPendingDelete = ref(null);
 const deletingColor = ref(null);
 
 // Form state for new color
@@ -113,12 +112,9 @@ const editingColor = ref({
     existingImages: [],
 });
 
-// Delete confirmation modal state
-const showDeleteConfirm = ref(false);
-const colorToDelete = ref({
-    id: null,
-    name: "",
-});
+// Refs for file inputs
+const colorImageInput = ref(null);
+const existingColorImageInputs = ref([]);
 
 // Computed properties for canAddColor
 const canAddColor = () => {
@@ -404,30 +400,24 @@ const saveColorChanges = async (colorId) => {
     }
 };
 
-const confirmDeleteColor = (colorId, colorName) => {
-    colorToDelete.value = {
-        id: colorId,
-        name: colorName,
-    };
-    showDeleteConfirm.value = true;
+const toggleDeleteConfirm = (colorId) => {
+    if (colorPendingDelete.value === colorId) {
+        colorPendingDelete.value = null;
+    } else {
+        colorPendingDelete.value = colorId;
+    }
 };
 
-const deleteColor = async () => {
-    if (!colorToDelete.value.id) return;
+const deleteColor = async (colorId) => {
+    if (!colorId) return;
 
-    deletingColor.value = colorToDelete.value.id;
+    deletingColor.value = colorId;
 
     try {
-        await productService.deleteProductColor(
-            props.productId,
-            colorToDelete.value.id
-        );
+        await productService.deleteProductColor(props.productId, colorId);
 
         // Emit event to refresh product data
         emit("color-updated");
-
-        // Close confirm dialog
-        showDeleteConfirm.value = false;
 
         // Show notification
         showSuccessNotification("Đã xóa màu sản phẩm thành công");
@@ -435,13 +425,8 @@ const deleteColor = async () => {
         showErrorNotification("Có lỗi xảy ra khi xóa màu sản phẩm.");
     } finally {
         deletingColor.value = null;
-        colorToDelete.value = { id: null, name: "" };
+        colorPendingDelete.value = null;
     }
-};
-
-const cancelDeleteColor = () => {
-    showDeleteConfirm.value = false;
-    colorToDelete.value = { id: null, name: "" };
 };
 
 const setMainImage = (imageId) => {
@@ -620,7 +605,10 @@ const removeNewImage = (index) => {
                         <h6>{{ color.name }}</h6>
                         <div class="color-actions">
                             <button
-                                v-if="editingColorId !== color.id"
+                                v-if="
+                                    editingColorId !== color.id &&
+                                    colorPendingDelete !== color.id
+                                "
                                 type="button"
                                 class="edit-btn"
                                 @click="startEditColor(color)"
@@ -629,16 +617,47 @@ const removeNewImage = (index) => {
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button
-                                v-if="editingColorId !== color.id"
+                                v-if="
+                                    editingColorId !== color.id &&
+                                    colorPendingDelete !== color.id
+                                "
                                 type="button"
                                 class="delete-btn"
-                                @click="
-                                    confirmDeleteColor(color.id, color.name)
-                                "
+                                @click="toggleDeleteConfirm(color.id)"
                                 title="Xóa"
                             >
                                 <i class="fas fa-trash"></i>
                             </button>
+
+                            <!-- Delete confirmation inline -->
+                            <div
+                                v-if="colorPendingDelete === color.id"
+                                class="delete-confirm-actions"
+                            >
+                                <span class="delete-confirm-text"
+                                    >Xác nhận xóa?</span
+                                >
+                                <button
+                                    type="button"
+                                    class="delete-cancel-btn"
+                                    @click="toggleDeleteConfirm(null)"
+                                    :disabled="deletingColor === color.id"
+                                >
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="delete-confirm-btn"
+                                    @click="deleteColor(color.id)"
+                                    :disabled="deletingColor === color.id"
+                                >
+                                    <span
+                                        v-if="deletingColor === color.id"
+                                        class="spinner small"
+                                    ></span>
+                                    <i v-else class="fas fa-check"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -880,47 +899,12 @@ const removeNewImage = (index) => {
                 </div>
             </div>
         </div>
-
-        <!-- Delete confirmation modal -->
-        <div v-if="showDeleteConfirm" class="confirm-modal">
-            <div class="confirm-dialog">
-                <h5>Xác nhận xóa</h5>
-                <p>
-                    Bạn có chắc chắn muốn xóa màu "<strong>{{
-                        colorToDelete.name
-                    }}</strong
-                    >"? Thao tác này không thể hoàn tác.
-                </p>
-                <div class="confirm-actions">
-                    <button
-                        type="button"
-                        class="cancel-btn"
-                        @click="cancelDeleteColor"
-                        :disabled="deletingColor === colorToDelete.id"
-                    >
-                        Hủy
-                    </button>
-                    <button
-                        type="button"
-                        class="confirm-btn"
-                        @click="deleteColor"
-                        :disabled="deletingColor === colorToDelete.id"
-                    >
-                        <span
-                            v-if="deletingColor === colorToDelete.id"
-                            class="spinner small"
-                        ></span>
-                        <span v-else>Xóa</span>
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
 </template>
 
 <style scoped>
 .color-form {
-    background-color: #f8f9fa;
+    background-color: #ffffff;
     border-radius: 8px;
     padding: 1.25rem;
     margin-bottom: 1.5rem;
@@ -1068,7 +1052,7 @@ const removeNewImage = (index) => {
 }
 
 .cancel-edit-btn {
-    background-color: #f9f9f9;
+    background-color: #ffffff;
     border: 1px solid #ddd;
     color: #666;
     border-radius: 8px;
@@ -1110,7 +1094,7 @@ const removeNewImage = (index) => {
 }
 
 .color-item-header {
-    background-color: #f8f9fa;
+    background-color: #ffffff;
     padding: 0.75rem 1rem;
     display: flex;
     justify-content: space-between;
@@ -1155,6 +1139,66 @@ const removeNewImage = (index) => {
 
 .edit-btn:hover {
     background-color: rgba(248, 110, 211, 0.1);
+}
+
+/* Delete confirmation inline styles */
+.delete-confirm-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    animation: slideInRight 0.2s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.delete-confirm-text {
+    font-size: 0.85rem;
+    color: #ef4444;
+    margin-right: 0.25rem;
+    font-weight: 500;
+}
+
+.delete-cancel-btn,
+.delete-confirm-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.delete-cancel-btn {
+    background-color: #f3f4f6;
+    color: #4b5563;
+}
+
+.delete-cancel-btn:hover {
+    background-color: #d1d5db;
+    transform: scale(1.05);
+}
+
+.delete-confirm-btn {
+    background-color: #ef4444;
+    color: white;
+}
+
+.delete-confirm-btn:hover {
+    background-color: #dc2626;
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
 }
 
 .color-item-body {
@@ -1204,7 +1248,7 @@ const removeNewImage = (index) => {
 
 .color-edit-form {
     padding: 1rem;
-    background-color: #f8f9fa;
+    background-color: #ffffff;
     border-top: 1px solid #e5e7eb;
 }
 
@@ -1220,64 +1264,38 @@ const removeNewImage = (index) => {
     justify-content: center;
     z-index: 1100;
     backdrop-filter: blur(3px);
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 .confirm-dialog {
     background-color: white;
     border-radius: 12px;
-    padding: 1.5rem;
     width: 400px;
     max-width: 95%;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+    transform: translateY(0);
+    animation: slideIn 0.3s ease;
+    overflow: hidden;
 }
 
-.confirm-dialog h5 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-    color: #333;
-    font-weight: 600;
-}
-
-.confirm-dialog p {
-    margin-bottom: 1.5rem;
-    color: #555;
-}
-
-.confirm-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-}
-
-.cancel-btn {
-    background-color: #f9f9f9;
-    border: 1px solid #ddd;
-    color: #666;
-    border-radius: 8px;
-    padding: 0.75rem 1.25rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.cancel-btn:hover {
-    background-color: #eee;
-}
-
-.confirm-btn {
-    background-color: #ef4444;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 0.75rem 1.25rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s;
-}
-
-.confirm-btn:hover {
-    background-color: #dc2626;
+@keyframes slideIn {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 .existing-images {

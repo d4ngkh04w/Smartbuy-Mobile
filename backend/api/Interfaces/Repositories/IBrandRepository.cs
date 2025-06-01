@@ -9,7 +9,6 @@ namespace api.Interfaces.Repositories
         Task<IEnumerable<Brand>> GetBrandsAsync(BrandQuery query);
         Task<Brand> CreateBrandAsync(Brand brand);
         Task<Brand> UpdateBrandAsync(Brand brand);
-        Task DeleteBrandAsync(Brand brand);
         Task<bool> BrandExistsAsync(string name);
     }
 }

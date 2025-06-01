@@ -71,7 +71,6 @@ class ProductService {
 			});
 	}
 
-
     async getBrands() {
         return await axiosInstance.get("/brand")
             .then(response => {
@@ -85,9 +84,9 @@ class ProductService {
             });
     }   
     getUrlImage(url) {
-        let newUrlImage = url.startsWith('http') ? url : "http://localhost:5000" + `/${url}`;
-        return newUrlImage;
-    }   
+		const baseUrl =	import.meta.env.VITE_API_URL.replace("/api/v1", "") || "";
+		return url?.startsWith("http") ? url : `${baseUrl}${url}`;
+	} 
     async getCarts() {    
         return await axiosInstance.get("/cart")
             .then(response => {

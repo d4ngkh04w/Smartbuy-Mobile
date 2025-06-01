@@ -1,6 +1,5 @@
 <template>
-	<div class="comments-section">
-		<h3 class="section-title">Đánh giá sản phẩm</h3>
+	<div class="comments-section">		
 		<!-- Rating Summary -->
 		<div
 			class="reviews-summary"
@@ -1122,16 +1121,11 @@ onMounted(() => {
 
 <style scoped>
 .comments-section {
-	margin: 50px 0;
+	margin: 0px 0;
 	position: relative;
 }
 
-.section-title {
-	font-size: 24px;
-	margin-bottom: 20px;
-	padding-bottom: 10px;
-	border-bottom: 1px solid #eaeaea;
-}
+
 
 /* Rating Summary Styles */
 .reviews-summary {

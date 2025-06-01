@@ -26,12 +26,6 @@ namespace api.Repositories
                 .FirstOrDefaultAsync(pl => pl.Id == productLine.Id))!;
         }
 
-        public async Task DeleteProductLineAsync(ProductLine productLine)
-        {
-            _db.ProductLines.Remove(productLine);
-            await _db.SaveChangesAsync();
-        }
-
         public async Task<bool> ProductLineExistAsync(string name)
         {
             return await _db.ProductLines.AnyAsync(pl => pl.Name.ToLower() == name.ToLower());

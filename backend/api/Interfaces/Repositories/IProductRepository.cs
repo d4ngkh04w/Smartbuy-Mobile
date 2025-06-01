@@ -16,7 +16,7 @@ namespace api.Interfaces.Repositories
         Task<ProductColor?> GetProductColorAsync(int productId, int colorId);
         Task<ProductColor> AddColorAsync(ProductColor color);
         Task<ProductColor> UpdateColorAsync(ProductColor color);
-        Task<ProductImage> AddImageAsync(ProductImage image);
+        Task<IEnumerable<ProductImage>> AddImagesAsync(IEnumerable<ProductImage> images);
         Task DeleteColorAsync(ProductColor color);
     }
 }

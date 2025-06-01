@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using api.DTOs.Product;
 using api.Interfaces.Repositories;
 using api.Models;
@@ -33,7 +32,6 @@ namespace api.Mappers
         {
             return new ProductDetailDTO
             {
-                Id = productDetail.Id,
                 Warranty = productDetail.WarrantyMonths.ToString(),
                 RAM = productDetail.RAMInGB.ToString(),
                 Storage = productDetail.StorageInGB.ToString(),
@@ -72,6 +70,11 @@ namespace api.Mappers
                     .Select(d => d.Discount!.CalculateDiscountedPrice(product.SalePrice))
                     .DefaultIfEmpty(product.SalePrice)
                     .Min(),
+                Discount = product.Discounts
+                    .OrderBy(d => d.Discount!.CalculateDiscountedPrice(product.SalePrice)) // sắp theo giá sau giảm (giảm càng nhiều thì giá càng thấp)
+                    .Select(d => d.Discount!.ToString())
+                    .FirstOrDefault() ?? string.Empty,
+
                 // Add tags when implementing tag functionality
                 // Tags = product.ProductTags.Select(pt => pt.Tag).ToHashSet()
             };
@@ -99,6 +102,14 @@ namespace api.Mappers
                 Discounts = product.Discounts.Select(d => d.Discount!.ToDTO()).ToHashSet(),
                 Colors = product.Colors.Select(c => c.ToProductColorDTO()).ToHashSet(),
                 Detail = product.Detail?.ToProductDetailDTO(),
+                Price = product.Discounts
+                    .Select(d => d.Discount!.CalculateDiscountedPrice(product.SalePrice))
+                    .DefaultIfEmpty(product.SalePrice)
+                    .Min(),
+                Discount = product.Discounts
+                    .OrderBy(d => d.Discount!.CalculateDiscountedPrice(product.SalePrice)) // sắp theo giá sau giảm (giảm càng nhiều thì giá càng thấp)
+                    .Select(d => d.Discount!.ToString())
+                    .FirstOrDefault() ?? string.Empty,
                 // Add tags when implementing tag functionality
                 // Tags = product.ProductTags.Select(pt => pt.Tag).ToHashSet()
             };
