@@ -10,10 +10,6 @@ namespace api.Interfaces.Repositories
         Task<Order?> GetOrderByIdAsync(Guid id);
         Task<Order> CreateOrderAsync(Order order);
         Task<Order> UpdateOrderAsync(Order order);
-<<<<<<< HEAD
-        Task<bool> DeleteOrderAsync(Guid id);
 
-=======
->>>>>>> b8f062a0cf29a17c478140a7df914fb668c43dd5
     }
 }
