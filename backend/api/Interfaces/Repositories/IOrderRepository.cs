@@ -6,9 +6,11 @@ namespace api.Interfaces.Repositories
     {
         Task<IEnumerable<Order>> GetAllOrdersAsync();
         Task<IEnumerable<Order>> GetOrdersByUserIdAsync(Guid userId);
+        Task<IEnumerable<Order>> GetCurrentOrdersByUserIdAsync(Guid userId);
         Task<Order?> GetOrderByIdAsync(Guid id);
         Task<Order> CreateOrderAsync(Order order);
         Task<Order> UpdateOrderAsync(Order order);
         Task<bool> DeleteOrderAsync(Guid id);
+
     }
 }

@@ -164,7 +164,7 @@ const paymentText = computed(() => {
 
 function nextStep() {
   if (form.name && form.phone && form.address) step.value = 2;
-  window.scrollTo(0, 0);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function submitOrder() {
@@ -182,6 +182,8 @@ function submitOrder() {
       .then(response => {
         console.log('Đặt hàng thành công:', response);
         step.value = 3;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
         emitter.emit('cart-updated');
 
         // Kiểm tra tồn kho sau khi đặt hàng
@@ -211,21 +213,15 @@ function handleStepClick(targetStep) {
   if (targetStep < step.value) {
     step.value = targetStep;
   }
-  window.scrollTo(0, 0);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function backToHome() {
-  // Điều hướng về trang chủ
   router.push('/');
-}
-// Thêm vào phần script setup
-function generateOrderNumber() {
-  return 'ORD-' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
 }
 
 function viewOrder() {
-  // Logic xem chi tiết đơn hàng
-  console.log('Xem chi tiết đơn hàng');
+  router.push({name: 'orders-management'});
 }
 
 onMounted(async() => {

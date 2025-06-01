@@ -144,5 +144,53 @@ class ProductService {
         }
         return;
     }
+    async getAllOrders() {        
+        return await axiosInstance.get("/order/me")
+            .then(response => {
+                if (response) {
+                    return response.data.data;
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching all products:", error);
+                throw error;
+            });
+    }
+    async getAllCurrentOrders() {        
+        return await axiosInstance.get("/order/me-current")
+            .then(response => {
+                if (response) {
+                    return response.data.data;
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching all products:", error);
+                throw error;
+            });
+    }
+    async cancelOrder(orderId) {
+        return await axiosInstance.put(`/order/${orderId}/cancel`)
+            .then(response => {
+                if (response) {
+                    return response.data.data;
+                }
+            })
+            .catch(error => {
+                console.error("Error cancelling order:", error);
+                throw error;
+            });
+    }
+    async updateStatusOrder(orderId, status) {
+        return await axiosInstance.put(`/order/${orderId}/status`, { status })
+            .then(response => {
+                if (response) {
+                    return response.data.data;
+                }
+            })
+            .catch(error => {
+                console.error("Error updating order status:", error);
+                throw error;
+            });
+    }
 }
 export default new ProductService();
