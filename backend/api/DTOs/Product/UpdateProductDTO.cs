@@ -5,7 +5,7 @@ namespace api.DTOs.Product
     public class UpdateProductDTO
     {
         [StringLength(100, ErrorMessage = "Name must be less than 100 characters")]
-        [RegularExpression(@"^[\p{L}\p{N}\s\-\/]+$", ErrorMessage = "Name can only contain letters, numbers, spaces, hyphens, and slashes")]
+       [RegularExpression(@"^[\p{L}\p{N}\s\-\/\(\)]+$", ErrorMessage = "Name can only contain letters, numbers, spaces, hyphens, slashes, and parentheses")]
         public string? Name { get; set; }
 
         [Range(1, int.MaxValue, ErrorMessage = "Quantity must be greater than 0")]

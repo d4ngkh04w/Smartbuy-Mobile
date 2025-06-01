@@ -1,5 +1,4 @@
 using api.DTOs.Auth;
-using api.Exceptions;
 using api.Helpers;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -25,8 +24,6 @@ namespace api.Controllers
             var token = await _authService.Login(login, "admin");
             CookieHelper.AdminAccessToken = token.AccessToken;
             CookieHelper.AdminRefreshToken = token.RefreshToken;
-            Console.WriteLine(CookieHelper.AdminAccessToken);
-            Console.WriteLine(CookieHelper.AdminRefreshToken);
             return ApiResponseHelper.Success<object>("Login successful", null);
         }
 

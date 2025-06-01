@@ -57,6 +57,7 @@
                     id="ward"
                     v-model="addressData.ward"
                     class="form-input"
+                    @change="emitAddressUpdate"
                     :disabled="!addressData.district || loadingWards"
                 >
                     <option :value="null">-- Chọn Phường/Xã --</option>
@@ -81,12 +82,15 @@
                     v-model="addressData.detail"
                     placeholder="Nhập số nhà, đường, tòa nhà..."
                     class="form-input"
+                    @input="emitAddressUpdate"
                 />
             </div>
         </div>
 
         <div class="form-group" v-if="formattedAddress">
-            <label class="address-preview-label">Xem trước địa chỉ đầy đủ:</label>
+            <label class="address-preview-label"
+                >Xem trước địa chỉ đầy đủ:</label
+            >
             <div class="address-preview">
                 {{ formattedAddress }}
             </div>
@@ -107,10 +111,10 @@ const props = defineProps({
     modelValue: {
         type: String,
         default: "",
-    }
+    },
 });
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits(["update:address"]);
 
 // Danh sách địa chỉ
 const provinces = ref([]);
@@ -138,17 +142,17 @@ const formattedAddress = computed(() => {
         return "";
     }
 });
-watch(() => props.modelValue, (newVal) => {
-    if (!props.initialAddress && newVal) {
-        parseAddress(newVal);
-    }
-});
-
 // Hàm fuzzy matching để xử lý địa chỉ không khớp chính xác
 const fuzzyMatch = (str1, str2) => {
-    const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    return normalize(str1).includes(normalize(str2)) || 
-           normalize(str2).includes(normalize(str1));
+    const normalize = (str) =>
+        str
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+    return (
+        normalize(str1).includes(normalize(str2)) ||
+        normalize(str2).includes(normalize(str1))
+    );
 };
 
 // Parse địa chỉ từ chuỗi ban đầu
@@ -163,12 +167,14 @@ const parseAddress = async (addressString) => {
 
         // Chuẩn hóa địa chỉ
         const normalizedAddress = addressString.trim();
-        const parts = normalizedAddress.split(',').map(part => part.trim());
+        const parts = normalizedAddress.split(",").map((part) => part.trim());
 
         // Tìm tỉnh/thành phố (phần cuối)
         if (parts.length > 0) {
             const provincePart = parts[parts.length - 1];
-            const province = provinces.value.find(p => fuzzyMatch(p.name, provincePart));
+            const province = provinces.value.find((p) =>
+                fuzzyMatch(p.name, provincePart)
+            );
 
             if (province) {
                 addressData.value.province = province;
@@ -177,7 +183,9 @@ const parseAddress = async (addressString) => {
                 // Tìm quận/huyện (phần gần cuối)
                 if (parts.length >= 2) {
                     const districtPart = parts[parts.length - 2];
-                    const district = districts.value.find(d => fuzzyMatch(d.name, districtPart));
+                    const district = districts.value.find((d) =>
+                        fuzzyMatch(d.name, districtPart)
+                    );
 
                     if (district) {
                         addressData.value.district = district;
@@ -186,14 +194,18 @@ const parseAddress = async (addressString) => {
                         // Tìm phường/xã (phần thứ 3 từ cuối)
                         if (parts.length >= 3) {
                             const wardPart = parts[parts.length - 3];
-                            const ward = wards.value.find(w => fuzzyMatch(w.name, wardPart));
+                            const ward = wards.value.find((w) =>
+                                fuzzyMatch(w.name, wardPart)
+                            );
 
                             if (ward) {
                                 addressData.value.ward = ward;
-                                
+
                                 // Phần còn lại là địa chỉ chi tiết
                                 if (parts.length > 3) {
-                                    addressData.value.detail = parts.slice(0, parts.length - 3).join(', ');
+                                    addressData.value.detail = parts
+                                        .slice(0, parts.length - 3)
+                                        .join(", ");
                                 }
                             }
                         }
@@ -204,7 +216,8 @@ const parseAddress = async (addressString) => {
                 addressData.value.detail = addressString;
                 emitter.emit("show-notification", {
                     status: "info",
-                    message: "Không thể tự động điền địa chỉ. Vui lòng kiểm tra lại.",
+                    message:
+                        "Không thể tự động điền địa chỉ. Vui lòng kiểm tra lại.",
                 });
             }
         }
@@ -245,6 +258,9 @@ const handleProvinceChange = async () => {
     if (addressData.value.province) {
         await fetchDistricts();
     }
+
+    // Emit địa chỉ mới khi user thay đổi
+    emitAddressUpdate();
 };
 
 /**
@@ -257,6 +273,15 @@ const handleDistrictChange = async () => {
     if (addressData.value.district) {
         await fetchWards();
     }
+
+    // Emit địa chỉ mới khi user thay đổi
+    emitAddressUpdate();
+};
+
+// Hàm emit địa chỉ
+const emitAddressUpdate = () => {
+    const fullAddress = addressService.formatFullAddress(addressData.value);
+    emit("update:address", fullAddress);
 };
 
 /**
@@ -310,28 +335,6 @@ const fetchWards = async () => {
         loadingWards.value = false;
     }
 };
-
-// Theo dõi sự thay đổi của địa chỉ để emit ra ngoài
-watch(
-    addressData,
-    (newValue) => {
-        const fullAddress = addressService.formatFullAddress(newValue);
-        emit("update:modelValue", fullAddress);
-    },
-    { deep: true }
-);
-
-// Theo dõi initialAddress để tự động parse khi có giá trị
-watch(
-    () => props.initialAddress,
-    async (newAddress, oldAddress) => {
-        if (newAddress && newAddress !== oldAddress) {
-            await parseAddress(newAddress);
-        }
-    },
-    { immediate: true }
-);
-
 
 // Khởi tạo địa chỉ khi component được tạo
 onMounted(async () => {
@@ -465,7 +468,9 @@ defineExpose({ resetAddress });
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .address-preview-label {
@@ -476,7 +481,6 @@ defineExpose({ resetAddress });
     display: flex;
     align-items: center;
 }
-
 
 .address-preview {
     padding: 1.2rem 1.5rem;
@@ -500,17 +504,17 @@ defineExpose({ resetAddress });
     .address-section {
         padding: 1.5rem;
     }
-    
+
     .address-grid {
         grid-template-columns: 1fr;
         gap: 1.2rem;
     }
-    
+
     .address-section-title {
         font-size: 1.2rem;
         margin-bottom: 1.5rem;
     }
-    
+
     .form-input {
         padding: 0.75rem 1rem;
     }

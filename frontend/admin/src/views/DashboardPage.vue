@@ -129,7 +129,7 @@ const handleLogout = async () => {
 					</div>
 				</div>
 
-				<!-- Quản lý Thanh toán/Doanh thu -->
+				<!-- Quản lý Thanh toán/Doanh thu
 				<div class="dashboard-card" @click="router.push('/payments')">
 					<div class="card-icon">
 						<i class="fas fa-money-bill-wave"></i>
@@ -138,9 +138,9 @@ const handleLogout = async () => {
 						<h3>Thanh toán & Doanh thu</h3>
 						<p>Quản lý thanh toán và doanh thu</p>
 					</div>
-				</div>
+				</div> -->
 
-				<!-- Quản lý Phản hồi đánh giá -->
+				<!-- Quản lý Phản hồi đánh giá
 				<div class="dashboard-card" @click="router.push('/reviews')">
 					<div class="card-icon">
 						<i class="fas fa-star"></i>
@@ -149,9 +149,9 @@ const handleLogout = async () => {
 						<h3>Phản hồi & Đánh giá</h3>
 						<p>Quản lý phản hồi và đánh giá</p>
 					</div>
-				</div>
+				</div> -->
 
-				<!-- Quản lý Nội dung website -->
+				<!-- Quản lý Nội dung website
 				<div class="dashboard-card" @click="router.push('/contents')">
 					<div class="card-icon">
 						<i class="fas fa-file-alt"></i>
@@ -160,7 +160,7 @@ const handleLogout = async () => {
 						<h3>Nội dung website</h3>
 						<p>Quản lý nội dung trang web</p>
 					</div>
-				</div>
+				</div> -->
 
 				<!-- Báo cáo thống kê -->
 				<div class="dashboard-card" @click="router.push('/reports')">
@@ -183,7 +183,7 @@ const handleLogout = async () => {
 					</div>
 				</div>
 
-				<!-- Cài đặt hệ thống -->
+				<!-- Cài đặt hệ thống
 				<div class="dashboard-card" @click="router.push('/settings')">
 					<div class="card-icon">
 						<i class="fas fa-cog"></i>
@@ -192,7 +192,7 @@ const handleLogout = async () => {
 						<h3>Cài đặt hệ thống</h3>
 						<p>Cấu hình và cài đặt hệ thống</p>
 					</div>
-				</div>
+				</div> -->
 			</div>
 		</div>
 	</div>

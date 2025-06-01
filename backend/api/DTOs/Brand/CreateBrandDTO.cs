@@ -10,7 +10,7 @@ namespace api.DTOs.Brand
         public string Name { get; set; } = string.Empty;
 
         [DataType(DataType.Upload)]
-        [AllowFileExtension(extensions: [".jpg", ".jpeg", ".png"])]
+        [AllowFileExtension([".jpg", ".jpeg", ".png", ".svg", ".webp"])]
         public IFormFile? Logo { get; set; } = null;
 
         [StringLength(2000, ErrorMessage = "Description cannot exceed 2000 characters")]

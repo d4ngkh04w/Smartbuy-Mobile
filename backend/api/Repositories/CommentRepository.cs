@@ -93,7 +93,6 @@ namespace api.Repositories
             _db.Comments.Update(comment);
             return await _db.SaveChangesAsync() > 0;
         }
-
         public async Task<double> GetProductAverageRatingAsync(int productId)
         {
             var ratings = await _db.Comments
@@ -112,6 +111,37 @@ namespace api.Repositories
             return await _db.Comments
                 .Where(c => c.ProductId == productId && c.Rating.HasValue)
                 .CountAsync();
+        }
+
+        public async Task<Dictionary<int, int>> GetProductRatingDistributionAsync(int productId)
+        {
+            // Initialize dictionary with all possible ratings (1-5) set to 0
+            var distribution = new Dictionary<int, int>
+            {
+                { 1, 0 },
+                { 2, 0 },
+                { 3, 0 },
+                { 4, 0 },
+                { 5, 0 }
+            };
+
+            // Get rating counts grouped by rating value
+            var ratingGroups = await _db.Comments
+                .Where(c => c.ProductId == productId && c.Rating.HasValue)
+                .GroupBy(c => c.Rating!.Value)
+                .Select(g => new { Rating = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            // Update the distribution dictionary with actual counts
+            foreach (var group in ratingGroups)
+            {
+                if (group.Rating >= 1 && group.Rating <= 5)
+                {
+                    distribution[group.Rating] = group.Count;
+                }
+            }
+
+            return distribution;
         }
     }
 }

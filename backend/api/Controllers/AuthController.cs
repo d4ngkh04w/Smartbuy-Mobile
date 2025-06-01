@@ -1,5 +1,4 @@
 using api.DTOs.Auth;
-using api.Exceptions;
 using api.Helpers;
 using api.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -20,6 +19,7 @@ namespace api.Controllers
             _authService = authService;
             _tokenService = tokenService;
         }
+
         [HttpPost("refresh-token")]
         [AllowAnonymous]
         public async Task<IActionResult> RefreshToken()

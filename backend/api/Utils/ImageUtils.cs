@@ -14,7 +14,8 @@ namespace api.Utils
             string[] validImageTypes = {
                 "image/jpeg", "image/jpg", "image/pjpeg",
                 "image/png",
-                "image/svg+xml"
+                "image/svg+xml",
+                "image/webp",
             };
 
             if (!validImageTypes.Contains(file.ContentType))

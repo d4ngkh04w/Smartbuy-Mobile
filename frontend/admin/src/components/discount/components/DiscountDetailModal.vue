@@ -115,8 +115,7 @@
 								<div class="product-info">
 									<img
 										:src="
-											product.imageUrl ||
-											'https://via.placeholder.com/40'
+											getProductMainImage(product)
 										"
 										:alt="product.name"
 										class="product-image"
@@ -170,8 +169,9 @@
 </template>
 
 <script setup>
-import {  defineEmits } from "vue";
+import { defineEmits } from "vue";
 import discountService from "../../../services/discountService";
+import productService from "../../../services/productService";
 import emitter from "../../../utils/evenBus.js";
 
 const props = defineProps({
@@ -242,6 +242,13 @@ const removeProduct = async (productId) => {
 			"Có lỗi xảy ra khi xóa sản phẩm khỏi mã giảm giá"
 		);
 	}
+};
+
+const getProductMainImage = (product) => {
+	console .log("Getting main image for product:", product);
+    const url = productService.getProductMainImage(product);
+	console.log("Product main image URL:", url);
+	return url || "https://via.placeholder.com/150"; // Fallback image if no main image is available
 };
 </script>
 

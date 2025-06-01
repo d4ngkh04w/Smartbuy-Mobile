@@ -37,10 +37,10 @@ namespace api.Controllers
 
         [HttpGet("product/{productId:int}/rating")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetProductAverageRating(int productId)
+        public async Task<IActionResult> GetProductRatingStats(int productId)
         {
-            var rating = await _commentService.GetProductAverageRatingAsync(productId);
-            return ApiResponseHelper.Success("Product rating retrieved successfully", rating);
+            var ratingStats = await _commentService.GetProductRatingStatsAsync(productId);
+            return ApiResponseHelper.Success("Product rating statistics retrieved successfully", ratingStats);
         }
 
         [HttpPost]

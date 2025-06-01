@@ -25,6 +25,23 @@
 							<i class="fas fa-times"></i>
 						</button>
 					</div>
+					<div class="select-all-container">
+						<label class="select-all-label">
+							<input
+								type="checkbox"
+								@change="toggleSelectAll"
+								:checked="allDisplayedProductsSelected"
+								class="select-all-checkbox"
+							/>
+							<span class="select-all-text">
+								{{
+									allDisplayedProductsSelected
+										? "Bỏ chọn tất cả"
+										: "Chọn tất cả"
+								}}
+							</span>
+						</label>
+					</div>
 				</div>
 
 				<div class="product-selection">
@@ -52,8 +69,9 @@
 							<div class="product-info">
 								<img
 									:src="
-										product.imageUrl ||
-										'https://via.placeholder.com/40'
+										productService.getProductMainImage(
+											product
+										)
 									"
 									:alt="product.name"
 									class="product-image"
@@ -68,11 +86,13 @@
 								</div>
 							</div>
 							<div class="selection-indicator">
-								<i
-									v-if="isSelected(product.id)"
-									class="fas fa-check-circle"
-								></i>
-								<i v-else class="far fa-circle"></i>
+								<input
+									type="checkbox"
+									:checked="isSelected(product.id)"
+									@click.stop
+									@change="toggleSelection(product.id)"
+									class="product-checkbox"
+								/>
 							</div>
 						</div>
 					</div>
@@ -141,6 +161,16 @@ const filteredProducts = computed(() => {
 	);
 });
 
+// Computed property to check if all displayed products are selected
+const allDisplayedProductsSelected = computed(() => {
+	return (
+		filteredProducts.value.length > 0 &&
+		filteredProducts.value.every((product) =>
+			selectedProductIds.value.includes(product.id)
+		)
+	);
+});
+
 const fetchProducts = async () => {
 	loading.value = true;
 	try {
@@ -175,6 +205,25 @@ const toggleSelection = (productId) => {
 	}
 };
 
+const toggleSelectAll = () => {
+	if (allDisplayedProductsSelected.value) {
+		// Deselect all currently displayed products
+		filteredProducts.value.forEach((product) => {
+			const index = selectedProductIds.value.indexOf(product.id);
+			if (index !== -1) {
+				selectedProductIds.value.splice(index, 1);
+			}
+		});
+	} else {
+		// Select all currently displayed products
+		filteredProducts.value.forEach((product) => {
+			if (!selectedProductIds.value.includes(product.id)) {
+				selectedProductIds.value.push(product.id);
+			}
+		});
+	}
+};
+
 const formatCurrency = (amount) => {
 	if (!amount) return "---";
 	return new Intl.NumberFormat("vi-VN", {
@@ -190,6 +239,31 @@ const handleSubmit = () => {
 	emit("add-products", props.discountId, selectedProductIds.value);
 	submitting.value = false;
 };
+
+// const getProductImage = (product) => {
+// 	// Nếu sản phẩm có imageUrl, sử dụng nó
+// 	if (product.imageUrl) {
+// 		return product.imageUrl;
+// 	}
+
+// 	// Tìm hình ảnh từ colors
+// 	if (product.colors && product.colors.length > 0) {
+// 		// Tìm ảnh chính nếu có
+// 		for (const color of product.colors) {
+// 			if (color.images && color.images.length > 0) {
+// 				const mainImage = color.images.find((img) => img.isMain);
+// 				if (mainImage) {
+// 					return productService.getUrlImage(mainImage.imagePath);
+// 				}
+// 				// Nếu không có ảnh chính, lấy ảnh đầu tiên
+// 				return productService.getUrlImage(color.images[0].imagePath);
+// 			}
+// 		}
+// 	}
+
+// 	// Trả về ảnh mặc định nếu không tìm thấy
+// 	return "https://via.placeholder.com/40";
+// };
 
 onMounted(() => {
 	fetchProducts();
@@ -265,11 +339,16 @@ onMounted(() => {
 
 .search-container {
 	margin-bottom: 1.5rem;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	align-items: center;
 }
 
 .search-input-container {
 	position: relative;
-	width: 100%;
+	flex: 1;
+	min-width: 200px;
 }
 
 .search-icon {
@@ -311,6 +390,38 @@ onMounted(() => {
 
 .clear-button:hover {
 	color: #666;
+}
+
+.select-all-container {
+	margin-left: 1rem;
+	white-space: nowrap;
+}
+
+.select-all-label {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	cursor: pointer;
+	font-size: 0.9rem;
+	font-weight: 500;
+	color: #666;
+	user-select: none;
+}
+
+.select-all-checkbox {
+	width: 20px;
+	height: 20px;
+	cursor: pointer;
+	accent-color: var(--primary-color);
+}
+
+.select-all-text {
+	transition: color 0.2s;
+}
+
+.select-all-checkbox:checked + .select-all-text {
+	color: var(--primary-color);
+	font-weight: 600;
 }
 
 .product-selection {
@@ -375,6 +486,13 @@ onMounted(() => {
 .selection-indicator {
 	color: var(--primary-color);
 	font-size: 1.2rem;
+}
+
+.product-checkbox {
+	width: 18px;
+	height: 18px;
+	cursor: pointer;
+	accent-color: var(--primary-color);
 }
 
 .loading-container {

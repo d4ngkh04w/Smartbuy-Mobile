@@ -3,6 +3,7 @@ using api.Interfaces.Repositories;
 using api.Models;
 using api.Queries;
 using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 
 namespace api.Repositories
 {
@@ -25,6 +26,15 @@ namespace api.Repositories
             _db.Brands.Add(brand);
             await _db.SaveChangesAsync();
             return brand;
+            // string sql = "INSERT INTO Brands (Name, Description, IsActive) VALUES (@Name, @Description, @IsActive); SELECT CAST(SCOPE_IDENTITY() as int)";
+            // var id = await _db.Database.ExecuteSqlRawAsync(sql, 
+            //     new MySqlParameter("@Name", brand.Name),
+            //     new MySqlParameter("@Description", brand.Description ?? (object)DBNull.Value),
+            //     new MySqlParameter("@IsActive", brand.IsActive));
+            // brand.Id = id;
+            // _db.Brands.Add(brand);
+            // await _db.SaveChangesAsync();
+            // return brand;
         }
 
         public async Task DeleteBrandAsync(Brand brand)

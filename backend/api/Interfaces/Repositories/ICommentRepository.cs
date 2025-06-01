@@ -14,5 +14,6 @@ namespace api.Interfaces.Repositories
         Task<bool> AddReactionAsync(int commentId, Guid userId, bool isLike);
         Task<double> GetProductAverageRatingAsync(int productId);
         Task<int> GetProductRatingCountAsync(int productId);
+        Task<Dictionary<int, int>> GetProductRatingDistributionAsync(int productId);
     }
 }
