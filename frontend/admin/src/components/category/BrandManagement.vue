@@ -1,168 +1,94 @@
 <script setup>
 import { ref, onMounted, computed, watch } from "vue";
-import {
-    getBrands,
-    createBrand,
-    updateBrand,
-    activateBrand,
-    deactivateBrand,
-} from "@/services/brandService";
+import brandService from "../../services/brandService.js";
 import emitter from "../../utils/evenBus.js";
 
 // State
 const brands = ref([]);
 const loading = ref(false);
 const showModal = ref(false);
+const showStatusModal = ref(false);
 const isEditing = ref(false);
-const formData = ref({
-    name: "",
-    logoFile: null,
-    description: "",
-});
 const hasProductLines = ref(false);
+
+const formData = ref(brandService.getEmptyBrandForm());
 const logoPreview = ref("");
 const fileInput = ref(null);
+
 const searchQuery = ref("");
-const statusFilter = ref("all"); // Add status filter state: "all", "active", "inactive"
-const showStatusModal = ref(false); // For activation/deactivation confirmation
+const statusFilter = ref("all"); // "all", "active", "inactive"
 const brandToToggle = ref(null);
 
-// Function to format logo URL
-const formatLogoUrl = (logoPath) => {
-    if (!logoPath) return null;
-
-    // If logo is already a full URL (starts with http or https) or is base64 data
-    if (logoPath.startsWith("http") || logoPath.startsWith("data:"))
-        return logoPath;
-
-    // Get base URL from API config
-    const apiUrl = import.meta.env.VITE_API_URL || "";
-    const baseUrl = apiUrl.includes("/api") ? apiUrl.split("/api")[0] : "";
-
-    // Normalize the path (convert \ to /)
-    const normalizedPath = logoPath.replace(/\\/g, "/");
-
-    // Check if path starts with /
-    const path = normalizedPath.startsWith("/")
-        ? normalizedPath
-        : `/${normalizedPath}`;
-
-    return `${baseUrl}${path}`;
-};
-
-// Computed properties
+// Computed
 const filteredBrands = computed(() => {
-    // Giờ đây chỉ lọc theo từ khóa tìm kiếm
-    // Việc lọc theo trạng thái đã được thực hiện ở API
-    if (!searchQuery.value) return brands.value;
-
     const query = searchQuery.value.toLowerCase().trim();
     return brands.value.filter(
-        (brand) =>
-            brand.name.toLowerCase().includes(query) ||
-            (brand.description &&
-                brand.description.toLowerCase().includes(query))
+        (b) =>
+            (!query ||
+                (b.name?.toLowerCase().includes(query) ||
+                 b.description?.toLowerCase().includes(query)))
     );
 });
 
-const activeCount = computed(() => {
-    return brands.value.filter((brand) => brand.isActive).length;
-});
+const activeCount = computed(() => brands.value.filter(b => b.isActive).length);
 
 const productLinesCount = computed(() => {
-    // Tính tổng số dòng sản phẩm từ tất cả thương hiệu
-    console.log("Brands:", brands.value);
-    return brands.value.reduce((total, brand) => {
-        return total + (brand.productLines?.length || 0);
-    }, 0);
+    return brands.value.reduce((total, b) => total + (b.productLines?.length || 0), 0);
 });
 
 // Methods
-const getBrandProductLinesCount = (brandId) => {
-    const brand = brands.value.find((b) => b.id === brandId);
-    console.log("Brand found:", brand);
-    return brand?.productLines?.length || 0;
-};
-
-// Fetch all brands
 const fetchBrands = async () => {
     loading.value = true;
     try {
-        // Truyền tham số isActive theo bộ lọc được chọn và đảm bảo includeProductLines=true
         const params = {
             includeProductLines: true,
+            ...(statusFilter.value !== "all" && {
+                isActive: statusFilter.value === "active",
+            }),
         };
-        if (statusFilter.value !== "all") {
-            params.isActive = statusFilter.value === "active";
-        }
-        const response = await getBrands(params);   
-        brands.value = response.data.data;
+        const response = await brandService.getBrands(params);
+        brands.value = response.data;
     } catch (error) {
         console.error("Error fetching brands:", error);
-        // Hiển thị thông báo lỗi (có thể thêm later)
+        brands.value = [];
+        emitter.emit("show-notification", {
+            status: "error",
+            message: "Có lỗi xảy ra khi tải dữ liệu thương hiệu.",
+        });
     } finally {
         loading.value = false;
     }
 };
 
-// Open modal to add new brand
 const openAddBrandModal = () => {
     isEditing.value = false;
-    formData.value = {
-        name: "",
-        logoFile: null,
-        description: "",
-    };
+    formData.value = brandService.getEmptyBrandForm();
     logoPreview.value = "";
     showModal.value = true;
 };
 
-// Open modal to edit brand
 const editBrand = (brand) => {
     isEditing.value = true;
-    formData.value = {
-        id: brand.id,
-        name: brand.name,
-        logoFile: null, // For file upload
-        description: brand.description || "",
-        existingLogo: brand.logo || "", // Store the existing logo path
-    };
-    logoPreview.value = brand.logo ? formatLogoUrl(brand.logo) : "";
+    formData.value = brandService.getEditBrandForm(brand);
+    logoPreview.value = brand.logo ? brandService.getUrlImage(brand.logo) : "";    
     showModal.value = true;
 };
 
-// Handle file upload
-const handleFileChange = (event) => {
-    const file = event.target.files[0];
+const handleFileChange = (e) => {
+    const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type
-    const allowedTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/jpg",
-    ];
-    if (!allowedTypes.includes(file.type)) {
+    const validation = brandService.validateLogoFile(file);
+    if (!validation.valid) {
         emitter.emit("show-notification", {
             status: "error",
-            message: "Định dạng tệp không hợp lệ. Vui lòng chọn tệp PNG, JPG.",
+            message: validation.message,
         });
         return;
     }
 
-    // File size validation (2MB)
-    if (file.size > 2 * 1024 * 1024) {
-        emitter.emit("show-notification", {
-            status: "error",
-            message: "Kích thước tệp quá lớn. Vui lòng chọn tệp nhỏ hơn 2MB.",
-        });
-        return;
-    }
-
-    // Save file for upload
     formData.value.logoFile = file;
 
-    // Create preview
     const reader = new FileReader();
     reader.onload = (e) => {
         logoPreview.value = e.target.result;
@@ -170,66 +96,29 @@ const handleFileChange = (event) => {
     reader.readAsDataURL(file);
 };
 
-// Clear logo
-const clearLogo = (event) => {
-    if (event) {
-        event.stopPropagation();
-    }
+const clearLogo = (e) => {
+    e?.stopPropagation();
     formData.value.logoFile = null;
     logoPreview.value = "";
-    if (fileInput.value) {
-        fileInput.value.value = "";
-    }
+    if (fileInput.value) fileInput.value.value = "";
 };
 
-// Submit form (create or update)
 const submitForm = async () => {
     loading.value = true;
-
     try {
-        const data = new FormData();
+        const data = brandService.prepareBrandFormData(formData.value, isEditing.value);
+        const response = isEditing.value
+            ? await brandService.updateBrand(formData.value.id, data)
+            : await brandService.createBrand(data);
 
-        // For edit operations, only include changed fields
-        if (isEditing.value) {
-            // Only add Name if it has been provided
-            data.append("Name", formData.value.name);
+        emitter.emit("show-notification", {
+            status: "success",
+            message: isEditing.value
+                ? "Cập nhật thương hiệu thành công!"
+                : "Thêm thương hiệu thành công!",
+        });
 
-            // Only add Logo if a new file was selected
-            if (formData.value.logoFile) {
-                data.append("Logo", formData.value.logoFile);
-            }
-
-            // Always include description field, even if empty
-            data.append("Description", formData.value.description || "");
-        } else {
-            // For create operation, include all required fields
-            data.append("Name", formData.value.name);
-            if (formData.value.logoFile) {
-                data.append("Logo", formData.value.logoFile);
-            }
-            data.append("Description", formData.value.description || "");
-            // New brands are active by default in the backend
-        }
-
-        let response;
-        if (isEditing.value) {
-            response = await updateBrand(formData.value.id, data);
-            emitter.emit("show-notification", {
-                status: "success",
-                message: "Cập nhật thương hiệu thành công!",
-            });
-        } else {
-            response = await createBrand(data);
-            emitter.emit("show-notification", {
-                status: "success",
-                message: "Thêm thương hiệu thành công!",
-            });
-        }
-
-        // Make sure to refresh the brands list with a fresh API call
         await fetchBrands();
-
-        // Close the modal only after successful data refresh
         closeModal();
     } catch (error) {
         emitter.emit("show-notification", {
@@ -241,59 +130,45 @@ const submitForm = async () => {
     }
 };
 
-// Close modal
 const closeModal = () => {
     showModal.value = false;
-    formData.value = {
-        name: "",
-        logoFile: null,
-        description: "",
-    };
+    formData.value = brandService.getEmptyBrandForm();
     logoPreview.value = "";
-    if (fileInput.value) {
-        fileInput.value.value = "";
-    }
+    if (fileInput.value) fileInput.value.value = "";
 };
 
-// Confirm status toggle
-const confirmToggleStatus = async (brand) => {
+const confirmToggleStatus = (brand) => {
+    if (!brand) return;
     brandToToggle.value = brand;
-    hasProductLines.value = brand.productLines && brand.productLines.length > 0;
+    hasProductLines.value = !!(brand.productLines?.length);
     showStatusModal.value = true;
 };
 
-// Cancel status toggle
 const cancelStatusToggle = () => {
     showStatusModal.value = false;
     brandToToggle.value = null;
     hasProductLines.value = false;
 };
 
-// Toggle brand status
 const confirmToggleBrandStatus = async () => {
     if (!brandToToggle.value) return;
 
     loading.value = true;
     try {
-        if (brandToToggle.value.isActive) {
-            // Deactivate
-            await deactivateBrand(brandToToggle.value.id);
-            emitter.emit("show-notification", {
-                status: "success",
-                message: "Vô hiệu hóa thương hiệu thành công!",
-            });
-        } else {
-            // Activate
-            await activateBrand(brandToToggle.value.id);
-            emitter.emit("show-notification", {
-                status: "success",
-                message: "Kích hoạt thương hiệu thành công!",
-            });
-        }
+        await brandService.toggleBrandStatus(
+            brandToToggle.value.id,
+            brandToToggle.value.isActive
+        );
+
+        emitter.emit("show-notification", {
+            status: "success",
+            message: brandToToggle.value.isActive
+                ? "Vô hiệu hóa thương hiệu thành công!"
+                : "Kích hoạt thương hiệu thành công!",
+        });
 
         await fetchBrands();
-        showStatusModal.value = false;
-        brandToToggle.value = null;
+        cancelStatusToggle();
     } catch (error) {
         emitter.emit("show-notification", {
             status: "error",
@@ -304,16 +179,18 @@ const confirmToggleBrandStatus = async () => {
     }
 };
 
-// Load data when component mounts
-onMounted(async () => {
-    await fetchBrands();
-});
+const getBrandProductLinesCount = (brandId) => {
+    return brandService.getBrandProductLinesCount(
+        brands.value,
+        brandId
+    );
+};
 
-// Watch for status filter changes and reload data
-watch(statusFilter, async () => {
-    await fetchBrands();
-});
+// Lifecycle
+onMounted(fetchBrands);
+watch(statusFilter, fetchBrands);
 </script>
+
 
 <template>
     <div class="brand-management">
@@ -356,7 +233,7 @@ watch(statusFilter, async () => {
                     <i class="fas fa-trademark"></i>
                 </div>
                 <div class="status-content">
-                    <h3>{{ brands.length }}</h3>
+                    <h3>{{ brands?.length || 0 }}</h3>
                     <p>Tổng số thương hiệu</p>
                 </div>
             </div>
@@ -417,7 +294,7 @@ watch(statusFilter, async () => {
                             <div class="logo-wrapper">
                                 <img
                                     v-if="brand.logo"
-                                    :src="formatLogoUrl(brand.logo)"
+                                    :src="brandService.getUrlImage(brand.logo)"
                                     :alt="brand.name"
                                 />
                                 <div v-else class="no-logo">
@@ -521,7 +398,7 @@ watch(statusFilter, async () => {
                                 :src="
                                     logoPreview.startsWith('data:')
                                         ? logoPreview
-                                        : formatLogoUrl(logoPreview)
+                                        : brandService.getUrlImage(logoPreview)
                                 "
                                 alt="Logo Preview"
                                 class="image-preview"
@@ -637,10 +514,15 @@ watch(statusFilter, async () => {
                     >
                         <i class="fas fa-info-circle"></i>
                         <div class="warning-text">
-                            <p v-if="hasProductLines" class="warning-count">
+                            <p
+                                v-if="hasProductLines && brandToToggle"
+                                class="warning-count"
+                            >
                                 <span>Thương hiệu này có</span>
                                 <strong>{{
-                                    getBrandProductLinesCount(brandToToggle?.id)
+                                    getBrandProductLinesCount(
+                                        brandToToggle?.id || 0
+                                    )
                                 }}</strong>
                                 <span>dòng sản phẩm.</span>
                             </p>
@@ -1496,3 +1378,4 @@ watch(statusFilter, async () => {
     }
 }
 </style>
+```

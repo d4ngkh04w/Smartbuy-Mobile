@@ -17,5 +17,6 @@ namespace api.Interfaces.Repositories
         Task<ProductColor> AddColorAsync(ProductColor color);
         Task<ProductColor> UpdateColorAsync(ProductColor color);
         Task<ProductImage> AddImageAsync(ProductImage image);
+        Task DeleteColorAsync(ProductColor color);
     }
 }

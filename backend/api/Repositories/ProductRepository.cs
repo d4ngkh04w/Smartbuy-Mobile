@@ -22,9 +22,10 @@ namespace api.Repositories
                 .Include(p => p.Colors)
                     .ThenInclude(c => c.Images)
                 .Include(p => p.Discounts)
+                    .ThenInclude(d => d.Discount)
                 .Include(p => p.Detail)
-                .Include(p => p.ProductTags)
-                    .ThenInclude(pt => pt.Tag)
+                // .Include(p => p.ProductTags)
+                // .ThenInclude(pt => pt.Tag)
                 .ToListAsync();
         }
 
@@ -35,9 +36,10 @@ namespace api.Repositories
                 .Include(p => p.Colors)
                     .ThenInclude(c => c.Images)
                 .Include(p => p.Discounts)
+                    .ThenInclude(d => d.Discount)
                 .Include(p => p.Detail)
-                .Include(p => p.ProductTags)
-                    .ThenInclude(pt => pt.Tag)
+                // .Include(p => p.ProductTags)
+                //     .ThenInclude(pt => pt.Tag)
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
 
@@ -105,7 +107,7 @@ namespace api.Repositories
                 }
             }
 
-            if (productQuery.MinPrice.HasValue)
+            if (productQuery.MinPrice.HasValue) 
             {
                 query = query.Where(p => p.SalePrice >= productQuery.MinPrice.Value);
             }
@@ -169,13 +171,17 @@ namespace api.Repositories
                 .Where(c => c.ProductId == productId && c.Id == colorId)
                 .Include(c => c.Images)
                 .FirstOrDefaultAsync();
-        }
-
-        public async Task<ProductColor> UpdateColorAsync(ProductColor color)
+        }        public async Task<ProductColor> UpdateColorAsync(ProductColor color)
         {
             _db.Colors.Update(color);
             await _db.SaveChangesAsync();
             return color;
+        }
+
+        public async Task DeleteColorAsync(ProductColor color)
+        {
+            _db.Colors.Remove(color);
+            await _db.SaveChangesAsync();
         }
     }
 }

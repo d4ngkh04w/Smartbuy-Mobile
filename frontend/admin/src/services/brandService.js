@@ -1,68 +1,131 @@
 import instance from "./axiosConfig";
 
-// Get all brands with optional query parameters
-export const getBrands = async (params = {}) => {
-    // Bảo đảm luôn bao gồm productLines trong response mặc định
-    const queryParams = {
-        ...params,
-        includeProductLines:
-            params.includeProductLines !== undefined
-                ? params.includeProductLines
-                : true,
-    };
-    return await instance.get("/brand", { params: queryParams });
-};
+class BrandService {
+    getHeaders = (data) =>
+        data instanceof FormData
+            ? { headers: { "Content-Type": "multipart/form-data" } }
+            : {};
+    // ===== Image Utilities =====
+    getUrlImage(url) {
+        const baseUrl = (import.meta.env.VITE_API_URL).replace("/api/v1","") || "";
+        return url?.startsWith("http") ? url : `${baseUrl}${url}`;
+    }
 
-// Get a brand by ID with optional query parameters
-export const getBrandById = async (id, params) => {
-    return await instance.get(`/brand/${id}`, { params });
-};
+    // ===== File Validation =====
+    validateFileType(file) {
+        const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+        return allowedTypes.includes(file.type);
+    }
 
-// Create a new brand (accepts FormData for image upload)
-export const createBrand = async (brandData) => {
-    // Nếu brandData là FormData, đảm bảo header được đặt đúng
-    const isFormData = brandData instanceof FormData;
-    return await instance.post("/brand", brandData, {
-        headers: isFormData
-            ? {
-                  "Content-Type": "multipart/form-data",
-              }
-            : {},
-    });
-};
+    validateFileSize(file, maxSizeMB = 2) {
+        return file.size <= maxSizeMB * 1024 * 1024;
+    }
 
-// Update a brand (accepts FormData for image upload)
-export const updateBrand = async (id, brandData) => {
-    // Nếu brandData là FormData, đảm bảo header được đặt đúng
-    const isFormData = brandData instanceof FormData;
-    return await instance.put(`/brand/${id}`, brandData, {
-        headers: isFormData
-            ? {
-                  "Content-Type": "multipart/form-data",
-              }
-            : {},
-    });
-};
+    validateLogoFile(file) {
+        if (!file) return { valid: true };
 
+        if (!this.validateFileType(file)) {
+            return {
+                valid: false,
+                message: "Định dạng tệp không hợp lệ. Chỉ chấp nhận PNG, JPG.",
+            };
+        }
 
-// Activate a brand
-export const activateBrand = async (id) => {
-    return await instance.put(`/brand/${id}/activate`);
-};
+        if (!this.validateFileSize(file)) {
+            return {
+                valid: false,
+                message: "Tệp quá lớn. Tối đa 2MB.",
+            };
+        }
 
-// Deactivate a brand
-export const deactivateBrand = async (id) => {
-    return await instance.put(`/brand/${id}/deactivate`);
-};
+        return { valid: true };
+    }
 
-// All brand services
-export const brandService = {
-    getBrands,
-    getBrandById,
-    createBrand,
-    updateBrand,
-    activateBrand,
-    deactivateBrand,
-};
+    // ===== Form Utilities =====
+    prepareBrandFormData(formData) {
+        const data = new FormData();
+        data.append("Name", formData.name);
+        data.append("Logo", formData.logoFile || "");
+        data.append("Description", formData.description || "");
+        return data;
+    }
 
-export default brandService;
+    getEmptyBrandForm() {
+        return {
+            name: "",
+            logoFile: null,
+            description: "",
+        };
+    }
+
+    getEditBrandForm(brand) {
+        return {
+            id: brand.id,
+            name: brand.name,
+            logoFile: null,
+            description: brand.description || "",
+            existingLogo: brand.logo || "",
+        };
+    }
+
+    // ===== Brand API =====
+    async getBrands(filters = {}) {
+        try {
+            const { includeProductLines = true, isActive } = filters;
+
+            const params = new URLSearchParams();
+            params.append("includeProductLines", includeProductLines);
+            if (isActive !== undefined) {
+                params.append("isActive", isActive);
+            }
+
+            const response = await instance.get(`/brand?${params.toString()}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching brands:", error);
+            throw error;
+        }
+    }
+
+    async getBrandById(id, params) {
+        return await instance.get(`/brand/${id}`, { params });
+    }
+
+    async createBrand(brandData) {
+        return await instance.post(
+            "/brand",
+            brandData,
+            this.getHeaders(brandData)
+        );
+    }
+
+    async updateBrand(id, brandData) {
+        return await instance.put(
+            `/brand/${id}`,
+            brandData,
+            this.getHeaders(brandData)
+        );
+    }
+
+    async activateBrand(id) {
+        return await instance.put(`/brand/${id}/activate`);
+    }
+
+    async deactivateBrand(id) {
+        return await instance.put(`/brand/${id}/deactivate`);
+    }
+
+    async toggleBrandStatus(brandId, currentStatus) {
+        return currentStatus
+            ? await this.deactivateBrand(brandId)
+            : await this.activateBrand(brandId);
+    }
+
+    // ===== Misc =====
+    getBrandProductLinesCount(brands, brandId) {
+        const brand = brands?.find((b) => b.id === brandId);
+        return brand?.productLines?.length || 0;
+    }
+}
+
+export default new BrandService();

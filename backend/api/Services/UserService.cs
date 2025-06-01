@@ -25,11 +25,7 @@ namespace api.Services
             // Xóa ảnh đại diện của người dùng nếu tồn tại
             if (!string.IsNullOrEmpty(user.Avatar))
             {
-                var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + user.Avatar);
-                if (!deletedImg)
-                {
-                    throw new ServerException("Error deleting avatar image");
-                }
+                ImageUtils.DeleteImage(_env.WebRootPath + user.Avatar);
             }
 
             await _userRepository.DeleteUserAsync(user);
@@ -113,11 +109,7 @@ namespace api.Services
                 // Xóa ảnh đại diện cũ nếu tồn tại
                 if (!string.IsNullOrEmpty(user.Avatar))
                 {
-                    var deletedImg = ImageUtils.DeleteImage(_env.WebRootPath + user.Avatar);
-                    if (!deletedImg)
-                    {
-                        throw new ServerException("Error deleting old avatar image");
-                    }
+                    ImageUtils.DeleteImage(_env.WebRootPath + user.Avatar);
                 }
 
                 // Lưu ảnh đại diện mới

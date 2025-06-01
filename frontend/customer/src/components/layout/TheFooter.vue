@@ -1,163 +1,64 @@
 <template>
 	<footer class="footer">
 		<div class="container">
-			<div class="footer-content">
-				<div class="footer-section about">
-					<div class="logo">
-						<router-link to="/">
-							<img
-								src="../../assets/logo.png"
-								alt="SmartBuy Mobile"
-							/>
-						</router-link>
-					</div>
-					<p class="about-text">
-						SmartBuy Mobile - Cửa hàng điện thoại chính hãng với
-						nhiều ưu đãi hấp dẫn và dịch vụ chăm sóc khách hàng tận
-						tâm.
+			<div class="footer-grid">
+				<!-- Cột 1: Logo + mô tả -->
+				<div class="footer-column">
+					<router-link to="/" class="logo">
+						<img src="../../assets/logo.png" alt="SmartBuy Mobile" />
+					</router-link>
+					<p class="description">
+						SmartBuy Mobile - Nơi mua sắm điện thoại chính hãng, giá tốt, dịch vụ tận tâm.
 					</p>
-					<div class="contact-info">
-						<div class="contact-item">
-							<i class="fas fa-map-marker-alt"></i>
-							<span
-								>54 Nguyễn Lương Bằng, Liên Chiểu, Đà Nẵng</span
-							>
-						</div>
-						<div class="contact-item">
-							<i class="fas fa-phone-alt"></i>
-							<span>+84 333 666 999</span>
-						</div>
-						<div class="contact-item">
-							<i class="fas fa-envelope"></i>
-							<span>smartbuymobile.team@gmail.com</span>
-						</div>
-					</div>
 				</div>
 
-				<div class="footer-section links">
-					<h3 class="footer-title">Liên kết nhanh</h3>
-					<ul class="footer-links">
-						<li>
-							<router-link to="/products">Sản phẩm</router-link>
-						</li>
-						<li>
-							<router-link to="/about">Giới thiệu</router-link>
-						</li>
-						<li>
-							<router-link to="/contact">Liên hệ</router-link>
-						</li>
-						<li>
-							<router-link to="/warranty">Bảo hành</router-link>
-						</li>
-						<li>
-							<router-link to="/faq"
-								>Câu hỏi thường gặp</router-link
-							>
-						</li>
+				<!-- Cột 2: Liên kết -->
+				<div class="footer-column">
+					<h3 class="title">Liên kết</h3>
+					<ul class="link-list">
+						<li><router-link to="/products">Sản phẩm</router-link></li>
+						<li><router-link to="/about">Giới thiệu</router-link></li>
+						<li><router-link to="/contact">Liên hệ</router-link></li>
+						<li><router-link to="/warranty">Bảo hành</router-link></li>
+						<li><router-link to="/faq">Câu hỏi thường gặp</router-link></li>
 					</ul>
 				</div>
 
-				<div class="footer-section categories">
-					<h3 class="footer-title">Danh mục sản phẩm</h3>
-					<ul class="footer-links">
-						<li>
-							<router-link to="/products/phones"
-								>Điện thoại</router-link
-							>
-						</li>
-						<li>
-							<router-link to="/products/tablets"
-								>Máy tính bảng</router-link
-							>
-						</li>
-						<li>
-							<router-link to="/products/accessories"
-								>Phụ kiện</router-link
-							>
-						</li>
-						<li>
-							<router-link to="/products/watches"
-								>Đồng hồ thông minh</router-link
-							>
-						</li>
-						<li>
-							<router-link to="/products/earbuds"
-								>Tai nghe</router-link
-							>
-						</li>
+				<!-- Cột 3: Thông tin liên hệ -->
+				<div class="footer-column">
+					<h3 class="title">Liên hệ</h3>
+					<ul class="contact-list">
+						<li><i class="fas fa-map-marker-alt"></i> 54 Nguyễn Lương Bằng, Đà Nẵng</li>
+						<li><i class="fas fa-phone-alt"></i> +84 333 666 999</li>
+						<li><i class="fas fa-envelope"></i> smartbuymobile.team@gmail.com</li>
 					</ul>
 				</div>
 
-				<div class="footer-section newsletter">
-					<h3 class="footer-title">Đăng ký nhận tin</h3>
-					<p>Nhận thông tin khuyến mãi và sản phẩm mới</p>
-					<form
-						@submit.prevent="subscribeNewsletter"
-						class="newsletter-form"
-					>
-						<input
-							type="email"
-							placeholder="Email của bạn"
-							v-model="email"
-							required
-						/>
-						<button type="submit">
-							<i class="fas fa-paper-plane"></i>
-						</button>
+				<!-- Cột 4: Đăng ký & Mạng xã hội -->
+				<div class="footer-column">
+					<h3 class="title">Nhận tin mới</h3>
+					<p>Đăng ký để nhận ưu đãi và tin tức sản phẩm mới nhất.</p>
+					<form @submit.prevent="subscribeNewsletter" class="newsletter-form">
+						<input type="email" v-model="email" placeholder="Email của bạn" required />
+						<button type="submit"><i class="fas fa-paper-plane"></i></button>
 					</form>
-					<div class="social-links">
-						<a
-							href="https://facebook.com"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<i class="fab fa-facebook-f"></i>
-						</a>
-						<a
-							href="https://instagram.com"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<i class="fab fa-instagram"></i>
-						</a>
-						<a
-							href="https://youtube.com"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<i class="fab fa-youtube"></i>
-						</a>
-						<a
-							href="https://tiktok.com"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<i class="fab fa-tiktok"></i>
-						</a>
+					<div class="social-icons">
+						<a href="https://facebook.com" target="_blank"><i class="fab fa-facebook-f"></i></a>
+						<a href="https://instagram.com" target="_blank"><i class="fab fa-instagram"></i></a>
+						<a href="https://youtube.com" target="_blank"><i class="fab fa-youtube"></i></a>
+						<a href="https://tiktok.com" target="_blank"><i class="fab fa-tiktok"></i></a>
 					</div>
 				</div>
 			</div>
-		</div>
 
-		<div class="footer-bottom">
-			<div class="container">
-				<div class="copyright">
-					&copy; {{ currentYear }} SmartBuy Mobile. Tất cả các quyền
-					được bảo lưu.
-				</div>
-				<div class="payment-methods">
-					<span class="payment-icon"
-						><i class="fab fa-cc-visa"></i
-					></span>
-					<span class="payment-icon"
-						><i class="fab fa-cc-mastercard"></i
-					></span>
-					<span class="payment-icon"
-						><i class="fab fa-cc-paypal"></i
-					></span>
-					<span class="payment-icon"
-						><i class="fas fa-money-bill-wave"></i
-					></span>
+			<!-- Dòng bản quyền -->
+			<div class="footer-bottom">
+				<p>&copy; {{ currentYear }} SmartBuy Mobile. All rights reserved.</p>
+				<div class="payment-icons">
+					<i class="fab fa-cc-visa"></i>
+					<i class="fab fa-cc-mastercard"></i>
+					<i class="fab fa-cc-paypal"></i>
+					<i class="fas fa-money-bill-wave"></i>
 				</div>
 			</div>
 		</div>
@@ -166,112 +67,86 @@
 
 <script setup>
 import { ref, computed } from "vue";
-
 const email = ref("");
 const currentYear = computed(() => new Date().getFullYear());
 
 const subscribeNewsletter = () => {
-	// Xử lý đăng ký nhận tin ở đây
-	console.log("Subscribed with:", email.value);
-	alert("Cảm ơn bạn đã đăng ký nhận thông tin từ SmartBuy Mobile!");
+	alert("Cảm ơn bạn đã đăng ký nhận thông tin!");
 	email.value = "";
 };
 </script>
 
 <style scoped>
 .footer {
-	background-color: #2d3748;
-	color: #e2e8f0;
-	padding-top: 3rem;
-	margin-top: auto;
+	background-color: #483d63;
+	color: #e5e7eb;
+	padding: 3rem 1rem 2rem;
+	font-family: 'Segoe UI', sans-serif;
 }
-
-.footer-content {
+.container {
+	max-width: 1200px;
+	margin: 0 auto;
+}
+.footer-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 	gap: 2rem;
-	padding-bottom: 2rem;
 }
-
-.footer-section {
-	display: flex;
-	flex-direction: column;
+.footer-column .logo img {
+	height: 40px;
+	filter: brightness(0) invert(1);
+	margin-bottom: 1rem;
 }
-
-.about-text {
-	margin: 1rem 0;
-	line-height: 1.7;
-	color: #cbd5e0;
+.description {
+	line-height: 1.6;
+	color: #d1d5db;
 }
-
-.contact-info {
-	margin-top: 1rem;
-}
-
-.contact-item {
-	display: flex;
-	align-items: center;
-	margin-bottom: 0.75rem;
-}
-
-.contact-item i {
-	margin-right: 0.75rem;
-	color: var(--primary-color);
-}
-
-.footer-title {
-	font-size: 1.2rem;
-	margin-bottom: 1.5rem;
-	position: relative;
+.title {
 	font-weight: 600;
+	margin-bottom: 1rem;
+	position: relative;
 }
-
-.footer-title::after {
+.title::after {
 	content: "";
 	position: absolute;
 	left: 0;
-	bottom: -10px;
+	bottom: -6px;
 	width: 40px;
 	height: 2px;
 	background-color: var(--primary-color);
 }
-
-.footer-links {
+.link-list,
+.contact-list {
 	list-style: none;
 	padding: 0;
+	margin: 0;
 }
-
-.footer-links li {
+.link-list li,
+.contact-list li {
 	margin-bottom: 0.75rem;
 }
-
-.footer-links a {
-	color: #cbd5e0;
+.link-list a {
+	color: #d1d5db;
+	text-decoration: none;
 	transition: color 0.3s;
 }
-
-.footer-links a:hover {
+.link-list a:hover {
 	color: var(--primary-color);
 }
-
-.newsletter p {
-	margin-bottom: 1rem;
-	color: #cbd5e0;
+.contact-list i {
+	margin-right: 8px;
+	color: var(--primary-color);
 }
-
 .newsletter-form {
 	display: flex;
-	margin-bottom: 1.5rem;
+	margin-top: 0.75rem;
 }
-
 .newsletter-form input {
 	flex: 1;
-	padding: 0.75rem;
+	padding: 0.6rem;
 	border: none;
 	border-radius: 4px 0 0 4px;
-	outline: none;
 }
-
 .newsletter-form button {
 	background-color: var(--primary-color);
 	color: white;
@@ -279,58 +154,45 @@ const subscribeNewsletter = () => {
 	padding: 0 1rem;
 	border-radius: 0 4px 4px 0;
 }
-
-.social-links {
+.social-icons {
 	display: flex;
 	gap: 1rem;
+	margin-top: 1rem;
 }
-
-.social-links a {
-	display: flex;
-	align-items: center;
-	justify-content: center;
+.social-icons a {
 	width: 36px;
 	height: 36px;
-	background-color: rgba(255, 255, 255, 0.1);
+	background: rgba(255, 255, 255, 0.1);
 	border-radius: 50%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 	color: white;
-	transition: all 0.3s;
+	transition: 0.3s;
 }
-
-.social-links a:hover {
+.social-icons a:hover {
 	background-color: var(--primary-color);
 	transform: translateY(-3px);
 }
-
 .footer-bottom {
-	background-color: #1a202c;
-	padding: 1.5rem 0;
-}
-
-.footer-bottom .container {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-}
-
-.payment-methods {
-	display: flex;
+	margin-top: 2rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+	padding-top: 1rem;
+	font-size: 0.875rem;
+	flex-wrap: wrap;
 	gap: 1rem;
 }
-
-.payment-icon {
+.payment-icons i {
 	font-size: 1.5rem;
+	margin-right: 1rem;
+	color: #d1d5db;
 }
-
-.logo img {
-	height: 40px;
-	filter: brightness(0) invert(1);
-}
-
 @media (max-width: 768px) {
-	.footer-bottom .container {
+	.footer-bottom {
 		flex-direction: column;
-		gap: 1rem;
 		text-align: center;
 	}
 }

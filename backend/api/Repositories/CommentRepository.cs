@@ -94,7 +94,7 @@ namespace api.Repositories
             return await _db.SaveChangesAsync() > 0;
         }
 
-        public async Task<double?> GetProductAverageRatingAsync(int productId)
+        public async Task<double> GetProductAverageRatingAsync(int productId)
         {
             var ratings = await _db.Comments
                 .Where(c => c.ProductId == productId && c.Rating.HasValue)
@@ -102,9 +102,16 @@ namespace api.Repositories
                 .ToListAsync();
 
             if (!ratings.Any())
-                return null;
+                return 0;
 
             return ratings.Average();
+        }
+
+        public async Task<int> GetProductRatingCountAsync(int productId)
+        {
+            return await _db.Comments
+                .Where(c => c.ProductId == productId && c.Rating.HasValue)
+                .CountAsync();
         }
     }
 }

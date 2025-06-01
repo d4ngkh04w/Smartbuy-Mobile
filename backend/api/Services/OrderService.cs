@@ -59,14 +59,14 @@ namespace api.Services
                 if (color.Quantity < item.Quantity)
                     throw new BadRequestException($"Not enough quantity available for product '{product.Name}' in the selected color");
 
+                var productDto = product.ToProductDTO();
                 // Tạo order item
                 var orderItem = new OrderItem
                 {
                     ProductId = item.ProductId,
                     ColorId = item.ColorId,
                     Quantity = item.Quantity,
-                    Price = product.SalePrice,
-                    Discount = 0 // Update later
+                    Price = productDto.Price
                 };
 
                 // Update total
@@ -93,7 +93,14 @@ namespace api.Services
             var cart = await _cartRepository.GetCartByUserIdAsync(userId);
             if (cart != null)
             {
-                await _cartRepository.RemoveAllCartItemsAsync(cart.Id);
+                foreach (var item in orderDTO.Items)
+                {
+                    var cartItem = cart.Items.FirstOrDefault(ci => ci.ProductId == item.ProductId && ci.ColorId == item.ColorId);
+                    if (cartItem != null)
+                    {
+                        await _cartRepository.RemoveCartItemAsync(cartItem);
+                    }
+                }
             }
 
             return createdOrder.ToOrderDTO();
@@ -184,6 +191,16 @@ namespace api.Services
         public async Task<IEnumerable<OrderDTO>> GetOrdersByUserIdAsync(Guid userId)
         {
             var orders = await _orderRepository.GetOrdersByUserIdAsync(userId);
+            if (orders == null || !orders.Any())
+            {
+                throw new NotFoundException("Not found any orders for you");
+            }
+
+            return orders.Select(o => o.ToOrderDTO());
+        }
+        public async Task<IEnumerable<OrderDTO>> GetCurrentOrdersByUserIdAsync(Guid userId)
+        {
+            var orders = await _orderRepository.GetCurrentOrdersByUserIdAsync(userId);
             if (orders == null || !orders.Any())
             {
                 throw new NotFoundException("Not found any orders for you");

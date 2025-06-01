@@ -1,6 +1,6 @@
 <template>
     <Loading v-if="isLoading" />
-    <div v-if="productData" class="product-detail-container" :class="{ 'out-of-stock-disable': getQuanity <= 0 }">
+    <div v-if="productData && productData.isActive" class="product-detail-container" :class="{ 'out-of-stock-disable': getQuanity <= 0 }">
       <h2 class="product-title">{{ productData.name }}</h2>
       <div class="product-main-content">
         <!-- Phần ảnh sản phẩm -->
@@ -82,7 +82,7 @@
                 Còn {{ getQuanity }} sản phẩm
               </span>
               <span class="stock-info out-of-stock" v-else>
-                Hết hàng
+                Màu này đã hết hàng. Vui lòng chọn màu khác để tiếp tục.
               </span>
             </div>
   
@@ -274,6 +274,11 @@
     
     if(data) {
       productData.value = data;
+      if(!productData.value.isActive) {
+        // Chuyển hướng đến trang 404 hoặc trang thông báo
+        router.push({ name: 'not-found' });
+        return;
+      }
       // Chọn màu đầu tiên làm mặc định nếu có
       if (data.colors && data.colors.length > 0) {
         selectedColorId.value = data.colors[0].id;
@@ -464,10 +469,10 @@ async function checkAuth() {
     }
     return true;
   }
+    console.log('Product:', productService.getProductById(productId));
   
 const buyNow = async () => {
   const isAuthen = await checkAuth();
-  console.log('isAuthennnnnn:', isAuthen);
   if (isAuthen && checkValidInfor()) {
     const selectedColor = productData.value.colors.find(c => c.id === selectedColorId.value);
     
@@ -666,6 +671,7 @@ const buyNow = async () => {
   }
   
   .color-options {
+    pointer-events: auto;
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
@@ -745,6 +751,16 @@ const buyNow = async () => {
   
   .stock-info.out-of-stock {
     color: #ef4444;
+    margin-top: 12px;
+    padding: 10px 15px;
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+    border-radius: 6px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   
   /* Action buttons */
@@ -1076,6 +1092,7 @@ const buyNow = async () => {
   .out-of-stock-disable{
     pointer-events: none;
     opacity: 0.5;
+    position: relative;
   }
 
 

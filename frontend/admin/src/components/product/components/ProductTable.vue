@@ -1,5 +1,6 @@
 <script setup>
-import { defineProps, defineEmits, computed } from "vue";
+import { defineEmits, computed } from "vue";
+import productService from "../../../services/productService.js";
 
 const props = defineProps({
     products: {
@@ -33,63 +34,20 @@ const formatCurrency = (value) => {
 
 // Get product image URL
 const getProductMainImage = (product) => {
-    if (product.colors && product.colors.length > 0) {
-        for (const color of product.colors) {
-            if (color.images && color.images.length > 0) {
-                const mainImage = color.images.find((img) => img.isMain);
-                // Dù không có main image, vẫn lấy ảnh đầu tiên
-                const chosenImage = mainImage || color.images[0];
-                if (chosenImage) {
-                    return formatImageUrl(chosenImage.imagePath);
-                }
-            }
-        }
-    }
-
-    return null;
-};
-
-// Format image URL
-const formatImageUrl = (imagePath) => {
-    if (!imagePath) return null;
-
-    // If image path is already a full URL or base64 data
-    if (imagePath.startsWith("http") || imagePath.startsWith("data:"))
-        return imagePath;
-
-    // Get base URL from API config
-    const apiUrl = import.meta.env.VITE_API_URL || "";
-    const baseUrl = apiUrl.includes("/api") ? apiUrl.split("/api")[0] : "";
-
-    // Normalize the path (convert \ to /)
-    const normalizedPath = imagePath.replace(/\\/g, "/");
-
-    // Check if path starts with /
-    const path = normalizedPath.startsWith("/")
-        ? normalizedPath
-        : `/${normalizedPath}`;
-
-    return `${baseUrl}${path}`;
+    return productService.getProductMainImage(product);
 };
 
 // Computed properties for filtered products
 const filteredProducts = computed(() => {
     if (!props.searchQuery) return props.products;
 
-    let result = props.products;
-
-    // Apply search query
-    if (props.searchQuery) {
-        const query = props.searchQuery.toLowerCase().trim();
-        result = result.filter(
-            (product) =>
-                product.name.toLowerCase().includes(query) ||                 
-                (product.productLineName &&
-                    product.productLineName.toLowerCase().includes(query))
-        );
-    }
-
-    return result;
+    const query = props.searchQuery.toLowerCase().trim();
+    return props.products.filter(
+        (product) =>
+            product.name.toLowerCase().includes(query) ||
+            (product.productLineName &&
+                product.productLineName.toLowerCase().includes(query))
+    );
 });
 </script>
 

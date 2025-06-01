@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps, defineEmits } from "vue";
+import { defineEmits } from "vue";
 
 const props = defineProps({
     searchQuery: {
@@ -21,7 +21,6 @@ const updateSearchQuery = (e) => {
             <h2><i class="fas fa-mobile-alt"></i> Quản lý Sản phẩm</h2>
             <p>Quản lý sản phẩm điện thoại di động</p>
         </div>
-
         <div class="right-section">
             <div class="search-box">
                 <i class="fas fa-search"></i>
@@ -32,9 +31,13 @@ const updateSearchQuery = (e) => {
                     placeholder="Tìm kiếm sản phẩm..."
                 />
             </div>
-
-            <button @click="$emit('add-product')" class="add-button">
-                <i class="fas fa-plus"></i> Thêm sản phẩm
+            <button
+                class="add-button"
+                @click="$emit('add-product')"
+                title="Thêm sản phẩm mới"
+            >
+                <i class="fas fa-plus"></i>
+                <span>Thêm sản phẩm</span>
             </button>
         </div>
     </div>

@@ -51,6 +51,6 @@ namespace api.DTOs.Product
         [Range(1, 4, ErrorMessage = "Sim slots must be between 1 and 4")]
         public int? SimSlots { get; set; }
 
-        public List<int>? TagIds { get; set; }
+        // public List<int>? TagIds { get; set; }
     }
 }

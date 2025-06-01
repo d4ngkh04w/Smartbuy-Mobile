@@ -20,8 +20,8 @@ namespace api.Database
         public DbSet<ProductDiscount> ProductDiscounts { get; set; } = null!;
         public DbSet<Discount> Discounts { get; set; } = null!;
         public DbSet<ProductDetail> ProductDetails { get; set; } = null!;
-        public DbSet<Tag> Tags { get; set; } = null!;
-        public DbSet<ProductTag> ProductTags { get; set; } = null!;
+        // public DbSet<Tag> Tags { get; set; } = null!;
+        // public DbSet<ProductTag> ProductTags { get; set; } = null!;
         public DbSet<Cart> Carts { get; set; } = null!;
         public DbSet<CartItem> CartItems { get; set; } = null!;
         public DbSet<Comment> Comments { get; set; } = null!;
@@ -85,8 +85,8 @@ namespace api.Database
             builder.Entity<ProductDiscount>()
                 .HasOne(pd => pd.Discount)
                 .WithMany(d => d.Products)
-                .HasForeignKey(pd => pd.DiscountId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .HasForeignKey(pd => pd.DiscountId);
+            //     .OnDelete(DeleteBehavior.Cascade);
 
             // Cấu hình mối quan hệ Product - ProductDetail
             builder.Entity<Product>()
@@ -96,20 +96,20 @@ namespace api.Database
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Cấu hình mối quan hệ Product - Tag
-            builder.Entity<ProductTag>()
-                .HasKey(pt => new { pt.ProductId, pt.TagId });
+            // builder.Entity<ProductTag>()
+            //     .HasKey(pt => new { pt.ProductId, pt.TagId });
 
-            builder.Entity<ProductTag>()
-                .HasOne(pt => pt.Product)
-                .WithMany(p => p.ProductTags)
-                .HasForeignKey(pt => pt.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // builder.Entity<ProductTag>()
+            //     .HasOne(pt => pt.Product)
+            //     .WithMany(p => p.ProductTags)
+            //     .HasForeignKey(pt => pt.ProductId)
+            //     .OnDelete(DeleteBehavior.Cascade);
 
-            builder.Entity<ProductTag>()
-                .HasOne(pt => pt.Tag)
-                .WithMany(t => t.ProductTags)
-                .HasForeignKey(pt => pt.TagId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // builder.Entity<ProductTag>()
+            //     .HasOne(pt => pt.Tag)
+            //     .WithMany(t => t.ProductTags)
+            //     .HasForeignKey(pt => pt.TagId)
+            //     .OnDelete(DeleteBehavior.Cascade);
 
             // Cấu hình mối quan hệ User - Cart
             builder.Entity<User>()
@@ -123,6 +123,12 @@ namespace api.Database
                 .HasMany(c => c.Items)
                 .WithOne(ci => ci.Cart)
                 .HasForeignKey(ci => ci.CartId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Product>()
+                .HasMany(p => p.Comments)
+                .WithOne(c => c.Product)
+                .HasForeignKey(c => c.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Comment>()

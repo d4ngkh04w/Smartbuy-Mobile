@@ -55,7 +55,15 @@ namespace api.Repositories
 
             if (query.IncludeProducts)
             {
-                productLinesQuery = productLinesQuery.Include(pl => pl.Products);
+                productLinesQuery = productLinesQuery
+                                    .Include(pl => pl.Products)
+                                        .ThenInclude(p => p.Colors)
+                                            .ThenInclude(c => c.Images)
+                                    .Include(pl => pl.Products)
+                                        .ThenInclude(p => p.Discounts)
+                                            .ThenInclude(d => d.Discount)
+                                    .Include(pl => pl.Products)
+                                        .ThenInclude(p => p.Detail);
             }
 
             productLinesQuery = query.SortBy.ToLower() switch
@@ -87,7 +95,15 @@ namespace api.Repositories
 
             if (query.IncludeProducts)
             {
-                productLineQuery = productLineQuery.Include(pl => pl.Products);
+                productLineQuery = productLineQuery
+                                    .Include(pl => pl.Products)
+                                        .ThenInclude(p => p.Colors)
+                                            .ThenInclude(c => c.Images)
+                                    .Include(pl => pl.Products)
+                                        .ThenInclude(p => p.Discounts)
+                                            .ThenInclude(d => d.Discount)
+                                    .Include(pl => pl.Products)
+                                        .ThenInclude(p => p.Detail);
             }
 
             return await productLineQuery

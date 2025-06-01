@@ -51,16 +51,18 @@ namespace api.Repositories
 
             if (query.IncludeProducts)
             {
-                brandsQuery = brandsQuery.Include(b => b.ProductLines)
-                    .ThenInclude(pl => pl.Products)
-                    .ThenInclude(p => p.Colors)
-                    .ThenInclude(c => c.Images)
-                    .Include(b => b.ProductLines)
-                    .ThenInclude(pl => pl.Products)
-                    .ThenInclude(p => p.Detail)
-                    .Include(b => b.ProductLines)
-                    .ThenInclude(pl => pl.Products)
-                    .ThenInclude(p => p.Discounts);
+                brandsQuery = brandsQuery
+                            .Include(b => b.ProductLines)
+                                .ThenInclude(pl => pl.Products)
+                                    .ThenInclude(p => p.Colors)
+                                        .ThenInclude(c => c.Images)
+                            .Include(b => b.ProductLines)
+                                    .ThenInclude(pl => pl.Products)
+                                        .ThenInclude(p => p.Detail)
+                            .Include(b => b.ProductLines)
+                                    .ThenInclude(pl => pl.Products)
+                                        .ThenInclude(p => p.Discounts)
+                                            .ThenInclude(d => d.Discount);
             }
 
             brandsQuery = query.SortBy.ToLower() switch
@@ -94,7 +96,18 @@ namespace api.Repositories
 
             if (query.IncludeProducts)
             {
-                brandQuery = brandQuery.Include(b => b.ProductLines).ThenInclude(pl => pl.Products);
+                brandQuery = brandQuery
+                            .Include(b => b.ProductLines)
+                                .ThenInclude(pl => pl.Products)
+                                    .ThenInclude(p => p.Colors)
+                                        .ThenInclude(c => c.Images)
+                            .Include(b => b.ProductLines)
+                                    .ThenInclude(pl => pl.Products)
+                                        .ThenInclude(p => p.Detail)
+                            .Include(b => b.ProductLines)
+                                    .ThenInclude(pl => pl.Products)
+                                        .ThenInclude(p => p.Discounts)
+                                            .ThenInclude(d => d.Discount);
             }
 
             var baseQuery = brandQuery.Where(b => b.Id == id);

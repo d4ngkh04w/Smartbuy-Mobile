@@ -1,51 +1,47 @@
 import instance from "./axiosConfig";
 
-// Đăng nhập cho admin
-export const login = async (phoneNumber, password) => {
-    return await instance.post(
-        "/admin/auth/login",
-        { phoneNumber, password },
-        {
-            isLoginRequest: true,
-        }
-    );
-};
+class AdminAuthService {
+    // Đăng nhập admin
+    async login(phoneNumber, password) {
+        return await instance.post(
+            "/admin/auth/login",
+            { phoneNumber, password },
+            {
+                isLoginRequest: true,
+            }
+        );
+    }
 
-// Đăng xuất
-export const logout = async () => {
-    return await instance.post("/auth/logout");
-};
+    // Đăng xuất
+    async logout() {
+        return await instance.post("/auth/logout");
+    }
 
-// Refresh token
-export const refreshToken = async () => {
-    return await instance.post(
-        "/auth/refresh-token",
-        {},
-        {
-            isRefreshRequest: true,
-        }
-    );
-};
+    // Refresh token
+    async refreshToken() {
+        return await instance.post(
+            "/auth/refresh-token",
+            {},
+            {
+                isRefreshRequest: true,
+            }
+        );
+    }
 
-// Quên mật khẩu
-export const forgotPassword = async (data) => {
-    return await instance.post("/auth/forgot-password", data);
-};
+    // Quên mật khẩu
+    async forgotPassword(data) {
+        return await instance.post("/auth/forgot-password", data);
+    }
 
-export const verifyAdmin = async () => {
-    return await instance.get("/admin/auth/verify");
-};
+    // Xác minh Admin
+    async verifyAdmin() {
+        return await instance.get("/admin/auth/verify");
+    }
 
-export const resetPassword = async (resetData) => {
-    return await instance.post("/auth/reset-password", resetData);
-};
-// Auth services
-export const authService = {
-    login,
-    logout,
-    refreshToken,
-    forgotPassword,  
-    verifyAdmin,  
-};
+    // Reset mật khẩu
+    async resetPassword(resetData) {
+        return await instance.post("/auth/reset-password", resetData);
+    }
+}
 
-export default authService;
+export default new AdminAuthService();

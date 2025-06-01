@@ -21,10 +21,6 @@ namespace api.Models
 
         [Column(TypeName = "text")]
         public string? Description { get; set; }
-
-        [Column(TypeName = "decimal(2, 1)")]
-        public decimal Rating { get; set; }
-        public int RatingCount { get; set; }
         public int Sold { get; set; }
         public bool IsActive { get; set; } = true;
         public bool ManuallyDeactivated { get; set; } = false;
@@ -41,11 +37,9 @@ namespace api.Models
         public ProductLine? ProductLine { get; set; } = null;
 
         public ICollection<ProductColor> Colors { get; set; } = new HashSet<ProductColor>();
-
         public ICollection<ProductDiscount> Discounts { get; set; } = new HashSet<ProductDiscount>();
-
         public ProductDetail? Detail { get; set; } = null;
-
-        public ICollection<ProductTag> ProductTags { get; set; } = new HashSet<ProductTag>();
+        public ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
+        // public ICollection<ProductTag> ProductTags { get; set; } = new HashSet<ProductTag>();
     }
 }

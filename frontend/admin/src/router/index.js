@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { authService } from "../services/authService.js";
+import authService from "../services/authService.js";
 
 // Định nghĩa các routes
 const routes = [
@@ -49,6 +49,12 @@ const routes = [
 		path: "/customers",
 		name: "customers",
 		component: () => import("../views/CustomersPage.vue"),
+		meta: { requiresAuth: true },
+	},
+	{
+		path: "/discounts",
+		name: "discounts",
+		component: () => import("../views/DiscountsPage.vue"),
 		meta: { requiresAuth: true },
 	},
 	{

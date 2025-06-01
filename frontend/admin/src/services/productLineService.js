@@ -1,65 +1,147 @@
 import instance from "./axiosConfig";
 
-// Get all product lines with optional query parameters
-export const getProductLines = async (params) => {
-    return await instance.get("/product-line", { params });
-};
+class ProductLineService {
+    getHeaders = (data) =>
+        data instanceof FormData
+            ? { headers: { "Content-Type": "multipart/form-data" } }
+            : {};
 
-// Get product lines filtered by brand ID
-export const getProductLinesByBrand = async (brandId, params = {}) => {
-    return await instance.get(`/product-line/by-brand/${brandId}`, { params });
-};
+    // ===== Image Utilities =====
+    getUrlImage(url) {
+        const baseUrl = (import.meta.env.VITE_API_URL).replace("/api/v1","") || "";
+        return url?.startsWith("http") ? url : `${baseUrl}${url}`;
+    }
 
-// Get a product line by ID with optional query parameters
-export const getProductLineById = async (id, params) => {
-    return await instance.get(`/product-line/${id}`, { params });
-};
+    // ===== File Validation =====
+    validateFileType(file) {
+        const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+        return allowedTypes.includes(file.type);
+    }
 
-// Create a new product line (accepts FormData for image upload)
-export const createProductLine = async (productLineData) => {
-    // Nếu productLineData là FormData, đảm bảo header được đặt đúng
-    const isFormData = productLineData instanceof FormData;
-    return await instance.post("/product-line", productLineData, {
-        headers: isFormData
-            ? {
-                  "Content-Type": "multipart/form-data",
-              }
-            : {},
-    });
-};
+    validateFileSize(file, maxSizeMB = 2) {
+        return file.size <= maxSizeMB * 1024 * 1024;
+    }
 
-// Update a product line (accepts FormData for image upload)
-export const updateProductLine = async (id, productLineData) => {
-    // Nếu productLineData là FormData, đảm bảo header được đặt đúng
-    const isFormData = productLineData instanceof FormData;
-    return await instance.put(`/product-line/${id}`, productLineData, {
-        headers: isFormData
-            ? {
-                  "Content-Type": "multipart/form-data",
-              }
-            : {},
-    });
-};
+    validateImageFile(file) {
+        if (!file) return { valid: true };
 
-// Activate a product line
-export const activateProductLine = async (id) => {
-    return await instance.put(`/product-line/${id}/activate`);
-};
+        if (!this.validateFileType(file)) {
+            return {
+                valid: false,
+                message: "Định dạng tệp không hợp lệ. Chỉ chấp nhận PNG, JPG.",
+            };
+        }
 
-// Deactivate a product line
-export const deactivateProductLine = async (id) => {
-    return await instance.put(`/product-line/${id}/deactivate`);
-};
+        if (!this.validateFileSize(file)) {
+            return {
+                valid: false,
+                message: "Tệp quá lớn. Tối đa 2MB.",
+            };
+        }
 
-// All product line services
-export const productLineService = {
-    getProductLines,
-    getProductLinesByBrand,
-    getProductLineById,
-    createProductLine,
-    updateProductLine,
-    activateProductLine,
-    deactivateProductLine,
-};
+        return { valid: true };
+    }
 
-export default productLineService;
+    // ===== Form Utilities =====
+    prepareProductLineFormData(formData) {
+        const data = new FormData();
+        data.append("Name", formData.name);
+        data.append("BrandId", formData.brandId);
+        data.append("Image", formData.imageFile || "");
+        data.append("Description", formData.description || "");
+        return data;
+    }
+
+    getEmptyProductLineForm() {
+        return {
+            name: "",
+            brandId: null,
+            imageFile: null,
+            description: "",
+        };
+    }
+
+    getEditProductLineForm(productLine) {
+        return {
+            id: productLine.id,
+            name: productLine.name,
+            brandId: null,
+            imageFile: null,
+            description: productLine.description || "",
+            existingImage: productLine.image || "",
+        };
+    }
+
+    // ===== ProductLine API =====
+    async getProductLines(filters = {}) {
+        try {
+            const { includeProducts = true, isActive } = filters;
+
+            const params = new URLSearchParams();
+            params.append("includeProducts", includeProducts);
+            if (isActive !== undefined) {
+                params.append("isActive", isActive);
+            }
+
+            const response = await instance.get(
+                `/product-line?${params.toString()}`
+            );
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching product lines:", error);
+            throw error;
+        }
+    }
+
+    async getProductLinesByBrand(brandId, params = {}) {       
+        const response = await instance.get(
+            `/product-line/by-brand/${brandId}`,
+            { params }
+        );
+        return response.data;
+
+    }
+
+    async getProductLineById(id, params) {
+        const response = await instance.get(`/product-line/${id}`, { params });
+        return response.data;
+    }
+
+    async createProductLine(productLineData) {
+        return await instance.post(
+            "/product-line",
+            productLineData,
+            this.getHeaders(productLineData)
+        );
+    }
+
+    async updateProductLine(id, productLineData) {
+        return await instance.put(
+            `/product-line/${id}`,
+            productLineData,
+            this.getHeaders(productLineData)
+        );
+    }
+
+    async activateProductLine(id) {
+        return await instance.put(`/product-line/${id}/activate`);
+    }
+
+    async deactivateProductLine(id) {
+        return await instance.put(`/product-line/${id}/deactivate`);
+    }
+
+    async toggleProductLineStatus(productLineId, currentStatus) {
+        return currentStatus
+            ? await this.deactivateProductLine(productLineId)
+            : await this.activateProductLine(productLineId);
+    }
+
+    // ===== Misc =====
+    getProductLineProductsCount(productLines, productLineId) {
+        const productLine = productLines?.find((pl) => pl.id === productLineId);
+        return productLine?.products?.length || 0;
+    }
+}
+
+export default new ProductLineService();

@@ -105,16 +105,16 @@ class ProductService {
             });
     }
     async updateCartItem(cartId, quantity) {
-    return await axiosInstance.put(`/cart/items/${cartId}`, { quantity })
-        .then(response => {
-            if (response) {
-                return response.data;
-            }
-        })
-        .catch(error => {
-            console.error("Error updating cart item:", error);
-            throw error;
-        });
+        return await axiosInstance.put(`/cart/items/${cartId}`, { quantity })
+            .then(response => {
+                if (response) {
+                    return response.data;
+                }
+            })
+            .catch(error => {
+                console.error("Error updating cart item:", error);
+                throw error;
+            });
     }
     async addToCart(productId, quantity, colorId) {
         return await axiosInstance.post("/cart/add", {
@@ -132,7 +132,65 @@ class ProductService {
             throw error;
         });
     }
-
-
+    async checkQuantityToToggleStatus(productId) {
+        const product = await this.getProductById(productId);
+        if (product) {
+            if(product.stock === 0) {
+                await this.deactivateProduct(productId)
+            }
+            else {
+                await this.activateProduct(productId)
+            }
+        }
+        return;
+    }
+    async getAllOrders() {        
+        return await axiosInstance.get("/order/me")
+            .then(response => {
+                if (response) {
+                    return response.data.data;
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching all products:", error);
+                throw error;
+            });
+    }
+    async getAllCurrentOrders() {        
+        return await axiosInstance.get("/order/me-current")
+            .then(response => {
+                if (response) {
+                    return response.data.data;
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching all products:", error);
+                throw error;
+            });
+    }
+    async cancelOrder(orderId) {
+        return await axiosInstance.put(`/order/${orderId}/cancel`)
+            .then(response => {
+                if (response) {
+                    return response.data.data;
+                }
+            })
+            .catch(error => {
+                console.error("Error cancelling order:", error);
+                throw error;
+            });
+    }
+    async updateStatusOrder(orderId, status) {
+        return await axiosInstance.put(`/order/${orderId}/status`, { status })
+            .then(response => {
+                if (response) {
+                    return response.data.data;
+                }
+            })
+            .catch(error => {
+                console.error("Error updating order status:", error);
+                throw error;
+            });
+    }
 }
 export default new ProductService();
