@@ -31,6 +31,15 @@
 						v-else-if="activeMenu === 'delete-account'"
 						@back="activeMenu = 'profile'"
 					/>
+					<OrderManagement
+						v-else-if="activeMenu === 'orders'"
+						@back="activeMenu = 'profile'"
+					/>
+					<PurchaseHistory
+						v-else-if="activeMenu === 'purchase-history'"
+						@back="activeMenu = 'profile'"
+					/>
+
 				</div>
 			</div>
 		</div>
@@ -38,8 +47,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, onMounted, onBeforeUnmount, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import authService from "@/services/authService";
 import meService from "@/services/meService";
 import emitter from "@/utils/evenBus";
@@ -47,7 +56,10 @@ import SidebarMenu from "@/components/account/SidebarMenu.vue";
 import ProfileInfo from "@/components/account/ProfileInfo.vue";
 import PasswordChange from "@/components/account/PasswordChange.vue";
 import DeleteAccount from "@/components/account/DeleteAccount.vue";
+import OrderManagement from "./OrderManagement.vue";
+import PurchaseHistory from "./PurchaseHistory.vue";
 
+const route = useRoute();
 const router = useRouter();
 const activeMenu = ref("profile");
 const loading = ref(false);
@@ -101,10 +113,19 @@ const handleLogout = async () => {
 		console.error("Error during logout:", error);
 	}
 };
-
+watch(
+  activeMenu,
+  () => {
+    router.replace({ query: {} }); // Xoá hết query trên URL
+  }
+);
 onMounted(() => {
 	fetchUserData();
+	if (route.query.section === 'orders') {
+		activeMenu.value = 'orders';
+	}
 });
+
 </script>
 
 <style scoped>

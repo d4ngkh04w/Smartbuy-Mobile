@@ -109,7 +109,7 @@
         <button @click="backToHome" class="btn btn-home">
           <i class="fas fa-home"></i> Về trang chủ
         </button>
-        <button @click="viewOrder" class="btn btn-order">
+        <button @click="goToOrders" class="btn btn-order">
           <i class="fas fa-receipt"></i> Xem chi tiết đơn hàng
         </button>
       </div>
@@ -159,6 +159,10 @@ const paymentOptions = [
 const paymentText = computed(() => {
   return paymentOptions.find(opt => opt.value === form.payment)?.label || '';
 });
+
+const goToOrders = () => {
+    router.push({ path: "/account", query: { section: "orders" } });
+};
 
 
 
@@ -220,9 +224,7 @@ function backToHome() {
   router.push('/');
 }
 
-function viewOrder() {
-  router.push({name: 'orders-management'});
-}
+
 
 onMounted(async() => {
   try{
