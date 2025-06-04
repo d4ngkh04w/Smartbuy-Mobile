@@ -432,9 +432,22 @@ const sendVerificationEmail = async () => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    font-weight: 600;
+    text-shadow: 1px 1px 2px rgba(214, 51, 132, 0.1);
+    position: relative;
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid #eee;
+}
+.profile-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 13rem;
+  height: 2px;
+  background-color: #050505;
+  border-radius: 10px;
 }
 
 .profile-title {
