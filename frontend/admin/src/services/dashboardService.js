@@ -35,39 +35,6 @@ class DashboardService {
     }
 
     /**
-     * Lấy dữ liệu doanh thu theo thời gian
-     * @param {Object} params - Tham số query
-     * @param {Date} params.startDate - Ngày bắt đầu
-     * @param {Date} params.endDate - Ngày kết thúc
-     * @param {string} params.period - Khoảng thời gian (day, month, year)
-     * @returns {Promise<Array>} Dữ liệu doanh thu
-     */
-    async getRevenue(params = {}) {
-        try {
-            const queryParams = new URLSearchParams();
-
-            if (params.startDate) {
-                queryParams.append("startDate", params.startDate);
-            }
-            if (params.endDate) {
-                queryParams.append("endDate", params.endDate);
-            }
-            if (params.period) {
-                queryParams.append("period", params.period);
-            }
-
-            const url = `/dashboard/revenue${
-                queryParams.toString() ? `?${queryParams.toString()}` : ""
-            }`;
-            const response = await instance.get(url);
-            return response.data.data;
-        } catch (error) {
-            console.error("Error fetching revenue data:", error);
-            throw error;
-        }
-    }
-
-    /**
      * Lấy danh sách khách hàng thân thiết (từ API user)
      * @returns {Promise<Array>} Danh sách khách hàng
      */
@@ -191,6 +158,44 @@ class DashboardService {
                 return "day"; // Mặc định là day cho custom
             default:
                 return "month";
+        }
+    }
+    /**
+     * Lấy thống kê đơn hàng
+     * @param {Object} params - Tham số query
+     * @param {Date} params.startDate - Ngày bắt đầu
+     * @param {Date} params.endDate - Ngày kết thúc
+     * @param {string} params.timeFilter - Bộ lọc thời gian (sử dụng để xác định period)
+     * @returns {Promise<Object>} Dữ liệu thống kê đơn hàng
+     */
+    async getOrderStatistics(params = {}) {
+        try {
+            const queryParams = new URLSearchParams();
+
+            if (params.startDate) {
+                queryParams.append("startDate", params.startDate);
+            }
+            if (params.endDate) {
+                queryParams.append("endDate", params.endDate);
+            }
+
+            // Thêm tham số period dựa trên timeFilter
+            if (params.timeFilter) {
+                const period = this.getPeriodFromTimeFilter(params.timeFilter);
+                queryParams.append("period", period);
+            } else {
+                // Mặc định là month nếu không có timeFilter
+                queryParams.append("period", "month");
+            }
+
+            const url = `/dashboard/order-statistics${
+                queryParams.toString() ? `?${queryParams.toString()}` : ""
+            }`;
+            const response = await instance.get(url);
+            return response.data.data;
+        } catch (error) {
+            console.error("Error fetching order statistics:", error);
+            throw error;
         }
     }
 }

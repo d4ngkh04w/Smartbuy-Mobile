@@ -145,8 +145,7 @@ namespace api.Mappers
                 SimSlots = productDTO.SimSlots,
                 ScreenResolution = productDTO.ScreenResolution,
             };
-        }
-        public static async Task<ProductSummaryDTO> ToSummaryDTO(this Product product, ICommentRepository commentRepository)
+        }        public static async Task<ProductSummaryDTO> ToSummaryDTO(this Product product, ICommentRepository commentRepository)
         {
             return new ProductSummaryDTO
             {
@@ -154,7 +153,15 @@ namespace api.Mappers
                 RatingCount = await commentRepository.GetProductRatingCountAsync(product.Id),
                 Id = product.Id,
                 Name = product.Name,
-                Price = product.SalePrice,
+                Price = product.Discounts
+                    .Select(d => d.Discount!.CalculateDiscountedPrice(product.SalePrice))
+                    .DefaultIfEmpty(product.SalePrice)
+                    .Min(), // Giá sau khi giảm (thấp nhất)
+                SalePrice = product.SalePrice, // Giá gốc
+                Discount = product.Discounts
+                    .OrderBy(d => d.Discount!.CalculateDiscountedPrice(product.SalePrice))
+                    .Select(d => d.Discount!.ToString())
+                    .FirstOrDefault() ?? string.Empty, // Discount có giá thấp nhất
                 ImageUrl = product.Colors
                     .SelectMany(c => c.Images)
                     .FirstOrDefault(i => i.IsMain)?.ImagePath ?? string.Empty,

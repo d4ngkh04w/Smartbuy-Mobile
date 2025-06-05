@@ -47,19 +47,28 @@
                         ref="userDropdown"
                     >
                         <template v-if="isLoggedIn">
-                            <div class="icon-container logged-in">
-                                <img
-                                    v-if="userAvatar"
-                                    :src="userAvatar"
-                                    alt="User"
-                                    class="user-avatar"
-                                />
-                                <i v-else class="fas fa-user"></i>
-                            </div>
-                        </template>
-                        <template v-else>
-                            <div class="icon-container guest">
-                                <i class="fas fa-user"></i>
+                            <div class="user-info">
+                                <div class="icon-container logged-in">
+                                    <img
+                                        v-if="userAvatar"
+                                        :src="userAvatar"
+                                        alt="User"
+                                        class="user-avatar"
+                                    />
+                                    <i v-else class="fas fa-user"></i>
+                                </div>
+                                <span class="user-name" v-if="currentUser"
+                                    >Hi,
+                                    {{
+                                        currentUser.name ||
+                                        currentUser.phoneNumber ||
+                                        "Tài Khoản"
+                                    }}</span
+                                >
+                            </div> </template
+                        ><template v-else>
+                            <div class="login-button">
+                                <button class="login-btn">Đăng Nhập</button>
                             </div>
                         </template>
                     </div>
@@ -214,9 +223,11 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 0;
+    padding: 0.75rem 0;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 0.75rem;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .logo {
@@ -291,14 +302,22 @@ onUnmounted(() => {
     justify-content: center;
     width: 36px;
     height: 36px;
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: transparent;
+    border: 2px solid #ffffff;
     border-radius: 50%;
 }
 
 /* Style for logged in users */
 .icon-container.logged-in {
-    background-color: rgba(255, 255, 255, 0.4);
+    background-color: transparent;
     border: 2px solid #ffffff;
+    padding: 0;
+    overflow: hidden;
+}
+
+.icon-container i {
+    color: #ffffff;
+    font-size: 1.2rem;
 }
 
 .icon-container.logged-in i {
@@ -319,17 +338,21 @@ onUnmounted(() => {
 
 .cart-badge {
     position: absolute;
-    top: -5px;
-    right: -5px;
+    top: -10px;
+    right: -10px;
     background-color: red;
     color: white;
     border-radius: 50%;
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+    border: 2px solid #f86ed3; /* Match background color */
+    z-index: 10; /* Ensure the badge appears on top */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .cart-icon,
@@ -342,6 +365,42 @@ onUnmounted(() => {
     height: 36px;
     border-radius: 50%;
     object-fit: cover;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-name {
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.login-button {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.login-btn {
+    background-color: white;
+    color: #f86ed3;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.login-btn:hover {
+    background-color: #f5f5f5;
+    transform: translateY(-1px);
 }
 
 @media (max-width: 992px) {

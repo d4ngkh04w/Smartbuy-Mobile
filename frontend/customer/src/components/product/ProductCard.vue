@@ -18,10 +18,20 @@
                     class="product-img"
                 />
             </div>
-
             <div class="product-middle">
                 <h3>{{ product.name }}</h3>
-                <p>{{ format.formatPrice(product.price) }}₫</p>
+                <!-- Price section giống ProductDetail -->
+                <div class="price-section">
+                    <span class="current-price">
+                        {{ format.formatPrice(product.price) }}₫
+                    </span>
+                    <span v-if="product.discount" class="original-price">
+                        {{ format.formatPrice(product.salePrice) }}₫
+                    </span>
+                    <span v-if="product.discount" class="discount-badge">
+                        {{ product.discount }}
+                    </span>
+                </div>
             </div>
             <div class="rating">
                 <div class="stars">
@@ -144,11 +154,32 @@ const getStarClass = (position, rating) => {
     min-height: 40px;
 }
 
-.price {
+/* Price section styles giống ProductDetail */
+.price-section {
+    margin-bottom: 8px;
+}
+
+.current-price {
     font-size: 16px;
-    font-weight: 600;
-    color: #ff7043;
-    margin: 0;
+    font-weight: bold;
+    color: #ef4444;
+    margin-right: 8px;
+}
+
+.original-price {
+    font-size: 14px;
+    color: #999;
+    text-decoration: line-through;
+    margin-right: 8px;
+}
+
+.discount-badge {
+    background-color: #ef4444;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
 }
 
 .product-bottom {
@@ -214,13 +245,21 @@ const getStarClass = (position, rating) => {
     .product-img {
         height: 180px;
     }
-
     .product-middle h3 {
         font-size: 16px;
     }
 
-    .product-middle p {
-        font-size: 14px;
+    .current-price {
+        font-size: 15px;
+    }
+
+    .original-price {
+        font-size: 13px;
+    }
+
+    .discount-badge {
+        font-size: 11px;
+        padding: 2px 5px;
     }
 
     .rating,

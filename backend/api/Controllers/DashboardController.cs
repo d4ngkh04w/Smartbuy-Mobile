@@ -16,20 +16,18 @@ namespace api.Controllers
         public DashboardController(IDashboardService dashboardService)
         {
             _dashboardService = dashboardService;
-        }
-
-        [HttpGet("top-products")]
+        }        [HttpGet("top-products")]
         public async Task<IActionResult> GetTopProducts([FromQuery] DashboardDateRangeQuery query)
         {
             var topProducts = await _dashboardService.GetTopProductsAsync(query);
             return ApiResponseHelper.Success("Top products retrieved successfully", topProducts);
         }
 
-        [HttpGet("revenue")]
-        public async Task<IActionResult> GetRevenue([FromQuery] DashboardDateRangeQuery query)
+        [HttpGet("order-statistics")]
+        public async Task<IActionResult> GetOrderStatistics([FromQuery] DashboardDateRangeQuery query)
         {
-            var revenue = await _dashboardService.GetRevenueAsync(query);
-            return ApiResponseHelper.Success("Revenue data retrieved successfully", revenue);
+            var statistics = await _dashboardService.GetOrderStatisticsAsync(query);
+            return ApiResponseHelper.Success("Order statistics retrieved successfully", statistics);
         }
     }
 }
