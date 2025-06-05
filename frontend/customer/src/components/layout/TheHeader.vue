@@ -199,6 +199,16 @@ onMounted(() => {
 
     // Lắng nghe sự kiện đăng xuất
     emitter.on("user-logged-out", handleUserLoggedOut);
+
+    // Lắng nghe sự kiện cập nhật thông tin người dùng
+    emitter.on("user-updated", (userData) => {
+        if (userData) {
+            currentUser.value = userData;
+            userAvatar.value = userData.avatar
+                ? meService.getUrlImage(userData.avatar)
+                : null;
+        }
+    });
 });
 
 onUnmounted(() => {
@@ -207,6 +217,7 @@ onUnmounted(() => {
     emitter.off("update-cart-count");
     emitter.off("logout");
     emitter.off("user-logged-out", handleUserLoggedOut);
+    emitter.off("user-updated");
 });
 </script>
 

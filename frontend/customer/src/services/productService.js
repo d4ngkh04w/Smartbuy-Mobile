@@ -188,12 +188,13 @@ class ProductService {
         return await axiosInstance
             .get("/order/me-current")
             .then((response) => {
-                if (response) {
-                    return response.data.data;
+                if (response && response.data) {
+                    return response.data.data || [];
                 }
+                return [];
             })
             .catch((error) => {
-                console.error("Error fetching all products:", error);
+                console.error("Error fetching current orders:", error);
                 throw error;
             });
     }
