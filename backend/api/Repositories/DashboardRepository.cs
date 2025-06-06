@@ -53,8 +53,130 @@ namespace api.Repositories
                 : result.OrderByDescending(p => p.Quantity).ToList();
         }
 
-        public async Task<List<RevenueDTO>> GetRevenueAsync(DateTime? startDate, DateTime? endDate, string period)
-        {            // Start with all completed orders
+        public async Task<OrderStatisticsDTO> GetOrderStatisticsAsync(DateTime? startDate, DateTime? endDate)
+        {
+            var currentQuery = _db.Orders.AsQueryable();
+            var previousQuery = _db.Orders.AsQueryable();
+
+            // Apply date filters for current period
+            if (startDate.HasValue)
+            {
+                currentQuery = currentQuery.Where(o => o.OrderDate >= startDate.Value);
+            }
+            
+            if (endDate.HasValue)
+            {
+                currentQuery = currentQuery.Where(o => o.OrderDate <= endDate.Value);
+            }
+
+            // Calculate previous period for comparison
+            if (startDate.HasValue && endDate.HasValue)
+            {
+                var periodLength = endDate.Value - startDate.Value;
+                var previousStart = startDate.Value - periodLength;
+                var previousEnd = startDate.Value;
+                
+                previousQuery = previousQuery.Where(o => o.OrderDate >= previousStart && o.OrderDate < previousEnd);
+            }
+
+            // Current period stats
+            var currentOrders = await currentQuery.ToListAsync();
+            var currentCompleted = currentOrders.Where(o => o.Status == "Hoàn thành").ToList();
+            
+            var totalOrders = currentOrders.Count;
+            var totalRevenue = currentCompleted.Sum(o => o.TotalAmount);
+            var avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+            var completionRate = totalOrders > 0 ? (decimal)currentCompleted.Count / totalOrders * 100 : 0;
+
+            // Previous period stats for comparison
+            var previousOrders = await previousQuery.ToListAsync();
+            var previousCompleted = previousOrders.Where(o => o.Status == "Hoàn thành").ToList();
+            
+            var prevTotalOrders = previousOrders.Count;
+            var prevTotalRevenue = previousCompleted.Sum(o => o.TotalAmount);
+            var prevAvgOrderValue = prevTotalOrders > 0 ? prevTotalRevenue / prevTotalOrders : 0;
+            var prevCompletionRate = prevTotalOrders > 0 ? (decimal)previousCompleted.Count / prevTotalOrders * 100 : 0;
+
+            // Calculate percentage changes
+            var orderChange = prevTotalOrders > 0 ? (decimal)(totalOrders - prevTotalOrders) / prevTotalOrders * 100 : 0;
+            var revenueChange = prevTotalRevenue > 0 ? (totalRevenue - prevTotalRevenue) / prevTotalRevenue * 100 : 0;
+            var avgChange = prevAvgOrderValue > 0 ? (avgOrderValue - prevAvgOrderValue) / prevAvgOrderValue * 100 : 0;
+            var completionChange = prevCompletionRate > 0 ? (completionRate - prevCompletionRate) / prevCompletionRate * 100 : 0;
+
+            return new OrderStatisticsDTO
+            {
+                TotalOrders = totalOrders,
+                TotalRevenue = totalRevenue,
+                AvgOrderValue = avgOrderValue,
+                CompletionRate = completionRate,
+                OrderChange = orderChange,
+                RevenueChange = revenueChange,
+                AvgChange = avgChange,
+                CompletionChange = completionChange
+            };
+        }
+
+        public async Task<List<OrderStatusDistributionDTO>> GetOrderStatusDistributionAsync(DateTime? startDate, DateTime? endDate)
+        {
+            var query = _db.Orders.AsQueryable();
+
+            if (startDate.HasValue)
+            {
+                query = query.Where(o => o.OrderDate >= startDate.Value);
+            }
+            
+            if (endDate.HasValue)
+            {
+                query = query.Where(o => o.OrderDate <= endDate.Value);
+            }
+
+            var statusCounts = await query
+                .GroupBy(o => o.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var totalOrders = statusCounts.Sum(s => s.Count);
+
+            return statusCounts.Select(s => new OrderStatusDistributionDTO
+            {
+                Status = s.Status,
+                Count = s.Count,
+                Percentage = totalOrders > 0 ? Math.Round((decimal)s.Count / totalOrders * 100, 1) : 0
+            }).OrderByDescending(s => s.Count).ToList();
+        }
+
+        public async Task<List<PaymentMethodStatDTO>> GetPaymentMethodStatsAsync(DateTime? startDate, DateTime? endDate)
+        {
+            var query = _db.Orders.AsQueryable();
+
+            if (startDate.HasValue)
+            {
+                query = query.Where(o => o.OrderDate >= startDate.Value);
+            }
+            
+            if (endDate.HasValue)
+            {
+                query = query.Where(o => o.OrderDate <= endDate.Value);
+            }
+
+            var paymentCounts = await query
+                .GroupBy(o => o.PaymentMethod)
+                .Select(g => new { Method = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var totalOrders = paymentCounts.Sum(p => p.Count);
+
+            return paymentCounts.Select(p => new PaymentMethodStatDTO
+            {
+                Method = p.Method,
+                Count = p.Count,
+                Percentage = totalOrders > 0 ? Math.Round((decimal)p.Count / totalOrders * 100, 1) : 0
+            }).OrderByDescending(p => p.Count).ToList();
+        }
+
+        public async Task<List<RevenueChartDTO>> GetRevenueChartDataAsync(DateTime? startDate, DateTime? endDate, string period)
+        {
+            // Start with all completed orders
             var completedOrders = _db.Orders
                 .Where(o => o.Status == "Hoàn thành");
 
@@ -87,7 +209,7 @@ namespace api.Repositories
                         .OrderBy(r => r.Date)
                         .ToListAsync();
 
-                    return dailyResults.Select(r => new RevenueDTO
+                    return dailyResults.Select(r => new RevenueChartDTO
                     {
                         Date = r.Date,
                         DisplayDate = r.Date.ToString("yyyy-MM-dd"),
@@ -96,6 +218,7 @@ namespace api.Repositories
                     }).ToList();
 
                 case "month":
+                default:
                     // For monthly grouping - using a client-side evaluation approach to avoid EF Core translation issues
                     var monthlyResults = await completedOrders
                         .GroupBy(o => new { o.DeliveryDate!.Value.Year, o.DeliveryDate!.Value.Month })
@@ -110,31 +233,10 @@ namespace api.Repositories
                         .ThenBy(r => r.Month)
                         .ToListAsync();
 
-                    return monthlyResults.Select(r => new RevenueDTO
+                    return monthlyResults.Select(r => new RevenueChartDTO
                     {
                         Date = new DateTime(r.Year, r.Month, 1),
                         DisplayDate = $"{r.Year}-{r.Month:D2}",
-                        Amount = r.Amount,
-                        OrderCount = r.OrderCount
-                    }).ToList();
-                case "year":
-                default:
-                    // For yearly grouping - using a client-side evaluation approach to avoid EF Core translation issues
-                    var yearlyResults = await completedOrders
-                        .GroupBy(o => o.DeliveryDate!.Value.Year)
-                        .Select(g => new
-                        {
-                            Year = g.Key,
-                            Amount = g.Sum(o => o.TotalAmount),
-                            OrderCount = g.Count()
-                        })
-                        .OrderBy(r => r.Year)
-                        .ToListAsync();
-
-                    return yearlyResults.Select(r => new RevenueDTO
-                    {
-                        Date = new DateTime(r.Year, 1, 1),
-                        DisplayDate = r.Year.ToString(),
                         Amount = r.Amount,
                         OrderCount = r.OrderCount
                     }).ToList();

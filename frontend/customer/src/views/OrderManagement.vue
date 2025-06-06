@@ -1,6 +1,6 @@
 <template>
   <div class="order-management">
-    <h2 class="page-title">Đơn hàng của bạn</h2>
+    <h2 class="page-title">Đơn hàng</h2>
 
     <div v-if="loading" class="loading-state">
       <Loading />
@@ -259,31 +259,32 @@ onMounted(() => {
 
 <style scoped>
 .order-management {
-  padding: 2rem;
   min-height: calc(100vh - 100px);
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+
 }
 
 .page-title {
-  font-size: 2.2rem;
-  color: #d63384;
-  margin-bottom: 2rem;
-  text-align: center;
   font-weight: 600;
   text-shadow: 1px 1px 2px rgba(214, 51, 132, 0.1);
   position: relative;
+  margin-bottom: 1.5rem;
   padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
 }
 
 .page-title::after {
   content: '';
   position: absolute;
   bottom: 0;
-  left: 50%;
-  width: 5rem;
+  left: 0;
+  width: 7rem;
   height: 2px;
-  background-color: #d63384;
+  background-color: #060606;
   border-radius: 10px;
-  transform: translateX(-50%);
 }
 
 .loading-state,

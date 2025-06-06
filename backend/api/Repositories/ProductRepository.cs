@@ -75,11 +75,12 @@ namespace api.Repositories
         }
 
         public async Task<(List<Product> Items, int TotalItems)> GetPagedProductsAsync(ProductQuery productQuery)
-        {
-            var query = _db.Products
+        {            var query = _db.Products
                 .Include(p => p.Colors)
                     .ThenInclude(c => c.Images)
                 .Include(p => p.ProductLine)
+                .Include(p => p.Discounts)
+                    .ThenInclude(pd => pd.Discount)
                 .AsQueryable();
 
             if (productQuery.IsActive.HasValue)

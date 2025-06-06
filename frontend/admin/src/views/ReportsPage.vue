@@ -11,78 +11,115 @@
                 </button>
             </div>
         </div>
-
-        <div class="report-container">
-            <div class="date-filter">
-                <div class="filter-group">
-                    <label>Thời gian:</label>
-                    <select v-model="timeFilter" @change="applyFilters">
-                        <option value="today">Hôm nay</option>
-                        <option value="week">Tuần này</option>
-                        <option value="month">Tháng này</option>
-                        <option value="quarter">Quý này</option>
-                        <option value="year">Năm nay</option>
-                        <option value="custom">Tùy chỉnh</option>
-                    </select>
-                </div>
-
-                <div v-if="timeFilter === 'custom'" class="custom-date-range">
-                    <div class="date-input-group">
-                        <label>Từ ngày:</label>
-                        <input
-                            type="date"
-                            v-model="startDate"
-                            @change="applyFilters"
-                        />
-                    </div>
-                    <div class="date-input-group">
-                        <label>Đến ngày:</label>
-                        <input
-                            type="date"
-                            v-model="endDate"
-                            @change="applyFilters"
-                        />
-                    </div>
-                </div>
+        <!-- Date Filter (Common for all tabs) -->
+        <div class="date-filter">
+            <div class="filter-group">
+                <label>Thời gian:</label>
+                <select v-model="timeFilter" @change="applyFilters">
+                    <option value="today">Hôm nay</option>
+                    <option value="week">Tuần này</option>
+                    <option value="month">Tháng này</option>
+                    <option value="quarter">Quý này</option>
+                    <option value="year">Năm nay</option>
+                    <option value="custom">Tùy chỉnh</option>
+                </select>
             </div>
 
-            <div class="reports-grid">
-                <!-- Best Selling Products Section -->
-                <BestSellingProducts
-                    :products="bestSellingProducts"
-                    :loading="loading.bestSelling"
-                    :timeFilter="timeFilter"
-                    :startDate="startDate"
-                    :endDate="endDate"
-                />
-
-                <!-- Revenue Over Time Section -->
-                <RevenueOverTime
-                    :revenueData="revenueData"
-                    :loading="loading.revenue"
-                    :timeFilter="timeFilter"
-                />
-
-                <!-- Frequent Customers Section -->
-                <FrequentCustomers
-                    :customers="frequentCustomers"
-                    :loading="loading.customers"
-                    :timeFilter="timeFilter"
-                />
+            <div class="current-period">
+                <i class="fas fa-calendar-alt"></i>
+                {{ formattedTimePeriod }}
             </div>
+
+            <div v-if="timeFilter === 'custom'" class="custom-date-range">
+                <div class="date-input-group">
+                    <label>Từ ngày:</label>
+                    <input
+                        type="date"
+                        v-model="startDate"
+                        @change="applyFilters"
+                    />
+                </div>
+                <div class="date-input-group">
+                    <label>Đến ngày:</label>
+                    <input
+                        type="date"
+                        v-model="endDate"
+                        @change="applyFilters"
+                    />
+                </div>
+            </div>
+        </div>
+        <!-- Tabs for different report sections -->
+        <div class="report-tabs">
+            <button
+                @click="activeTab = 'statistics'"
+                :class="[
+                    'tab-btn',
+                    activeTab === 'statistics' ? 'active-tab' : '',
+                ]"
+            >
+                <i class="fas fa-chart-bar"></i> Thống kê đơn hàng
+            </button>
+            <button
+                @click="activeTab = 'products'"
+                :class="[
+                    'tab-btn',
+                    activeTab === 'products' ? 'active-tab' : '',
+                ]"
+            >
+                <i class="fas fa-trophy"></i> Sản phẩm bán chạy
+            </button>
+        </div>
+        <!-- Content based on active tab -->
+        <div class="tab-content">
+            <transition name="fade" mode="out-in">
+                <!-- Order Statistics Tab -->
+                <div
+                    v-if="activeTab === 'statistics'"
+                    class="statistics-content"
+                >
+                    <OrderStatistics
+                        :orderStats="orderStats"
+                        :orderStatusDistribution="orderStatusDistribution"
+                        :paymentMethods="paymentMethods"
+                        :loading="loading.orderStats"
+                        :timeFilter="timeFilter"
+                        :formattedTimePeriod="formattedTimePeriod"
+                    />
+                </div>
+
+                <!-- Best Selling Products Tab -->
+                <div
+                    v-else-if="activeTab === 'products'"
+                    class="products-content"
+                >
+                    <BestSellingProducts
+                        :products="bestSellingProducts"
+                        :loading="loading.bestSelling"
+                        :timeFilter="timeFilter"
+                        :formattedTimePeriod="formattedTimePeriod"
+                    />
+                </div>
+            </transition>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import BestSellingProducts from "../components/reports/BestSellingProducts.vue";
-import RevenueOverTime from "../components/reports/RevenueOverTime.vue";
-import FrequentCustomers from "../components/reports/FrequentCustomers.vue";
-import { getCurrentDate, getLastMonthDate } from "../utils/dateTimeUtils.js";
+import OrderStatistics from "../components/reports/OrderStatistics.vue";
+import {
+    getCurrentDate,
+    getLastMonthDate,
+    getFormattedTimePeriod,
+} from "../utils/dateTimeUtils.js";
 import emitter from "../utils/evenBus.js";
 import dashboardService from "../services/dashboardService.js";
+
+// Tab State
+const activeTab = ref("statistics");
 
 // State
 const timeFilter = ref("month");
@@ -90,30 +127,37 @@ const startDate = ref(getLastMonthDate());
 const endDate = ref(getCurrentDate());
 const loading = ref({
     bestSelling: true,
-    revenue: true,
-    customers: true,
+    orderStats: true,
 });
 
 // Data
 const bestSellingProducts = ref([]);
 
-const revenueData = ref({
-    labels: [],
-    datasets: [
-        {
-            data: [],
-        },
-    ],
-    totals: {
-        revenue: 0,
-        orders: 0,
-        avgOrderValue: 0,
-    },
+// Order Statistics Data
+const orderStats = ref({
+    totalOrders: 0,
+    totalRevenue: 0,
+    avgOrderValue: 0,
+    completionRate: 0,
+    orderChange: 0,
+    revenueChange: 0,
+    avgChange: 0,
+    completionChange: 0,
 });
 
-const frequentCustomers = ref([]);
+const orderStatusDistribution = ref([]);
+const paymentMethods = ref([]);
 
 const router = useRouter();
+
+// Computed
+const formattedTimePeriod = computed(() => {
+    return getFormattedTimePeriod(
+        timeFilter.value,
+        startDate.value,
+        endDate.value
+    );
+});
 
 // Methods
 /**
@@ -124,16 +168,11 @@ const refreshData = async () => {
         // Đặt tất cả trạng thái loading thành true
         loading.value = {
             bestSelling: true,
-            revenue: true,
-            customers: true,
+            orderStats: true,
         };
 
         // Giả lập gọi API - Trong thực tế, đây sẽ là các lời gọi đến backend API
-        await Promise.all([
-            fetchBestSellingProducts(),
-            fetchRevenueData(),
-            fetchFrequentCustomers(),
-        ]);
+        await Promise.all([fetchBestSellingProducts(), fetchOrderStatistics()]);
 
         // Thông báo khi làm mới thành công
         emitter.emit("show-notification", {
@@ -156,16 +195,11 @@ const applyFilters = async () => {
     try {
         loading.value = {
             bestSelling: true,
-            revenue: true,
-            customers: true,
+            orderStats: true,
         };
 
         // Gọi API với các tham số lọc
-        await Promise.all([
-            fetchBestSellingProducts(),
-            fetchRevenueData(),
-            fetchFrequentCustomers(),
-        ]);
+        await Promise.all([fetchBestSellingProducts(), fetchOrderStatistics()]);
     } catch (error) {
         console.error("Áp dụng bộ lọc thất bại:", error);
         emitter.emit("show-notification", {
@@ -187,24 +221,23 @@ const fetchBestSellingProducts = async () => {
             timeFilter.value,
             startDate.value,
             endDate.value
-        );
-
-        // Gọi API với parameters
+        ); // Gọi API với parameters
         const data = await dashboardService.getTopProducts({
             startDate: dateRange.startDate,
             endDate: dateRange.endDate,
             limit: 5, // Lấy top 5 sản phẩm
         });
 
-        // Transform data to match component format
+        console.log("Best selling products data:", data);
         bestSellingProducts.value = data.map((product) => ({
             id: product.productId,
             name: product.productName,
-            sku: product.sku || `SKU${product.productId}`, // Fallback nếu không có SKU
-            quantity: product.quantitySold,
-            revenue: product.totalRevenue,
+            sku: `SKU${product.productId}`, // Generate SKU from product ID
+            quantity: product.quantity,
+            revenue: product.revenue,
             firstSoldDate:
-                product.firstSoldDate || new Date().toISOString().split("T")[0],
+                product.createdAtFormatted ||
+                new Date().toISOString().split("T")[0],
         }));
 
         loading.value.bestSelling = false;
@@ -219,128 +252,59 @@ const fetchBestSellingProducts = async () => {
 };
 
 /**
- * Lấy dữ liệu doanh thu từ API
+ * Lấy dữ liệu thống kê đơn hàng
  */
-const fetchRevenueData = async () => {
+const fetchOrderStatistics = async () => {
     try {
-        loading.value.revenue = true;
-
-        // Lấy date range và period từ timeFilter
+        loading.value.orderStats = true; // Gọi API thống kê đơn hàng
         const dateRange = dashboardService.getDateRange(
             timeFilter.value,
             startDate.value,
             endDate.value
         );
-        const period = dashboardService.getPeriodFromTimeFilter(
-            timeFilter.value
-        );
-
-        // Gọi API với parameters
-        const data = await dashboardService.getRevenue({
+        const params = {
             startDate: dateRange.startDate,
             endDate: dateRange.endDate,
-            period: period,
-        });
-
-        // Transform data to match component format
-        const labels = data.map((item) => {
-            const date = new Date(item.date);
-            if (period === "daily") {
-                return `${date.getDate().toString().padStart(2, "0")}/${(
-                    date.getMonth() + 1
-                )
-                    .toString()
-                    .padStart(2, "0")}`;
-            } else if (period === "weekly") {
-                return `Tuần ${Math.ceil(date.getDate() / 7)}`;
-            } else if (period === "monthly") {
-                return `${date.getMonth() + 1}/${date.getFullYear()}`;
-            }
-            return item.date;
-        });
-
-        const revenueValues = data.map((item) => item.totalRevenue);
-        const totalRevenue = revenueValues.reduce(
-            (sum, value) => sum + value,
-            0
-        );
-        const totalOrders = data.reduce(
-            (sum, item) => sum + (item.orderCount || 0),
-            0
-        );
-        const avgOrderValue =
-            totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
-
-        revenueData.value = {
-            labels: labels,
-            datasets: [
-                {
-                    data: revenueValues,
-                },
-            ],
-            totals: {
-                revenue: totalRevenue,
-                orders: totalOrders,
-                avgOrderValue: avgOrderValue,
-            },
+            timeFilter: timeFilter.value, // Thêm timeFilter để backend xác định period
         };
 
-        loading.value.revenue = false;
+        const data = await dashboardService.getOrderStatistics(params);
+
+        console.log("Dữ liệu API:", data); // Cập nhật dữ liệu từ API - Backend trả về OrderReportDTO
+        orderStats.value = data.statistics || {
+            totalOrders: 0,
+            totalRevenue: 0,
+            avgOrderValue: 0,
+            completionRate: 0,
+            orderChange: 0,
+            revenueChange: 0,
+            avgChange: 0,
+            completionChange: 0,
+        };
+        orderStatusDistribution.value = data.statusDistribution || [];
+        paymentMethods.value = data.paymentMethods || [];
+
+        loading.value.orderStats = false;
     } catch (error) {
-        console.error("Lấy dữ liệu doanh thu thất bại:", error);
+        console.error("Lấy dữ liệu thống kê đơn hàng thất bại:", error); // Fallback data nếu API lỗi
+        orderStats.value = {
+            totalOrders: 0,
+            totalRevenue: 0,
+            avgOrderValue: 0,
+            completionRate: 0,
+            orderChange: 0,
+            revenueChange: 0,
+            avgChange: 0,
+            completionChange: 0,
+        };
+        orderStatusDistribution.value = [];
+        paymentMethods.value = [];
+
         emitter.emit("show-notification", {
             status: "error",
-            message: "Không thể tải dữ liệu doanh thu",
+            message: "Không thể tải dữ liệu thống kê đơn hàng",
         });
-        loading.value.revenue = false;
-    }
-};
-
-/**
- * Lấy dữ liệu khách hàng thân thiết từ API
- */
-const fetchFrequentCustomers = async () => {
-    try {
-        loading.value.customers = true;
-
-        // Lấy date range từ timeFilter
-        const dateRange = dashboardService.getDateRange(
-            timeFilter.value,
-            startDate.value,
-            endDate.value
-        );
-
-        // Gọi API với parameters
-        const data = await dashboardService.getFrequentCustomers({
-            startDate: dateRange.startDate,
-            endDate: dateRange.endDate,
-            limit: 5, // Lấy top 5 khách hàng
-        });
-
-        // Transform data to match component format
-        frequentCustomers.value = data.map((customer) => ({
-            id: customer.id,
-            name:
-                customer.fullName ||
-                customer.name ||
-                `Khách hàng ${customer.id}`,
-            email: customer.email || "",
-            phone: customer.phoneNumber || customer.phone || "",
-            orderCount: customer.orderCount || 0,
-            totalSpent: customer.totalSpent || 0,
-            lastOrderDate: customer.lastOrderDate
-                ? new Date(customer.lastOrderDate).toISOString().split("T")[0]
-                : new Date().toISOString().split("T")[0],
-        }));
-
-        loading.value.customers = false;
-    } catch (error) {
-        console.error("Lấy dữ liệu khách hàng thất bại:", error);
-        emitter.emit("show-notification", {
-            status: "error",
-            message: "Không thể tải dữ liệu khách hàng",
-        });
-        loading.value.customers = false;
+        loading.value.orderStats = false;
     }
 };
 
@@ -417,63 +381,34 @@ onMounted(async () => {
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
-    background: linear-gradient(to right, #ffffff, #f8f8f8);
+    background-color: #fff;
     color: #666;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
 }
 
 .refresh-btn i {
-    font-size: 0.9rem;
     color: var(--primary-color);
 }
 
 .refresh-btn:hover {
-    background: linear-gradient(to right, #f8f0f4, #ffeef8);
-    border-color: var(--primary-color);
+    background-color: #f8f0f4;
     color: var(--primary-color);
-    box-shadow: 0 3px 6px rgba(248, 110, 211, 0.15);
-    transform: translateY(-1px);
-}
-
-.report-container {
-    background-color: white;
-    padding: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.report-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}
-
-.report-header p {
-    color: #666;
-    margin: 0;
-}
-
-.header-actions {
-    display: flex;
-    justify-content: flex-end;
 }
 
 .date-filter {
     background-color: white;
     padding: 1.5rem;
     border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     display: flex;
     flex-wrap: wrap;
     gap: 1.5rem;
     align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .filter-group {
@@ -484,18 +419,41 @@ onMounted(async () => {
 
 .filter-group label {
     font-weight: 500;
-    color: #444;
+    color: #495057;
     min-width: 80px;
 }
 
 .date-filter select {
     padding: 0.5rem 1rem;
-    border: 1px solid #ddd;
+    border: 1px solid #ced4da;
     border-radius: 6px;
     background-color: white;
     min-width: 150px;
     font-size: 0.95rem;
-    color: #444;
+    color: #495057;
+    transition: border-color 0.15s ease-in-out;
+}
+
+.date-filter select:focus {
+    border-color: var(--primary-color);
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(248, 110, 211, 0.25);
+}
+
+.current-period {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: #f8f0f4;
+    border-radius: 6px;
+    color: var(--primary-color);
+    font-weight: 500;
+    border: 1px solid rgba(248, 110, 211, 0.2);
+}
+
+.current-period i {
+    color: var(--primary-color);
 }
 
 .custom-date-range {
@@ -512,33 +470,174 @@ onMounted(async () => {
 
 .date-input-group label {
     font-weight: 500;
-    color: #444;
+    color: #495057;
 }
 
 .date-input-group input {
     padding: 0.5rem 1rem;
-    border: 1px solid #ddd;
+    border: 1px solid #ced4da;
     border-radius: 6px;
     background-color: white;
     font-size: 0.95rem;
-    color: #444;
+    color: #495057;
+    transition: border-color 0.15s ease-in-out;
 }
 
-.reports-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
+.date-input-group input:focus {
+    border-color: var(--primary-color);
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(248, 110, 211, 0.25);
 }
 
-@media (min-width: 768px) {
-    .reports-grid {
-        grid-template-columns: repeat(2, 1fr);
+/* Tab Styles */
+.report-tabs {
+    display: flex;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 1.5rem;
+    background-color: white;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.tab-btn {
+    padding: 1rem 1.5rem;
+    background-color: white;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s;
+    position: relative;
+    flex: 1;
+    justify-content: center;
+}
+
+.tab-btn i {
+    font-size: 1.2rem;
+}
+
+.tab-btn:hover {
+    color: var(--primary-color);
+    background-color: #fff5fc;
+}
+
+.active-tab {
+    color: var(--primary-color);
+    border-bottom: 3px solid var(--primary-color);
+    font-weight: 600;
+}
+
+.tab-content {
+    background-color: white;
+    border-radius: 0 0 12px 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    min-height: 500px;
+}
+
+/* Content Styles */
+.statistics-content,
+.revenue-content,
+.products-content {
+    width: 100%;
+}
+
+/* Fade Transition */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .reports-container {
+        padding: 1rem;
+    }
+
+    .page-header {
+        padding: 1.5rem;
+    }
+
+    .header-top {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+
+    .date-filter {
+        padding: 1rem;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-group {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .filter-group label {
+        min-width: auto;
+    }
+
+    .custom-date-range {
+        flex-direction: column;
+    }
+
+    .date-input-group {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .report-tabs {
+        flex-direction: column;
+    }
+
+    .tab-btn {
+        justify-content: flex-start;
+        padding: 1rem;
+    }
+
+    .tab-content {
+        padding: 1rem;
     }
 }
 
-@media (min-width: 1280px) {
-    .reports-grid > :first-child {
-        grid-column: span 2;
+@media (max-width: 480px) {
+    .reports-container {
+        padding: 0.5rem;
+    }
+
+    .page-header {
+        padding: 1rem;
+    }
+
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .back-button,
+    .refresh-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.9rem;
+    }
+
+    .date-filter {
+        padding: 0.75rem;
+    }
+
+    .tab-content {
+        padding: 0.75rem;
     }
 }
 </style>

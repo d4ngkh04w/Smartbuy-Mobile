@@ -9,15 +9,19 @@
                 <i class="fas fa-user-cog"></i>
                 <span>Thông tin cá nhân</span>
             </div>
-            <div class="menu-item" @click="router.push('/account/orders')">
+            <div 
+                class="menu-item" 
+                @click="$emit('update:activeMenu', 'orders')"
+                :class="{ active: activeMenu === 'orders' }"
+            >
                 <i class="fas fa-shopping-bag"></i>
                 <span>Đơn hàng của bạn</span>
             </div>
-            <div class="menu-item">
-                <i class="fas fa-ticket-alt"></i>
-                <span>Trung tâm voucher</span>
-            </div>
-            <div class="menu-item" @click="router.push('/account/orders-history')">
+            <div 
+                class="menu-item" 
+                @click="$emit('update:activeMenu', 'purchase-history')"
+                :class="{ active: activeMenu === 'purchase-history' }"
+            >
                 <i class="fas fa-history"></i>
                 <span>Lịch sử mua hàng</span>
             </div>
@@ -39,7 +43,6 @@
 </template>
 
 <script setup>
-import router from '@/router';
 
 defineProps({
     activeMenu: {

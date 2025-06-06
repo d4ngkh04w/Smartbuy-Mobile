@@ -77,8 +77,13 @@ const technicalSpecsForm = ref({
 watch(
     () => props.brands,
     (newBrands) => {
-        if (newBrands && newBrands.length > 0 && !basicInfoForm.value.brandId) {
-            // If no brand is selected but brands are available, select the first one
+        // Only set default brand if form is empty and product is not loaded yet
+        if (
+            newBrands &&
+            newBrands.length > 0 &&
+            !basicInfoForm.value.brandId &&
+            !props.product?.id
+        ) {
             basicInfoForm.value.brandId = newBrands[0].id;
             emit("brand-change", basicInfoForm.value.brandId);
         }
@@ -90,15 +95,9 @@ watch(
 watch(
     () => props.showModal,
     (isVisible) => {
-        if (isVisible) {
-            if (basicInfoForm.value.brandId) {
-                // When the modal becomes visible and we have a brand ID, emit to load product lines
-                emit("brand-change", basicInfoForm.value.brandId);
-            } else if (props.brands && props.brands.length > 0) {
-                // If no brand is selected but brands are available, select the first one
-                basicInfoForm.value.brandId = props.brands[0].id;
-                emit("brand-change", basicInfoForm.value.brandId);
-            }
+        if (isVisible && basicInfoForm.value.brandId) {
+            // When the modal becomes visible and we have a brand ID, emit to load product lines
+            emit("brand-change", basicInfoForm.value.brandId);
         }
     }
 );
@@ -106,14 +105,40 @@ watch(
 // Watch for changes in productLines to select the first one by default if needed
 watch(
     () => props.productLines,
-    (newProductLines) => {
+    (newProductLines) => {      
+        // Only auto-select if we don't have a specific productLineId set
         if (
             newProductLines &&
             newProductLines.length > 0 &&
-            !basicInfoForm.value.productLineId
+            !basicInfoForm.value.productLineId &&
+            !props.product?.productLineId
         ) {
-            // If no product line is selected but product lines are available, select the first one
+            console.log(
+                "Auto-selecting first product line:",
+                newProductLines[0].id
+            );
             basicInfoForm.value.productLineId = newProductLines[0].id;
+        } else if (
+            props.product?.productLineId &&
+            newProductLines &&
+            newProductLines.length > 0
+        ) {
+            // Make sure the selected product line exists in the new list
+            const existingProductLine = newProductLines.find(
+                (pl) => pl.id === props.product.productLineId
+            );
+            if (existingProductLine) {
+                console.log(
+                    "Product line exists in new list, keeping selection:",
+                    props.product.productLineId
+                );
+                basicInfoForm.value.productLineId = props.product.productLineId;
+            } else {
+                console.log(
+                    "Product line not found in new list, clearing selection"
+                );
+                basicInfoForm.value.productLineId = null;
+            }
         }
     },
     { immediate: true }
@@ -134,12 +159,23 @@ const savingTechSpecs = ref(false);
 
 // New function to find brand ID by product line ID - moved up before use
 const findBrandIdByProductLine = (productLineId) => {
-    if (!productLineId) return null;
-    if (!props.brands || !props.brands.length) return null;
+    console.log("Finding brand ID for product line:", productLineId);
+
+    if (!productLineId) {
+        console.log("No product line ID provided");
+        return null;
+    }
+
+    if (!props.brands || !props.brands.length) {
+        console.log("No brands available");
+        return null;
+    }
+
+    console.log("Available brands:", props.brands);
 
     // Find the product line in all the brands' product lines
     for (const brand of props.brands) {
-        if (brand.productLines) {
+        if (brand.productLines && Array.isArray(brand.productLines)) {
             const foundProductLine = brand.productLines.find(
                 (pl) => pl.id === productLineId
             );
@@ -149,15 +185,33 @@ const findBrandIdByProductLine = (productLineId) => {
         }
     }
 
+    // If not found in nested productLines, check if the current productLines prop
+    // contains the productLineId and match it with brand data
+    if (props.productLines && Array.isArray(props.productLines)) {
+        const foundProductLine = props.productLines.find(
+            (pl) => pl.id === productLineId
+        );
+        if (foundProductLine && foundProductLine.brandId) {
+            console.log(
+                "Found product line in productLines prop, brand ID:",
+                foundProductLine.brandId
+            );
+            return foundProductLine.brandId;
+        }
+    }
+
+    console.log("Brand ID not found for product line:", productLineId);
     return null;
 };
 
 // Initialize forms when product changes
 watch(
     () => props.product,
-    (newProduct) => {
-        if (!newProduct) {
-            // Reset the form when product is null
+    (newProduct) => {       
+
+        if (!newProduct || !newProduct.id) {
+            console.log("Resetting form - no product or no product ID");
+            // Reset the form when product is null or has no ID
             basicInfoForm.value = {
                 name: "",
                 brandId: null,
@@ -178,25 +232,30 @@ watch(
                 simSlots: 1,
             };
         } else {
-            // Find the brand ID from product line
-            let brandId = null;
-            try {
-                const productLineId = newProduct.productLineId;
-                brandId = findBrandIdByProductLine(productLineId);
-            } catch (error) {
-                console.error(
-                    "Error finding brand ID from product line:",
-                    error
-                );
+            console.log("Initializing form with product data");
+            console.log("Product brandId:", newProduct.brandId);
+            console.log("Product productLineId:", newProduct.productLineId);
+
+            // Initialize form with product data
+            let brandId = newProduct.brandId;
+
+            // If brandId is not directly available, try to find it from product line
+            if (!brandId && newProduct.productLineId) {
+                console.log("Brand ID not found, searching by product line...");
+                brandId = findBrandIdByProductLine(newProduct.productLineId);
             }
+
+            console.log("Final brandId to use:", brandId);
+
             basicInfoForm.value = {
                 name: newProduct.name || "",
-                brandId: brandId, // Use the found brandId instead of null
+                brandId: brandId || null,
                 productLineId: newProduct.productLineId || null,
                 importPrice: newProduct.importPrice || "",
                 salePrice: newProduct.salePrice || "",
                 description: newProduct.description || "",
             };
+
             technicalSpecsForm.value = {
                 warranty: newProduct.detail?.warranty || "12",
                 ram: newProduct.detail?.ram || "",
@@ -208,6 +267,14 @@ watch(
                 os: newProduct.detail?.operatingSystem || "",
                 simSlots: newProduct.detail?.simSlots || 1,
             };
+
+            console.log("Form initialized:", basicInfoForm.value);
+
+            // If we have brandId, emit to load correct product lines
+            if (brandId) {
+                console.log("Emitting brand-change with brandId:", brandId);
+                emit("brand-change", brandId);
+            }
         }
 
         // Reset errors
@@ -219,6 +286,7 @@ watch(
 );
 
 const handleBrandChange = () => {
+    // Reset product line when brand changes
     basicInfoForm.value.productLineId = null;
     emit("brand-change", basicInfoForm.value.brandId);
 };
@@ -1138,4 +1206,3 @@ textarea {
     margin-left: 0.5rem;
 }
 </style>
-```

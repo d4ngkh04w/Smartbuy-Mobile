@@ -33,10 +33,8 @@ const formatCurrency = (value) => {
 };
 
 // Get product image URL
-const getProductMainImage = (product) => {
-    console .log("Getting main image for product:", product);
-    const url = productService.getProductMainImage(product);
-	console.log("Product main image URL:", url);
+const getProductMainImage = (product) => {   
+    const url = productService.getProductMainImage(product);	
 	return url || "https://via.placeholder.com/150"; // Fallback image if no
 };
 

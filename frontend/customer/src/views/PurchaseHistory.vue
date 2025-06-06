@@ -18,7 +18,7 @@
 			<table class="purchase-table">
 				<thead>
 					<tr>
-						<th>Mã ĐH</th>
+						<!-- <th>Mã ĐH</th> -->
 						<th>Ngày mua</th>
 						<th>Sản phẩm</th>
 						<th>Tổng tiền</th>
@@ -28,7 +28,7 @@
 				</thead>
 				<tbody>
 					<tr v-for="order in historyOrders" :key="order.id">
-						<td data-label="Mã ĐH" class="order-id-cell">#{{ getOrderID(order.id) }}</td>
+						<!-- <td data-label="Mã ĐH" class="order-id-cell">#{{ getOrderID(order.id) }}</td> -->
 						<td data-label="Ngày mua">{{ format.formatDate(order.orderDate) }}</td>
 						<td data-label="Sản phẩm">
 							<div class="product-list-cell">
@@ -41,9 +41,9 @@
 								</p>
 							</div>
 						</td>
-						<td data-label="Tổng tiền" class="total-amount-cell">{{ format.formatPrice(order.totalAmount) }} ₫</td>
+						<td data-label="Tổng tiền" class="total-amount-cell">{{ format.formatPrice(order.totalAmount) }}₫</td>
 						<td data-label="Trạng thái">
-							<span :class="['status-badge', getStatusClass(order.status)]">{{ order.status }}</span>
+							<span :class="['status-badge','btn', getStatusClass(order.status)]">{{ order.status }}</span>
 						</td>
 						<td data-label="Hành động">
 							<div class="action-buttons">
@@ -178,28 +178,31 @@ onMounted(async () => {
   margin: 0 auto;
   padding: 2rem;
   color: #333;
+    min-height: calc(100vh - 100px);
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
 }
 
 .page-title {
-  text-align: center;
-  color: var(--primary-color);
-  margin-bottom: 2rem;
-  font-size: 2rem;
   font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(214, 51, 132, 0.1);
   position: relative;
-  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
 }
 
 .page-title::after {
   content: '';
   position: absolute;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 3px;
-  background: linear-gradient(to right, var(--primary-color), #ff9a9e);
-  border-radius: 3px;
+  left: 0;
+  width: 7rem;
+  height: 2px;
+  background-color: #060606;
+  border-radius: 10px;
 }
 
 /* Loading & Empty States */
@@ -239,7 +242,7 @@ onMounted(async () => {
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
-  padding: 1rem;
+  /* padding: 1rem; */
   margin-top: 1.5rem;
 }
 
@@ -315,8 +318,9 @@ onMounted(async () => {
 
 /* Status Badges */
 .status-badge {
-  padding: 0.4rem 0.8rem;
-  border-radius: 20px;
+  text-align: center;
+  padding: 0.4rem 0.8rem !important;
+  border-radius: 20px !important;
   font-size: 0.8rem;
   font-weight: 500;
   text-transform: capitalize;
@@ -340,6 +344,7 @@ onMounted(async () => {
 /* Action Buttons */
 .action-buttons {
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
 }
 

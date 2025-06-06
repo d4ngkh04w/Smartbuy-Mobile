@@ -6,6 +6,6 @@ namespace api.Interfaces.Services
     public interface IDashboardService
     {
         Task<List<TopProductDTO>> GetTopProductsAsync(DashboardDateRangeQuery query);
-        Task<List<RevenueDTO>> GetRevenueAsync(DashboardDateRangeQuery query);
+        Task<OrderReportDTO> GetOrderStatisticsAsync(DashboardDateRangeQuery query);
     }
 }
