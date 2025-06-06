@@ -99,7 +99,8 @@
           </div>
         </div>
     </div>
-    <Pagi
+    <Pagi 
+      v-if="loading === false"
       :totalProducts="totalOrders"
       :currentPage="currentPage"
       :pageSize="pageSize"
@@ -450,8 +451,8 @@ onMounted(() => {
 }
 
 .btn-primary {
-  background-color: var(--primary-color);
-  color: white;
+  background-color: #fce4ec; 
+  color: var(--primary-color); 
 }
 
 .btn-primary:hover {
@@ -464,18 +465,18 @@ onMounted(() => {
 }
 
 .btn-confirm{
-  background-color: #10b981;
-  color: white;
+  background-color: #e8f5e9;
+  color: #2e7d32;
 }
 .btn-confirm:hover {
-  background-color: #059669;
+  background-color: #a8fbe1;
 }
 .btn-return {
-  background-color: #f59e0b;
-  color: white;
+  background-color: #fcf8d2; 
+  color: #f9a825; 
 }
 .btn-return:hover {
-  background-color: #d97706;
+  background-color: #f7d4ad;
 }
 
 .btn-secondary:hover {

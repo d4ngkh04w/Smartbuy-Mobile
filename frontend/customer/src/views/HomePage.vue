@@ -94,6 +94,7 @@
         </div>
 
         <Pagi
+          v-if="totalProducts > 0"
           :totalProducts="totalProducts"
           :currentPage="currentPage"
           :pageSize="pageSize"
