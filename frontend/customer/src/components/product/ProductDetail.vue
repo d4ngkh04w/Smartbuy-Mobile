@@ -5,7 +5,12 @@
         class="product-detail-container"
         :id="`product-detail-${productId}`"
     >
-        <h2 class="product-title">{{ productData.name }}</h2>
+        <div class="header-section">
+            <button class="back-btn" @click="goBack">
+                <i class="fas fa-chevron-left"></i> Quay lại
+            </button>
+            <h2 class="product-title">{{ productData.name }}</h2>
+        </div>
         <div class="product-main-content">
             <!-- Phần ảnh sản phẩm -->
             <div class="product-image-section">
@@ -466,6 +471,11 @@ const props = defineProps({
 const route = useRoute();
 const router = useRouter();
 
+// Hàm xử lý quay lại trang trước
+const goBack = () => {
+    router.go(-1); // Quay lại trang trước đó
+};
+
 const productId = props.id || route.params.id;
 const productData = ref(null);
 const selectedColorId = ref(null);
@@ -901,10 +911,45 @@ const scrollToReviewForm = () => {
     padding: 20px;
 }
 
+.header-section {
+    margin-bottom: 1.5rem;
+    position: relative;
+    text-align: center;
+    padding: 0.5rem 0;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    background-color: transparent;
+    border: none;
+    color: #333;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.back-btn:hover {
+    opacity: 0.8;
+}
+
+.back-btn i {
+    margin-right: 0.5rem;
+    color: #ff69b4; /* Màu hồng cho mũi tên */
+    font-size: 1.3rem;
+}
+
 .product-title {
     font-size: 24px;
-    margin-bottom: 20px;
+    margin: 0 auto;
     color: #333;
+    font-weight: 600;
+    display: inline-block;
 }
 
 .product-main-content {

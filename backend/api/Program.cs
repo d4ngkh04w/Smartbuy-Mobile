@@ -273,6 +273,8 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IDiscountRepository, DiscountRepository>();
 builder.Services.AddScoped<IDiscountService, DiscountService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
+builder.Services.AddScoped<IChatbotService, ChatbotService>();
+builder.Services.AddHttpClient(); // For OpenAI API calls
 
 var app = builder.Build();
 

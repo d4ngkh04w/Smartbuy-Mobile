@@ -224,5 +224,31 @@ class ProductService {
                 throw error;
             });
     }
+    async searchProducts(searchQuery, limit = 10) {
+        try {
+            if (!searchQuery || searchQuery.trim().length === 0) {
+                return { data: { items: [], totalItems: 0 } };
+            }
+
+            const params = new URLSearchParams({
+                search: searchQuery.trim(),
+                pageSize: limit,
+                page: 1,
+                isActive: true,
+            });
+
+            const response = await axiosInstance.get(
+                `/product/page?${params.toString()}`
+            );
+
+            if (response && response.data) {
+                return response.data;
+            }
+            return { data: { items: [], totalItems: 0 } };
+        } catch (error) {
+            console.error("Error searching products:", error);
+            return { data: { items: [], totalItems: 0 } };
+        }
+    }
 }
 export default new ProductService();

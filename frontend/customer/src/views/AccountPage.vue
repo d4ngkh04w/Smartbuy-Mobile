@@ -1,7 +1,12 @@
 <template>
     <div class="account-page">
         <div class="container">
-            <h1 class="page-title">Tài khoản của tôi</h1>
+            <div class="header-section">
+                <button class="back-btn" @click="goToHome">
+                    <i class="fas fa-chevron-left"></i> Quay lại
+                </button>
+                <h1 class="page-title">Tài khoản của tôi</h1>
+            </div>
 
             <div class="account-layout">
                 <!-- Sidebar menu -->
@@ -20,18 +25,12 @@
                         v-model:user-data="userData"
                         @change-password="activeMenu = 'change-password'"
                     />
-
                     <!-- Password Change Tab -->
                     <password-change
                         v-else-if="activeMenu === 'change-password'"
                         @back="activeMenu = 'profile'"
                     />
 
-                    <!-- Delete Account Tab -->
-                    <delete-account
-                        v-else-if="activeMenu === 'delete-account'"
-                        @back="activeMenu = 'profile'"
-                    />
                     <OrderManagement
                         v-else-if="activeMenu === 'orders'"
                         @back="activeMenu = 'profile'"
@@ -55,7 +54,6 @@ import emitter from "@/utils/evenBus";
 import SidebarMenu from "@/components/account/SidebarMenu.vue";
 import ProfileInfo from "@/components/account/ProfileInfo.vue";
 import PasswordChange from "@/components/account/PasswordChange.vue";
-import DeleteAccount from "@/components/account/DeleteAccount.vue";
 import OrderManagement from "./OrderManagement.vue";
 import PurchaseHistory from "./PurchaseHistory.vue";
 
@@ -63,6 +61,11 @@ const route = useRoute();
 const router = useRouter();
 const activeMenu = ref("profile");
 const loading = ref(false);
+
+// Hàm xử lý quay về trang chủ
+const goToHome = () => {
+    router.push("/");
+};
 
 // Single source of truth for user data
 const userData = ref({
@@ -131,11 +134,45 @@ onMounted(() => {
     width: 100%;
 }
 
+.header-section {
+    margin-bottom: 1.5rem;
+    position: relative;
+    text-align: center;
+    padding: 0.5rem 0;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    background-color: transparent;
+    border: none;
+    color: #333;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.back-btn:hover {
+    opacity: 0.8;
+}
+
+.back-btn i {
+    margin-right: 0.5rem;
+    color: #ff69b4; /* Màu hồng cho mũi tên */
+    font-size: 1.3rem;
+}
+
 .page-title {
     font-size: 2rem;
-    margin-bottom: 2rem;
+    margin: 0 auto;
     color: #333;
     font-weight: 600;
+    display: inline-block;
 }
 
 .container {
