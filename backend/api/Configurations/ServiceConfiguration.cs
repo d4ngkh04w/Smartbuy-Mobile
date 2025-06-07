@@ -44,6 +44,9 @@ namespace api.Configurations
 
             services.AddScoped<ICacheService, CacheService>();
 
+            services.AddScoped<IChatbotService, ChatbotService>();
+            services.AddHttpClient();
+
             return services;
         }
 

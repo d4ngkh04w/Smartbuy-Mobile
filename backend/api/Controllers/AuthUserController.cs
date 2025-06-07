@@ -65,8 +65,7 @@ namespace api.Controllers
         [HttpPost("send-verification-email")]
         public async Task<IActionResult> SendVerificationEmail()
         {
-            var email = HttpContextHelper.CurrentUserEmail;
-            await _authService.SendEmailVerificationAsync(email);
+            await _authService.SendEmailVerificationAsync();
             return ApiResponseHelper.Success<object>("Email sent successfully", null);
         }
 

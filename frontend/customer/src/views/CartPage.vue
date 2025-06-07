@@ -1,6 +1,11 @@
 <template>
     <div class="cart-container">
-        <h2 class="cart-title">Giỏ hàng của bạn</h2>
+        <div class="header-section">
+            <button class="back-btn" @click="goToHome">
+                <i class="fas fa-chevron-left"></i> Quay lại
+            </button>
+            <h2 class="cart-title">Giỏ hàng của bạn</h2>
+        </div>
 
         <div v-if="items.length > 0" class="cart-grid">
             <!-- Danh sách sản phẩm -->
@@ -118,8 +123,8 @@ import { ref, computed, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import format from "@/utils/format.js";
 import authService from "@/services/authService.js";
-import productService from "../../services/productService.js";
-import emitter from "../../utils/evenBus.js";
+import productService from "../services/productService.js";
+import emitter from "../utils/evenBus.js";
 
 const router = useRouter();
 const items = ref([]);
@@ -323,6 +328,11 @@ onMounted(async () => {
         checkPriceIntegrity();
     }
 });
+
+// Hàm xử lý quay về trang chủ
+const goToHome = () => {
+    router.push("/");
+};
 </script>
 
 <style scoped>
@@ -335,14 +345,47 @@ onMounted(async () => {
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
 }
 
+.header-section {
+    margin-bottom: 1.5rem;
+    position: relative;
+    text-align: center;
+    padding: 0.5rem 0;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    background-color: transparent;
+    border: none;
+    color: #333;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.back-btn:hover {
+    opacity: 0.8;
+}
+
+.back-btn i {
+    margin-right: 0.5rem;
+    color: #ff69b4; /* Màu hồng cho mũi tên */
+    font-size: 1.3rem;
+}
+
 .cart-title {
     font-size: 32px;
     font-weight: 700;
     color: var(--primary-color);
-    text-align: center;
-    margin-bottom: 32px;
+    margin: 0 auto;
     position: relative;
     padding-bottom: 12px;
+    display: inline-block;
 }
 
 .cart-title::after {
@@ -720,6 +763,10 @@ input[type="checkbox"]:checked::before {
     .cart-title {
         font-size: 26px;
     }
+
+    .header-section {
+        padding: 0 50px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -738,6 +785,19 @@ input[type="checkbox"]:checked::before {
 
     .cart-item {
         padding: 16px;
+    }
+
+    .header-section {
+        padding: 0 40px;
+    }
+
+    .header-section h2 {
+        font-size: 24px;
+    }
+
+    .back-btn {
+        font-size: 14px;
+        padding: 6px 8px;
     }
 }
 /* Thêm vào phần style */
@@ -770,5 +830,64 @@ input[type="checkbox"]:checked::before {
 .checkout-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Header section */
+.header-section {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 32px;
+    padding: 0 60px; /* Để tránh tiêu đề bị đè */
+}
+
+.back-btn {
+    position: absolute;
+    left: 0;
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+.back-btn:hover {
+    opacity: 0.8;
+}
+
+.back-btn i {
+    font-size: 14px;
+}
+
+.header-section h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin: 0;
+    position: relative;
+    padding-bottom: 8px;
+    text-align: center;
+}
+
+.header-section h2::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 3px;
+    background: linear-gradient(
+        to right,
+        var(--primary-color),
+        var(--secondary-color)
+    );
 }
 </style>

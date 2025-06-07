@@ -189,13 +189,9 @@ namespace api.Services
             await _userRepository.UpdateUserAsync(user);
         }
 
-        public async Task SendEmailVerificationAsync(string email)
+        public async Task SendEmailVerificationAsync()
         {
-            var user = await _userRepository.GetUserByEmailAsync(email);
-            if (user == null)
-            {
-                throw new NotFoundException("User not found");
-            }
+            var user = await _userRepository.GetUserByIdAsync(HttpContextHelper.CurrentUserId) ?? throw new NotFoundException("User not found");
 
             if (user.EmailConfirmed)
             {

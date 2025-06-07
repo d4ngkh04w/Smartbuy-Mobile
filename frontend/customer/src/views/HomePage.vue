@@ -258,13 +258,17 @@ const applyPriceFilter = () => {
 watch(
     () => route.query.search,
     async (newVal) => {
+        console.log("Search query changed:", newVal);
         searchKeyword.value = newVal;
+        // Reset trang về 1 khi tìm kiếm
+        currentPage.value = 1;
         fetchProducts();
     }
 );
 watch(
     () => route.query.reload,
     async () => {
+        console.log("Reload triggered");
         selectedBrand.value = null;
         selectedBrandInfo.value = null;
         selectedProductLine.value = null;
@@ -272,7 +276,9 @@ watch(
         productLines.value = [];
         priceRange.value = [0, 60000000];
         sortBy.value = "newest";
-        searchKeyword.value = null;
+        // Giữ searchKeyword từ route.query.search thay vì đặt về null
+        searchKeyword.value = route.query.search || null;
+        currentPage.value = 1;
         fetchProducts();
     }
 );
@@ -319,22 +325,29 @@ const fetchProductLinesByBrand = async (brandId) => {
 const fetchProducts = async (page = 1) => {
     isLoading.value = true;
     currentPage.value = page;
+
+    const filters = {
+        brandName: selectedBrand.value,
+        productLineId: selectedProductLine.value,
+        minPrice: priceRange.value[0],
+        maxPrice: priceRange.value[1],
+        sortBy: sortBy.value,
+        search: searchKeyword.value,
+    };
+
+    console.log("fetchProducts called with filters:", filters);
+
     const data = await productService.getProducts(
         currentPage.value,
         pageSize.value,
-        {
-            brandName: selectedBrand.value,
-            productLineId: selectedProductLine.value,
-            minPrice: priceRange.value[0],
-            maxPrice: priceRange.value[1],
-            sortBy: sortBy.value,
-            search: searchKeyword.value,
-        }
+        filters
     );
     if (!data) {
         alert("Không thể tải sản phẩm. Vui lòng thử lại sau!");
         return;
     }
+
+    console.log("Products fetched:", data);
     products.value = data.data.items;
     totalProducts.value = data.data.totalItems;
     isLoading.value = false;
