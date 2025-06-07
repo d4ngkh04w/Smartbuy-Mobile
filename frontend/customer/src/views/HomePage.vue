@@ -179,9 +179,7 @@
 
                 <!-- Danh sách sản phẩm -->
                 <div class="products-container">
-                    <div v-if="isLoading"  class="loading-product">
-                        <Loading/>
-                    </div>
+                    <Loading v-if="isLoading" />
                     <template v-else-if="hasProducts">
                         <ProductCard
                             v-for="product in products"
@@ -235,7 +233,7 @@ const slides = ref([
 const priceRange = ref([0, 60000000]);
 const products = ref([]);
 const currentPage = ref(1);
-const pageSize = ref(12);
+const pageSize = ref(20);
 const totalProducts = ref(0);
 const selectedBrand = ref(null);
 const selectedProductLine = ref(null);
@@ -353,8 +351,8 @@ const fetchProducts = async (page = 1) => {
     products.value = data.data.items;
     totalProducts.value = data.data.totalItems;
     isLoading.value = false;
-    window.scrollTo({ top: 300, behavior: 'smooth' })
-    console.log('products.value', products.value)
+    // window.scrollTo({ top: 0, behavior: 'smooth' })
+    // console.log('products.value', products.value)
 };
 
 const selectBrand = (brandName) => {
@@ -461,8 +459,8 @@ onMounted(() => {
     border-radius: 8px;
     padding: 15px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    /* height: 500px;
-    overflow-y: auto; */
+    height: 500px;
+    overflow-y: auto;
 }
 
 .filter-section {
@@ -477,10 +475,11 @@ onMounted(() => {
 }
 
 .brand-list {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr); /* 4 cột cố định */
-  gap: 8px;
-  overflow-x: hidden;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+    justify-content: space-between;
 }
 
 .brand-item {
@@ -493,7 +492,7 @@ onMounted(() => {
     align-items: center;
     justify-content: center;
     position: relative;
-    width: 85px;
+    width: 98px;
     height: 50px;
     background-color: #ffffff;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
@@ -610,14 +609,6 @@ onMounted(() => {
     margin-bottom: 30px;
     justify-items: start;
 }
-.loading-product {
-    display: flex;
-    justify-content: center; /* canh giữa theo chiều ngang */
-    align-items: center;     /* canh giữa theo chiều dọc */
-    height: 60vh;            /* chiều cao tạm đủ để canh giữa, bạn có thể điều chỉnh */
-    width: 100%;
-    grid-column: 1 / -1;     /* chiếm hết chiều ngang trong grid */
-}
 
 .no-products {
     grid-column: 1 / -1;
@@ -633,7 +624,7 @@ onMounted(() => {
 
     .sideBar {
         width: 100%;
-        height: 200px;
+        height: 100px;
     }
 
     .sort-options {
