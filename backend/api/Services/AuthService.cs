@@ -33,7 +33,8 @@ namespace api.Services
             {
                 PhoneNumber = registerDto.PhoneNumber,
                 Email = registerDto.Email,
-                Password = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
+                Password = BCrypt.Net.BCrypt.HashPassword(registerDto.Password,
+                    BCrypt.Net.BCrypt.GenerateSalt(11, 'b')),
                 Role = role,
                 LastLogin = DateTime.Now,
                 EmailConfirmed = false
@@ -58,7 +59,6 @@ namespace api.Services
             if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password))
             {
                 throw new UnauthorizedException("Invalid phone number or password");
-
             }
 
             // Kiểm tra trạng thái khóa tài khoản
@@ -184,7 +184,8 @@ namespace api.Services
             }
 
             // Cập nhật mật khẩu mới
-            user.Password = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
+            user.Password = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword,
+                BCrypt.Net.BCrypt.GenerateSalt(11, 'b'));
             await _userRepository.UpdateUserAsync(user);
         }
 
