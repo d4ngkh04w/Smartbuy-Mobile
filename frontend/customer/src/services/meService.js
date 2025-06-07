@@ -8,10 +8,10 @@ class MeService {
             : {};
 
     getUrlImage(url) {
-		const baseUrl =
-			import.meta.env.VITE_API_URL.replace("/api/v1", "") || "";
-		return url?.startsWith("http") ? url : `${baseUrl}${url}`;
-	}
+        const baseUrl =
+            import.meta.env.VITE_API_URL.replace("/api/v1", "") || "";
+        return url?.startsWith("http") ? url : `${baseUrl}${url}`;
+    }
 
     // API methods
     async getMe(options = {}) {
@@ -38,13 +38,7 @@ class MeService {
     async sendVerificationEmail() {
         return await instance.post("/user/auth/send-verification-email");
     }
-
-    async deleteMyAccount() {
-        return await instance.delete("/user/me");
-    }
-  
 }
 
 const meService = new MeService();
 export default meService;
-

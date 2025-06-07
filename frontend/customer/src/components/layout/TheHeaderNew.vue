@@ -46,11 +46,7 @@
                             >
                                 <div class="product-image">
                                     <img
-                                        :src="
-                                            productService.getUrlImage(
-                                                product.imageUrl
-                                            )
-                                        "
+                                        :src="getProductImage(product)"
                                         :alt="product.name"
                                     />
                                 </div>
@@ -137,14 +133,14 @@
                 </div>
             </div>
         </div>
-    </header>
 
-    <!-- Search Overlay - Moved outside header -->
-    <div
-        v-if="showSearchPopup"
-        class="search-overlay"
-        @click="closeSearchPopup"
-    ></div>
+        <!-- Search Overlay -->
+        <div
+            v-if="showSearchPopup"
+            class="search-overlay"
+            @click="closeSearchPopup"
+        ></div>
+    </header>
 </template>
 
 <script setup>
@@ -184,11 +180,14 @@ const searchProducts = async (query) => {
 
     try {
         isSearching.value = true;
-        const response = await productService.searchProducts(query, 10);
+        const response = await productService.getProducts({
+            search: query,
+            page: 1,
+            pageSize: 10,
+        });
 
         if (response && response.data && response.data.items) {
             searchResults.value = response.data.items;
-            console.log("Search results:", searchResults.value);
         } else {
             searchResults.value = [];
         }
@@ -238,6 +237,20 @@ const closeSearchPopup = () => {
     if (searchTimeout) {
         clearTimeout(searchTimeout);
     }
+};
+
+// Lấy URL ảnh sản phẩm
+const getProductImage = (product) => {
+    if (product.colors && product.colors.length > 0) {
+        const firstColor = product.colors[0];
+        if (firstColor.images && firstColor.images.length > 0) {
+            const mainImage =
+                firstColor.images.find((img) => img.isMain) ||
+                firstColor.images[0];
+            return productService.getUrlImage(mainImage.imagePath);
+        }
+    }
+    return "/placeholder-image.jpg";
 };
 
 // Format giá
@@ -371,11 +384,7 @@ onUnmounted(() => {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     position: sticky;
     top: 0;
-    z-index: 1000;
-}
-
-.container {
-    padding: 0 1rem;
+    z-index: 100;
 }
 
 .header-content {
@@ -385,7 +394,7 @@ onUnmounted(() => {
     padding: 0.75rem 0;
     flex-wrap: wrap;
     gap: 0.75rem;
-    max-width: 1050px;
+    max-width: 1200px;
     margin: 0 auto;
 }
 
@@ -394,14 +403,14 @@ onUnmounted(() => {
 }
 
 .logo img {
-    width: 150px;
-    height: 42px;
+    width: 175px;
+    height: 49px;
     object-fit: cover;
 }
 
 .search-bar {
     flex: 1;
-    max-width: 500px;
+    max-width: 600px;
     position: relative;
     margin: 0 1rem;
 }
@@ -446,7 +455,7 @@ onUnmounted(() => {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     max-height: 400px;
     overflow-y: auto;
-    z-index: 1001;
+    z-index: 1000;
 }
 
 .search-loading {
@@ -551,9 +560,8 @@ onUnmounted(() => {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 999;
-    pointer-events: auto;
+    background-color: rgba(0, 0, 0, 0.3);
+    z-index: 50;
 }
 
 .header-actions {

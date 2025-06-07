@@ -163,13 +163,14 @@ const saveProfile = async () => {
                 avatarFile: null,
                 // Khôi phục lại định dạng ngày từ server (không phải định dạng input)
                 dateOfBirth: updatedUser.dateOfBirth,
-            });
-
-            // Show success notification
+            }); // Show success notification
             emitter.emit("show-notification", {
                 status: "success",
                 message: "Cập nhật thông tin cá nhân thành công",
             });
+
+            // Emit user-updated event to update header and other components
+            emitter.emit("user-updated", updatedUser);
 
             // Exit edit mode
             isEditing.value = false;
@@ -440,14 +441,14 @@ const sendVerificationEmail = async () => {
     border-bottom: 1px solid #eee;
 }
 .profile-header::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 13rem;
-  height: 2px;
-  background-color: #050505;
-  border-radius: 10px;
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 13rem;
+    height: 2px;
+    background-color: #050505;
+    border-radius: 10px;
 }
 
 .profile-title {
