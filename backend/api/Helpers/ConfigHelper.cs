@@ -41,10 +41,9 @@ namespace api.Helpers
             _emailPassword = configuration["EmailSettings:Password"] ?? throw new InvalidOperationException("Email Password not found in configuration");
             _adminPassword = configuration["Admin:Password"] ?? throw new InvalidOperationException("Admin Password not found in configuration");
             _adminPhoneNumber = configuration["Admin:PhoneNumber"] ?? throw new InvalidOperationException("Admin Phone Number not found in configuration");
-            _adminName = configuration["Admin:Name"] ?? throw new InvalidOperationException("Admin Name not found in configuration");
-            _adminUrl = configuration["Frontend:AdminUrl"] ?? "http://localhost:4000";
+            _adminName = configuration["Admin:Name"] ?? throw new InvalidOperationException("Admin Name not found in configuration");            _adminUrl = configuration["Frontend:AdminUrl"] ?? "http://localhost:4000";
             _userUrl = configuration["Frontend:UserUrl"] ?? "http://localhost:3000";
-            _openAIKey = configuration["OpenAI:Key"] ?? string.Empty;
+            _openAIKey = configuration["OpenAI:ApiKey"] ?? string.Empty;
         }
 
         public static string GoogleClientId => _googleClientId!;

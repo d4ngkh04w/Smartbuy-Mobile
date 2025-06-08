@@ -6,8 +6,7 @@ using api.Interfaces.Repositories;
 using api.Interfaces.Services;
 
 namespace api.Services
-{
-    public class ChatbotService : IChatbotService
+{    public class ChatbotService : IChatbotService
     {
         private readonly IProductRepository _productRepository;
         private readonly IBrandRepository _brandRepository;
@@ -15,14 +14,14 @@ namespace api.Services
         private readonly IDiscountRepository _discountRepository;
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
-
-        public ChatbotService(
+        private readonly GeminiChatbotService _geminiService;        public ChatbotService(
             IProductRepository productRepository,
             IBrandRepository brandRepository,
             IProductLineRepository productLineRepository,
             IDiscountRepository discountRepository,
             HttpClient httpClient,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            GeminiChatbotService geminiService)
         {
             _productRepository = productRepository;
             _brandRepository = brandRepository;
@@ -30,6 +29,7 @@ namespace api.Services
             _discountRepository = discountRepository;
             _httpClient = httpClient;
             _configuration = configuration;
+            _geminiService = geminiService;
         }
 
         public async Task<ChatResponseDTO> ProcessMessageAsync(ChatMessageDTO messageDTO)
@@ -63,55 +63,28 @@ namespace api.Services
                     IsError = true
                 };
             }
-        }
-
-        public async Task<string> GenerateResponseAsync(string message, ProductContextDTO? context = null)
+        }        public async Task<string> GenerateResponseAsync(string message, ProductContextDTO? context = null)
         {
-            if (string.IsNullOrEmpty(ConfigHelper.OpenAIKey))
+            // Chỉ dùng Gemini
+            var geminiKey = _configuration["Gemini:ApiKey"];
+            if (!string.IsNullOrEmpty(geminiKey))
             {
-                // Nếu không có OpenAI key, sử dụng logic fallback
-                return GenerateFallbackResponse(message, context);
-            }
-
-            try
-            {
-                var systemPrompt = BuildSystemPrompt(context);
-                var requestBody = new
+                try
                 {
-                    model = "gpt-3.5-turbo",
-                    messages = new[]
-                    {
-                        new { role = "system", content = systemPrompt },
-                        new { role = "user", content = message }
-                    },
-                    max_tokens = 500,
-                    temperature = 0.8
-                };
-
-                _httpClient.DefaultRequestHeaders.Clear();
-                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {ConfigHelper.OpenAIKey}");
-
-                var json = JsonSerializer.Serialize(requestBody);
-                var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
-
-                var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", httpContent);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var responseContent = await response.Content.ReadAsStringAsync();
-                    var responseData = JsonSerializer.Deserialize<dynamic>(responseContent);
-
-                    return ExtractContentFromOpenAIResponse(responseContent);
+                    var systemPrompt = BuildSystemPrompt(context);
+                    var response = await _geminiService.GenerateResponseAsync(systemPrompt, message);
+                    return response;
                 }
-                else
+                catch (Exception ex)
                 {
+                    Console.WriteLine($"Gemini API Error: {ex.Message}");
+                    // Fallback nếu Gemini fail
                     return GenerateFallbackResponse(message, context);
                 }
             }
-            catch
-            {
-                return GenerateFallbackResponse(message, context);
-            }
+
+            // Fallback nếu không có Gemini key
+            return GenerateFallbackResponse(message, context);
         }
 
         public List<string> GetQuickQuestions()
@@ -355,27 +328,6 @@ Quy tắc trả lời:
 
             return suggestions.Take(3).ToList();
         }
-
-        private string ExtractContentFromOpenAIResponse(string responseJson)
-        {
-            try
-            {
-                using var document = JsonDocument.Parse(responseJson);
-                var choices = document.RootElement.GetProperty("choices");
-                if (choices.GetArrayLength() > 0)
-                {
-                    var firstChoice = choices[0];
-                    var message = firstChoice.GetProperty("message");
-                    var content = message.GetProperty("content").GetString();
-                    return content ?? "Xin lỗi, tôi không thể trả lời câu hỏi này.";
-                }
-            }
-            catch
-            {
-                // Fall through to default response
-            }
-
-            return "Xin lỗi, tôi không thể trả lời câu hỏi này lúc này.";
-        }
+      
     }
 }
