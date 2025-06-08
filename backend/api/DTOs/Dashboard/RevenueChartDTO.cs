@@ -1,6 +1,6 @@
 namespace api.DTOs.Dashboard
 {
-    public class RevenueDTO
+    public class RevenueChartDTO
     {
         public DateTime Date { get; set; }
         public string DisplayDate { get; set; } = string.Empty;

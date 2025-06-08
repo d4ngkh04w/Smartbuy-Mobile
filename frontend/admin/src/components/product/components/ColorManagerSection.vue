@@ -218,6 +218,46 @@ const setAsMainImage = (index) => {
     newColor.value.mainImageIndex = index;
 };
 
+// Quantity adjustment modal states
+const showQuantityModal = ref(false);
+const quantityModalType = ref(""); // 'add' or 'subtract'
+const adjustmentQuantity = ref(0);
+const currentEditingColorId = ref(null);
+
+// Show quantity adjustment modal
+const showQuantityAdjustmentModal = (type, colorId) => {
+    quantityModalType.value = type;
+    currentEditingColorId.value = colorId;
+    adjustmentQuantity.value = 0;
+    showQuantityModal.value = true;
+};
+
+// Apply quantity adjustment
+const applyQuantityAdjustment = () => {
+    if (adjustmentQuantity.value <= 0) {
+        showErrorNotification("Số lượng phải lớn hơn 0");
+        return;
+    }
+
+    if (quantityModalType.value === "add") {
+        editingColor.value.quantity += adjustmentQuantity.value;
+    } else if (quantityModalType.value === "subtract") {
+        const newQuantity =
+            editingColor.value.quantity - adjustmentQuantity.value;
+        editingColor.value.quantity = Math.max(0, newQuantity);
+    }
+
+    closeQuantityModal();
+};
+
+// Close quantity modal
+const closeQuantityModal = () => {
+    showQuantityModal.value = false;
+    quantityModalType.value = "";
+    adjustmentQuantity.value = 0;
+    currentEditingColorId.value = null;
+};
+
 // Color management methods
 const addNewColor = async () => {
     if (!canAddColor()) return;
@@ -498,14 +538,13 @@ const removeNewImage = (index) => {
                         placeholder="Ví dụ: Đen, Trắng, Xanh,..."
                     />
                 </div>
-
                 <div class="form-group">
                     <label for="colorQuantity">Số lượng</label>
                     <input
                         type="number"
                         id="colorQuantity"
                         v-model="newColor.quantity"
-                        placeholder="Nhập số lượng"
+                        placeholder="Nhập số lượng (từ 0 trở lên)"
                         min="0"
                     />
                 </div>
@@ -683,7 +722,6 @@ const removeNewImage = (index) => {
                                 </div>
                             </div>
                         </template>
-
                         <div v-else class="color-edit-form">
                             <div class="form-row">
                                 <div class="form-group">
@@ -700,15 +738,45 @@ const removeNewImage = (index) => {
 
                                 <div class="form-group">
                                     <label :for="`editColorQuantity${color.id}`"
-                                        >Số lượng</label
+                                        >Số lượng hiện tại</label
                                     >
-                                    <input
-                                        :id="`editColorQuantity${color.id}`"
-                                        type="number"
-                                        v-model="editingColor.quantity"
-                                        placeholder="Nhập số lượng"
-                                        min="0"
-                                    />
+                                    <div class="quantity-display-wrapper">
+                                        <span class="current-quantity">{{
+                                            editingColor.quantity
+                                        }}</span>
+                                        <div class="quantity-actions">
+                                            <button
+                                                type="button"
+                                                class="quantity-action-btn add-btn"
+                                                @click="
+                                                    showQuantityAdjustmentModal(
+                                                        'add',
+                                                        color.id
+                                                    )
+                                                "
+                                                title="Thêm số lượng"
+                                            >
+                                                <i class="fas fa-plus"></i> Thêm
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="quantity-action-btn subtract-btn"
+                                                @click="
+                                                    showQuantityAdjustmentModal(
+                                                        'subtract',
+                                                        color.id
+                                                    )
+                                                "
+                                                :disabled="
+                                                    editingColor.quantity <= 0
+                                                "
+                                                title="Giảm số lượng"
+                                            >
+                                                <i class="fas fa-minus"></i>
+                                                Giảm
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -897,6 +965,107 @@ const removeNewImage = (index) => {
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quantity Adjustment Modal -->
+    <div
+        v-if="showQuantityModal"
+        class="modal-overlay"
+        @click="closeQuantityModal"
+    >
+        <div class="quantity-modal" @click.stop>
+            <div class="modal-header">
+                <h3>
+                    <i
+                        :class="
+                            quantityModalType === 'add'
+                                ? 'fas fa-plus-circle'
+                                : 'fas fa-minus-circle'
+                        "
+                    ></i>
+                    {{
+                        quantityModalType === "add"
+                            ? "Thêm số lượng"
+                            : "Giảm số lượng"
+                    }}
+                </h3>
+                <button
+                    type="button"
+                    class="close-modal-btn"
+                    @click="closeQuantityModal"
+                >
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="adjustmentQuantity">
+                        {{
+                            quantityModalType === "add"
+                                ? "Số lượng cần thêm"
+                                : "Số lượng cần giảm"
+                        }}
+                    </label>
+                    <input
+                        id="adjustmentQuantity"
+                        type="number"
+                        v-model="adjustmentQuantity"
+                        :placeholder="
+                            quantityModalType === 'add'
+                                ? 'Nhập số lượng cần thêm'
+                                : 'Nhập số lượng cần giảm'
+                        "
+                        min="1"
+                        max="9999"
+                        @keyup.enter="applyQuantityAdjustment"
+                        autofocus
+                    />
+                </div>
+
+                <div
+                    v-if="quantityModalType === 'subtract'"
+                    class="quantity-info"
+                >
+                    <p>
+                        <strong>Số lượng hiện tại:</strong>
+                        {{ editingColor.quantity }}
+                    </p>
+                    <p
+                        v-if="adjustmentQuantity > editingColor.quantity"
+                        class="warning-text"
+                    >
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Số lượng giảm sẽ được điều chỉnh về 0 (không thể âm)
+                    </p>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button
+                    type="button"
+                    class="cancel-btn"
+                    @click="closeQuantityModal"
+                >
+                    Hủy
+                </button>
+                <button
+                    type="button"
+                    class="apply-btn"
+                    @click="applyQuantityAdjustment"
+                    :disabled="adjustmentQuantity <= 0"
+                >
+                    <i
+                        :class="
+                            quantityModalType === 'add'
+                                ? 'fas fa-plus'
+                                : 'fas fa-minus'
+                        "
+                    ></i>
+                    {{ quantityModalType === "add" ? "Thêm" : "Giảm" }}
+                </button>
             </div>
         </div>
     </div>
@@ -1370,6 +1539,316 @@ const removeNewImage = (index) => {
     border-color: var(--primary-color, #f86ed3);
     box-shadow: 0 0 0 2px rgba(248, 110, 211, 0.1);
     outline: none;
+}
+
+/* Quantity input wrapper styles */
+.quantity-input-wrapper {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background-color: #fff;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+
+.quantity-input-wrapper:focus-within {
+    border-color: var(--primary-color, #f86ed3);
+    box-shadow: 0 0 0 2px rgba(248, 110, 211, 0.1);
+}
+
+.quantity-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    border: none;
+    width: 40px;
+    height: 40px;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.quantity-btn:hover:not(:disabled) {
+    background-color: var(--primary-color, #f86ed3);
+    color: white;
+}
+
+.quantity-btn:disabled {
+    background-color: #e9ecef;
+    color: #adb5bd;
+    cursor: not-allowed;
+}
+
+.quantity-btn.decrease-btn {
+    border-right: 1px solid #ddd;
+}
+
+.quantity-btn.increase-btn {
+    border-left: 1px solid #ddd;
+}
+
+.quantity-input-wrapper input {
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-weight: 500;
+    flex: 1;
+    padding: 0.75rem 0.5rem;
+    outline: none;
+    min-width: 60px;
+}
+
+.quantity-input-wrapper input:focus {
+    border: none;
+    box-shadow: none;
+}
+
+/* Quantity display wrapper styles for editing colors */
+.quantity-display-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.current-quantity {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    background-color: #f8f9fa;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    min-width: 60px;
+    text-align: center;
+}
+
+.quantity-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.quantity-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.5rem 0.8rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.quantity-action-btn.add-btn {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.quantity-action-btn.add-btn:hover {
+    background-color: #c3e6cb;
+    transform: translateY(-1px);
+}
+
+.quantity-action-btn.subtract-btn {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.quantity-action-btn.subtract-btn:hover:not(:disabled) {
+    background-color: #f5c6cb;
+    transform: translateY(-1px);
+}
+
+.quantity-action-btn:disabled {
+    background-color: #e9ecef;
+    color: #6c757d;
+    cursor: not-allowed;
+    border-color: #dee2e6;
+}
+
+/* Quantity Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+    backdrop-filter: blur(3px);
+    animation: fadeIn 0.2s ease;
+}
+
+.quantity-modal {
+    background-color: white;
+    border-radius: 12px;
+    width: 450px;
+    max-width: 95%;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+    transform: translateY(0);
+    animation: slideIn 0.3s ease;
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #fafafa;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-header h3 i {
+    color: var(--primary-color, #f86ed3);
+}
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #666;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.close-modal-btn:hover {
+    background-color: #f0f0f0;
+    color: #333;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-body .form-group {
+    margin-bottom: 1rem;
+}
+
+.modal-body label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #555;
+}
+
+.modal-body input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.modal-body input:focus {
+    border-color: var(--primary-color, #f86ed3);
+    box-shadow: 0 0 0 2px rgba(248, 110, 211, 0.1);
+    outline: none;
+}
+
+.quantity-info {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #007bff;
+}
+
+.quantity-info p {
+    margin: 0;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.quantity-info p:last-child {
+    margin-bottom: 0;
+}
+
+.warning-text {
+    color: #856404;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.warning-text i {
+    margin-right: 0.3rem;
+}
+
+.modal-actions {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    background-color: #fafafa;
+}
+
+.cancel-btn {
+    padding: 0.6rem 1.2rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    color: #6c757d;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cancel-btn:hover {
+    background-color: #e9ecef;
+}
+
+.apply-btn {
+    padding: 0.6rem 1.2rem;
+    background-color: var(--primary-color, #f86ed3);
+    border: none;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: 500;
+}
+
+.apply-btn:hover:not(:disabled) {
+    background-color: #e94e9c;
+    transform: translateY(-1px);
+}
+
+.apply-btn:disabled {
+    background-color: #dee2e6;
+    color: #6c757d;
+    cursor: not-allowed;
 }
 
 .required {

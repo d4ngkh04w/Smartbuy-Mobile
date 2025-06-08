@@ -182,6 +182,10 @@ namespace api.Services
             {
                 throw new UnauthorizedException("Old password is incorrect");
             }
+            if(string.Equals(changePasswordDto.OldPassword, changePasswordDto.NewPassword, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new BadRequestException("New password must be different from old password");
+            }
 
             // Cập nhật mật khẩu mới
             user.Password = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);

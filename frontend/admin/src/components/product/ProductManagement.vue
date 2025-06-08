@@ -230,9 +230,32 @@ const editProduct = async (product) => {
             productToEdit.value = product;
         }
 
-        // Fetch product lines for the selected brand
+        // Find brand ID and fetch product lines
+        let brandIdToUse = null;
+
         if (productToEdit.value.brandId) {
-            await fetchProductLinesForBrand(productToEdit.value.brandId);
+            // If product already has brandId, use it
+            brandIdToUse = productToEdit.value.brandId;
+        } else if (productToEdit.value.productLineId) {
+            // If product only has productLineId, find the brand ID from product line
+            try {
+                const productLineResponse =
+                    await productLineService.getProductLineById(
+                        productToEdit.value.productLineId
+                    );
+                if (productLineResponse.data && productLineResponse.data.data) {
+                    brandIdToUse = productLineResponse.data.data.brandId;
+                    // Also set the brandId on the product for consistency
+                    productToEdit.value.brandId = brandIdToUse;
+                }
+            } catch (error) {
+                console.error("Error fetching product line details:", error);
+            }
+        }
+
+        // Fetch product lines for the selected brand
+        if (brandIdToUse) {
+            await fetchProductLinesForBrand(brandIdToUse);
         }
 
         // Show the edit modal

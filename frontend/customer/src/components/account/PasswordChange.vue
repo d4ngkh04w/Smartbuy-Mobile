@@ -53,8 +53,12 @@ const changePassword = async () => {
         };
     } catch (error) {
         console.error("Error changing password:", error);
-        errorMessage.value =
-            error.response?.data?.message || "Đã xảy ra lỗi khi đổi mật khẩu";
+        if(error.response?.data?.message === "Old password is incorrect"){
+            errorMessage.value = "Mật khẩu hiện tại không chính xác";
+        } else if (error.response?.data?.message === "New password must be different from old password") {
+            errorMessage.value = "Mật khẩu mới phải khác mật khẩu cũ";
+        }
+        else errorMessage.value = "Đã xảy ra lỗi khi đổi mật khẩu";
 
         emitter.emit("show-notification", {
             status: "error",

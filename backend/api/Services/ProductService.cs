@@ -246,8 +246,7 @@ namespace api.Services
             await _productRepository.DeleteAsync(product);
             _cacheService.RemoveProductCache(id);
             _cacheService.RemoveAllProductsCache();
-        }
-        public async Task<ProductPagiDTO> GetPagedProductsAsync(ProductQuery productQuery)
+        }        public async Task<ProductPagiDTO> GetPagedProductsAsync(ProductQuery productQuery)
         {
             var (items, totalItems) = await _productRepository.GetPagedProductsAsync(productQuery);
 
@@ -263,19 +262,7 @@ namespace api.Services
             var productSummaries = new List<ProductSummaryDTO>();
             foreach (var product in items)
             {
-                var dto = new ProductSummaryDTO
-                {
-                    Id = product.Id,
-                    Name = product.Name,
-                    Price = product.SalePrice,
-                    ImageUrl = product.Colors.SelectMany(c => c.Images).FirstOrDefault(i => i.IsMain)?.ImagePath ?? string.Empty,
-                    Sold = product.Sold
-                };
-
-                // Lấy rating riêng lẻ cho từng sản phẩm
-                dto.Rating = (decimal)await _commentRepository.GetProductAverageRatingAsync(product.Id);
-                dto.RatingCount = await _commentRepository.GetProductRatingCountAsync(product.Id);
-
+                var dto = await product.ToSummaryDTO(_commentRepository);
                 productSummaries.Add(dto);
             }
 

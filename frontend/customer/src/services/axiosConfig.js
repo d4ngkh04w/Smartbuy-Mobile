@@ -17,6 +17,12 @@ instance.interceptors.request.use(
         if (config.skipAuthRedirect) {
             config.skipAuthRedirect = true;
         }
+
+        // Ensure headers are preserved
+        config.headers = {
+            ...config.headers,
+        };
+
         return config;
     },
     (error) => Promise.reject(error)
@@ -44,13 +50,19 @@ instance.interceptors.response.use(
         ) {
             return Promise.reject(error);
         }
-
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
             try {
                 await authService.refreshToken();
                 console.log("refreshToken thành công");
-                return instance(originalRequest);
+
+                // Clone the original request to ensure all headers are preserved
+                const newRequest = {
+                    ...originalRequest,
+                    headers: { ...originalRequest.headers },
+                };
+
+                return instance(newRequest);
             } catch (refreshError) {
                 console.error("Lỗi khi làm mới token:", refreshError);
                 if (!originalRequest?.skipAuthRedirect) {

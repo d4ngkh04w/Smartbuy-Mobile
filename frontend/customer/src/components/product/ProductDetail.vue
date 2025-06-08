@@ -3,8 +3,14 @@
     <div
         v-if="productData && productData.isActive"
         class="product-detail-container"
+        :id="`product-detail-${productId}`"
     >
-        <h2 class="product-title">{{ productData.name }}</h2>
+        <div class="header-section">
+            <button class="back-btn" @click="goBack">
+                <i class="fas fa-chevron-left"></i> Quay lại
+            </button>
+            <h2 class="product-title">{{ productData.name }}</h2>
+        </div>
         <div class="product-main-content">
             <!-- Phần ảnh sản phẩm -->
             <div class="product-image-section">
@@ -18,7 +24,6 @@
                         >
                             <i class="fas fa-chevron-left"></i>
                         </button>
-
                         <div class="main-image">
                             <img
                                 :src="getCurrentMainImage"
@@ -26,14 +31,23 @@
                                 class="active-image"
                                 @click="openImagePreview(getCurrentMainImage)"
                             />
-                            <!-- Hiển thị xem đã đến ảnh nào trong tổng số ảnh - positioned as overlay -->
+                            <!-- Hiển thị xem đã đến ảnh nào trong tổng số ảnh - horizontal bars -->
                             <div
-                                class="image-counter"
+                                class="image-position-indicators"
                                 v-if="getSelectedColorImages.length > 1"
                             >
-                                {{ getCurrentImageIndex + 1 }}/{{
-                                    getSelectedColorImages.length
-                                }}
+                                <div
+                                    v-for="(
+                                        image, index
+                                    ) in getSelectedColorImages"
+                                    :key="image.id"
+                                    class="image-dot"
+                                    :class="{
+                                        'active-dot':
+                                            index === getCurrentImageIndex,
+                                    }"
+                                    @click="selectImageByIndex(index)"
+                                ></div>
                             </div>
                         </div>
 
@@ -98,7 +112,7 @@
                             productData.colors && productData.colors.length > 0
                         "
                     >
-                        <label>Lựa chọn màu:</label>
+                        <label>Màu:</label>
                         <div class="color-list">
                             <div
                                 v-for="color in productData.colors"
@@ -135,32 +149,34 @@
                         :class="{ 'quantity-disabled': getQuanity <= 0 }"
                     >
                         <div class="quantity-header">
-                            <label>Nhập số lượng cần mua:</label>
-                            <span
-                                v-if="getQuanity > 0"
-                                class="stock-info-simple"
-                                :class="{
-                                    'high-stock': getQuanity >= 20,
-                                    'medium-stock':
-                                        getQuanity < 20 && getQuanity > 4,
-                                    'low-stock': getQuanity <= 4,
-                                }"
-                            >
-                                (Còn {{ getQuanity }} sản phẩm)
-                            </span>
-                            <span
-                                class="out-of-stock-label"
-                                v-if="getQuanity <= 0"
-                            >
-                                <strong>Hết hàng</strong>
-                            </span>
+                            <div class="quantity-label-container">
+                                <label>Số lượng:</label>
+                                <div class="stock-status-container">
+                                    <span
+                                        v-if="getQuanity > 0"
+                                        class="stock-info"
+                                        :class="{
+                                            'stock-low': getQuanity <= 5,
+                                            'stock-medium':
+                                                getQuanity > 5 &&
+                                                getQuanity <= 15,
+                                            'stock-high': getQuanity > 15,
+                                        }"
+                                    >
+                                        (Còn {{ getQuanity }} sản phẩm)
+                                    </span>
+                                    <span v-else class="out-of-stock-label">
+                                        HẾT HÀNG
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="quantity-simple-layout">
-                            <div class="quantity-control-simple">
+                        <div class="quantity-controls-container">
+                            <div class="quantity-control">
                                 <button
                                     @click="decreaseQuantity"
                                     :disabled="getQuanity <= 0 || quantity <= 1"
-                                    class="quantity-btn-simple"
+                                    class="quantity-btn minus-btn"
                                 >
                                     −
                                 </button>
@@ -173,7 +189,7 @@
                                     @blur="handleQuantityBlur"
                                     @input="validateQuantity"
                                     :disabled="getQuanity <= 0"
-                                    class="quantity-input-simple"
+                                    class="quantity-input"
                                 />
                                 <button
                                     @click="increaseQuantity"
@@ -181,7 +197,7 @@
                                         getQuanity <= 0 ||
                                         quantity >= getQuanity
                                     "
-                                    class="quantity-btn-simple"
+                                    class="quantity-btn plus-btn"
                                 >
                                     +
                                 </button>
@@ -209,57 +225,99 @@
                                 :disabled="getQuanity <= 0"
                             >
                                 <span class="buy-now-text">MUA NGAY</span>
-
+                                <span class="delivery-note"
+                                    >(Giao tận nhà hoặc nhận tại cửa hàng)</span
+                                >
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- Tabs cho Mô tả, Thông số kỹ thuật và Đánh giá -->
-        <div class="product-details-tabs">
+
+        <!-- Tabbed Interface for product info -->
+        <div class="product-tabs">
             <div class="tabs-header">
                 <div
                     class="tab-button"
                     :class="{ 'active-tab': activeTab === 'description' }"
                     @click="activeTab = 'description'"
                 >
-                    Mô tả sản phẩm
+                    <i class="fas fa-file-alt"></i> Mô tả sản phẩm
                 </div>
                 <div
                     class="tab-button"
                     :class="{ 'active-tab': activeTab === 'specs' }"
                     @click="activeTab = 'specs'"
                 >
-                    Thông số kỹ thuật
+                    <i class="fas fa-cogs"></i> Thông số kỹ thuật
                 </div>
                 <div
                     class="tab-button"
                     :class="{ 'active-tab': activeTab === 'reviews' }"
                     @click="activeTab = 'reviews'"
                 >
-                    Đánh giá sản phẩm
+                    <i class="fas fa-star"></i> Đánh giá
                 </div>
             </div>
 
+            <!-- Tab Content -->
             <div class="tab-content">
-                <!-- Mô tả sản phẩm tab -->
-                <div v-if="activeTab === 'description'" class="tab-pane">
+                <!-- Description Tab -->
+                <div
+                    v-if="activeTab === 'description'"
+                    class="product-description tab-pane"
+                >
                     <div
-                        class="product-description"
                         v-if="productData.description"
+                        class="description-content"
                     >
-                        <div class="description-content">
-                            {{ productData.description }}
-                        </div>
+                        {{ productData.description }}
                     </div>
                     <div v-else class="no-content">
-                        <p>Chưa có thông tin mô tả cho sản phẩm này.</p>
+                        <i class="fas fa-info-circle"></i>
+                        <p>Chưa có thông tin mô tả cho sản phẩm này</p>
                     </div>
                 </div>
-                <!-- Thông số kỹ thuật tab -->
-                <div v-if="activeTab === 'specs'" class="tab-pane">
-                    <div class="specs-grid">
+
+                <!-- Specifications Tab -->
+                <div
+                    v-if="activeTab === 'specs'"
+                    class="product-specs tab-pane"
+                >
+                    <div class="specs-cards">
+                        <!-- Bảo hành -->
+                        <div
+                            v-if="productData.detail.warranty"
+                            class="spec-card"
+                        >
+                            <div class="spec-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div class="spec-info">
+                                <span class="spec-name">Bảo hành</span>
+                                <span class="spec-value"
+                                    >{{
+                                        productData.detail.warranty
+                                    }}
+                                    tháng</span
+                                >
+                            </div>
+                        </div>
+
+                        <!-- RAM -->
+                        <div v-if="productData.detail.ram" class="spec-card">
+                            <div class="spec-icon">
+                                <i class="fas fa-memory"></i>
+                            </div>
+                            <div class="spec-info">
+                                <span class="spec-name">RAM</span>
+                                <span class="spec-value"
+                                    >{{ productData.detail.ram }} GB</span
+                                >
+                            </div>
+                        </div>
+
                         <!-- Bộ nhớ trong -->
                         <div
                             v-if="productData.detail.storage"
@@ -268,7 +326,7 @@
                             <div class="spec-icon">
                                 <i class="fas fa-hdd"></i>
                             </div>
-                            <div class="spec-content">
+                            <div class="spec-info">
                                 <span class="spec-name">Bộ nhớ trong</span>
                                 <span class="spec-value"
                                     >{{ productData.detail.storage }} GB</span
@@ -276,18 +334,48 @@
                             </div>
                         </div>
 
-                        <!-- Kích thước màn hình -->
+                        <!-- CPU -->
                         <div
-                            v-if="productData.detail.screenSize"
+                            v-if="productData.detail.processor"
+                            class="spec-card"
+                        >
+                            <div class="spec-icon">
+                                <i class="fas fa-microchip"></i>
+                            </div>
+                            <div class="spec-info">
+                                <span class="spec-name">Bộ xử lý</span>
+                                <span class="spec-value">{{
+                                    productData.detail.processor
+                                }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Hệ điều hành -->
+                        <div
+                            v-if="productData.detail.operatingSystem"
                             class="spec-card"
                         >
                             <div class="spec-icon">
                                 <i class="fas fa-mobile-alt"></i>
                             </div>
-                            <div class="spec-content">
-                                <span class="spec-name"
-                                    >Kích thước màn hình</span
-                                >
+                            <div class="spec-info">
+                                <span class="spec-name">Hệ điều hành</span>
+                                <span class="spec-value">{{
+                                    productData.detail.operatingSystem
+                                }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Màn hình -->
+                        <div
+                            v-if="productData.detail.screenSize"
+                            class="spec-card"
+                        >
+                            <div class="spec-icon">
+                                <i class="fas fa-tv"></i>
+                            </div>
+                            <div class="spec-info">
+                                <span class="spec-name">Màn hình</span>
                                 <span class="spec-value"
                                     >{{
                                         productData.detail.screenSize
@@ -305,90 +393,10 @@
                             <div class="spec-icon">
                                 <i class="fas fa-expand"></i>
                             </div>
-                            <div class="spec-content">
+                            <div class="spec-info">
                                 <span class="spec-name">Độ phân giải</span>
                                 <span class="spec-value">{{
                                     productData.detail.screenResolution
-                                }}</span>
-                            </div>
-                        </div>
-
-                        <!-- Hệ điều hành -->
-                        <div
-                            v-if="productData.detail.operatingSystem"
-                            class="spec-card"
-                        >
-                            <div class="spec-icon">
-                                <i class="fas fa-cog"></i>
-                            </div>
-                            <div class="spec-content">
-                                <span class="spec-name">Hệ điều hành</span>
-                                <span class="spec-value">{{
-                                    productData.detail.operatingSystem
-                                }}</span>
-                            </div>
-                        </div>
-
-                        <!-- Bảo hành -->
-                        <div
-                            v-if="productData.detail.warranty"
-                            class="spec-card"
-                        >
-                            <div class="spec-icon">
-                                <i class="fas fa-shield-alt"></i>
-                            </div>
-                            <div class="spec-content">
-                                <span class="spec-name">Bảo hành</span>
-                                <span class="spec-value"
-                                    >{{
-                                        productData.detail.warranty
-                                    }}
-                                    tháng</span
-                                >
-                            </div>
-                        </div>
-
-                        <!-- Số SIM -->
-                        <div
-                            v-if="productData.detail.simSlots"
-                            class="spec-card"
-                        >
-                            <div class="spec-icon">
-                                <i class="fas fa-sim-card"></i>
-                            </div>
-                            <div class="spec-content">
-                                <span class="spec-name">Số khe SIM</span>
-                                <span class="spec-value">{{
-                                    productData.detail.simSlots
-                                }}</span>
-                            </div>
-                        </div>
-
-                        <!-- RAM -->
-                        <div v-if="productData.detail.ram" class="spec-card">
-                            <div class="spec-icon">
-                                <i class="fas fa-memory"></i>
-                            </div>
-                            <div class="spec-content">
-                                <span class="spec-name">RAM</span>
-                                <span class="spec-value"
-                                    >{{ productData.detail.ram }} GB</span
-                                >
-                            </div>
-                        </div>
-
-                        <!-- CPU -->
-                        <div
-                            v-if="productData.detail.processor"
-                            class="spec-card"
-                        >
-                            <div class="spec-icon">
-                                <i class="fas fa-microchip"></i>
-                            </div>
-                            <div class="spec-content">
-                                <span class="spec-name">Bộ xử lý</span>
-                                <span class="spec-value">{{
-                                    productData.detail.processor
                                 }}</span>
                             </div>
                         </div>
@@ -401,18 +409,37 @@
                             <div class="spec-icon">
                                 <i class="fas fa-battery-full"></i>
                             </div>
-                            <div class="spec-content">
+                            <div class="spec-info">
                                 <span class="spec-name">Pin</span>
                                 <span class="spec-value"
                                     >{{ productData.detail.battery }} mAh</span
                                 >
                             </div>
                         </div>
+
+                        <!-- Số SIM -->
+                        <div
+                            v-if="productData.detail.simSlots"
+                            class="spec-card"
+                        >
+                            <div class="spec-icon">
+                                <i class="fas fa-sim-card"></i>
+                            </div>
+                            <div class="spec-info">
+                                <span class="spec-name">Số khe SIM</span>
+                                <span class="spec-value">{{
+                                    productData.detail.simSlots
+                                }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Đánh giá sản phẩm tab -->
-                <div v-if="activeTab === 'reviews'" class="tab-pane">
+                <!-- Reviews Tab -->
+                <div
+                    v-if="activeTab === 'reviews'"
+                    class="product-reviews tab-pane"
+                >
                     <ProductComments
                         :productId="Number(productId)"
                         :isLoggedIn="isLoggedIn"
@@ -433,17 +460,30 @@ import format from "../../utils/format.js";
 import Loading from "../common/Loading.vue";
 import ProductComments from "./ProductComments.vue";
 
+// Define props to accept the id passed from the router
+const props = defineProps({
+    id: {
+        type: [String, Number],
+        required: true,
+    },
+});
+
 const route = useRoute();
 const router = useRouter();
 
-const productId = route.params.id;
+// Hàm xử lý quay lại trang trước
+const goBack = () => {
+    router.go(-1); // Quay lại trang trước đó
+};
+
+const productId = props.id || route.params.id;
 const productData = ref(null);
 const selectedColorId = ref(null);
 const selectedImgId = ref(null);
 const currentImageId = ref(null);
 const quantity = ref(1);
 const isLoading = ref(true);
-const activeTab = ref("description"); // Default active tab
+const activeTab = ref("description"); // For the tabbed interface
 
 const fetchProduct = async (productId) => {
     isLoading.value = true;
@@ -603,6 +643,13 @@ const navigateImages = (direction) => {
     selectedImgId.value = getSelectedColorImages.value[newIndex].id;
 };
 
+// Chọn ảnh bằng cách bấm vào điểm (dot)
+const selectImageByIndex = (index) => {
+    if (index >= 0 && index < getSelectedColorImages.value.length) {
+        selectedImgId.value = getSelectedColorImages.value[index].id;
+    }
+};
+
 // Chọn màu - cập nhật cả phần thumbnail và phần chọn màu
 const selectColor = (color) => {
     selectedColorId.value = color.id;
@@ -673,6 +720,16 @@ const validateQuantity = (event) => {
         quantity.value = value;
     }
 };
+
+const calculateDiscountPercentage = () => {
+    if (!productData.value) return 0;
+    return Math.round(
+        ((productData.value.salePrice - productData.value.importPrice) /
+            productData.value.importPrice) *
+            100
+    );
+};
+
 const increaseQuantity = () => {
     if (quantity.value < getQuanity.value) quantity.value++;
     else {
@@ -854,16 +911,51 @@ const scrollToReviewForm = () => {
     padding: 20px;
 }
 
+.header-section {
+    margin-bottom: 1.5rem;
+    position: relative;
+    text-align: center;
+    padding: 0.5rem 0;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    background-color: transparent;
+    border: none;
+    color: #333;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.back-btn:hover {
+    opacity: 0.8;
+}
+
+.back-btn i {
+    margin-right: 0.5rem;
+    color: #ff69b4; /* Màu hồng cho mũi tên */
+    font-size: 1.3rem;
+}
+
 .product-title {
     font-size: 24px;
-    margin-bottom: 20px;
+    margin: 0 auto;
     color: #333;
+    font-weight: 600;
+    display: inline-block;
 }
 
 .product-main-content {
     display: flex;
     gap: 40px;
-    margin-bottom: 20px;
+    margin-bottom: 40px;
 }
 
 .product-image-section {
@@ -898,7 +990,7 @@ const scrollToReviewForm = () => {
     justify-content: center;
     align-items: center;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    position: relative; /* Added position relative for absolute positioned children */
+    position: relative; /* Added for absolute positioning of dots */
 }
 
 .main-image img {
@@ -943,19 +1035,42 @@ const scrollToReviewForm = () => {
 }
 
 .image-counter {
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
+    text-align: center;
+    margin-bottom: 20px;
     font-size: 14px;
-    color: #ffffff;
-    background-color: rgba(0, 0, 0, 0.5);
+    color: #666;
+    background-color: rgba(255, 255, 255, 0.7);
     border-radius: 15px;
     padding: 4px 12px;
-    z-index: 5;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     display: inline-block;
-    margin: 0 auto;
+    margin: 0 auto 20px;
+}
+
+.image-position-indicators {
+    position: absolute;
+    bottom: 15px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    z-index: 5;
+}
+
+.image-dot {
+    width: 20px;
+    height: 4px;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.active-dot {
+    background-color: var(--primary-color);
+    width: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 /* Color thumbnails */
@@ -1066,7 +1181,7 @@ const scrollToReviewForm = () => {
 .current-price {
     font-size: 28px;
     font-weight: bold;
-    color: var(--primary-color);
+    color: #ef4444;
     margin-right: 10px;
 }
 
@@ -1078,7 +1193,7 @@ const scrollToReviewForm = () => {
 }
 
 .discount-badge {
-    background-color: var(--primary-color);
+    background-color: #ef4444;
     color: white;
     padding: 3px 8px;
     border-radius: 4px;
@@ -1214,106 +1329,110 @@ const scrollToReviewForm = () => {
 }
 
 .quantity-header {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+}
+
+.quantity-label-container {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
 }
 
 .quantity-header label {
     font-weight: 500;
-    font-size: 14px;
+    font-size: 15px;
     color: #333;
+    margin-right: 8px;
 }
 
-.quantity-simple-layout {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.stock-status-container {
+    display: inline-flex;
 }
 
-.stock-info-simple {
+.stock-info {
     font-size: 13px;
-    margin-left: 8px;
-    font-weight: normal;
-    opacity: 0.7; /* Làm cho thông tin Còn X sản phẩm mờ đi còn 70% */
+    opacity: 0.7;
 }
 
-.stock-info-simple.high-stock {
-    color: #34c759; /* Màu xanh lá cho số lượng từ 20 trở lên */
+.stock-high {
+    color: #2ecc71;
 }
 
-.stock-info-simple.medium-stock {
-    color: #ff9500; /* Màu vàng/cam cho số lượng từ 5 đến 19 */
+.stock-medium {
+    color: #f39c12;
 }
 
-.stock-info-simple.low-stock {
-    color: #ff3b30; /* Màu đỏ cho số lượng dưới hoặc bằng 4 */
+.stock-low {
+    color: #e74c3c;
+    font-weight: 500;
 }
 
 .out-of-stock-label {
-    margin-left: 8px;
-    padding: 2px 8px;
-    background-color: #ffecec;
-    border: 1px solid #ffdbdb;
-    border-radius: 4px;
-    color: #ff3b30;
     font-size: 13px;
+    font-weight: 600;
+    color: #e74c3c;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background-color: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    letter-spacing: 0.5px;
 }
 
-.quantity-control-simple {
-    display: inline-flex;
+.quantity-controls-container {
+    display: flex;
+    align-items: flex-start;
+}
+
+.quantity-control {
+    display: flex;
     align-items: center;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
+    border: 1px solid #eee;
+    border-radius: 8px;
     overflow: hidden;
-    width: 110px;
-    height: 32px;
+    width: 130px;
+    height: 40px;
     background: white;
 }
 
-.quantity-btn-simple {
-    width: 30px;
+.quantity-btn {
+    width: 42px;
     height: 100%;
     border: none;
-    background: #fafafa;
+    background: #f5f7fa;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #666;
-    transition: background 0.2s;
-    padding: 0;
+    transition: all 0.15s ease;
 }
 
-.quantity-btn-simple:hover:not(:disabled) {
-    background-color: #f0f0f0;
+.quantity-btn:hover:not(:disabled) {
+    background-color: #eef1f6;
 }
 
-.quantity-btn-simple:first-child {
-    border-right: 1px solid #e0e0e0;
+.minus-btn {
+    border-right: 1px solid #eee;
 }
 
-.quantity-btn-simple:last-child {
-    border-left: 1px solid #e0e0e0;
+.plus-btn {
+    border-left: 1px solid #eee;
 }
 
-.quantity-input-simple {
-    width: 50px;
+.quantity-input {
+    width: 46px;
     height: 100%;
     text-align: center;
     border: none;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 400;
     color: #333;
     appearance: textfield;
     -moz-appearance: textfield;
-    padding: 0;
 }
 
-.quantity-input-simple::-webkit-outer-spin-button,
-.quantity-input-simple::-webkit-inner-spin-button {
+.quantity-input::-webkit-outer-spin-button,
+.quantity-input::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
@@ -1321,8 +1440,6 @@ const scrollToReviewForm = () => {
 .quantity-input:focus {
     outline: none;
 }
-
-/* Xóa đoạn CSS này vì đã bỏ phần thông báo hết hàng ở dưới */
 
 /* Action buttons */
 .action-buttons {
@@ -1332,36 +1449,33 @@ const scrollToReviewForm = () => {
 }
 
 .cart-button-container {
-    width: 56px;
+    width: 60px;
 }
 
 .buy-button-container {
     flex: 1;
-    display: flex;
-    align-items: center;
-}
-
-.add-to-cart-btn,
-.buy-now-btn {
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    width: 100%;
-    height: 56px;
 }
 
 .add-to-cart-btn {
-    background-color: var(--primary-color);
-    color: white;
-    font-size: 20px;
+    width: 60px;
+    height: 60px;
+    background-color: white;
+    border: 1px solid #fc7caf;
+    color: var(--primary-color);
     border-radius: 8px;
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.add-to-cart-btn i {
+    font-size: 22px;
 }
 
 .add-to-cart-btn:hover:not(:disabled) {
-    filter: brightness(0.95);
+    background-color: #ffefff;
 }
 
 .add-to-cart-btn:disabled {
@@ -1370,33 +1484,35 @@ const scrollToReviewForm = () => {
 }
 
 .buy-now-btn {
+    width: 100%;
+    height: 60px;
     background-color: var(--primary-color);
     color: white;
+    border: none;
     border-radius: 8px;
-    padding: 0;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
 }
 
 .buy-now-text {
     font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 1px;
 }
 
 .delivery-note {
     font-size: 12px;
-    color: #ffffff;
-    opacity: 0.8;
-    text-align: center;
-    padding-top: 1px;
+    font-weight: normal;
+    opacity: 0.9;
+    margin-top: 2px;
 }
 
 .buy-now-btn:hover:not(:disabled) {
-    filter: brightness(0.95);
+    background-color: var(--hover-color);
 }
 
 .buy-now-btn:disabled {
@@ -1404,134 +1520,54 @@ const scrollToReviewForm = () => {
     cursor: not-allowed;
 }
 
-/* Product specs */
-/* Product details tabs */
-.product-details-tabs {
+/* Product Tabs */
+.product-tabs {
     margin-top: 30px;
     border: 1px solid #eee;
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .tabs-header {
     display: flex;
-    background-color: #f9f9f9;
+    background-color: #f8f8f8;
     border-bottom: 1px solid #eee;
 }
 
 .tab-button {
-    padding: 15px 25px;
-    font-size: 15px;
+    padding: 15px 20px;
     font-weight: 500;
     color: #666;
     cursor: pointer;
-    transition: all 0.3s ease;
-    border-bottom: 3px solid transparent;
-    text-align: center;
-    flex: 1;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.tab-button i {
+    font-size: 14px;
 }
 
 .tab-button:hover {
     color: var(--primary-color);
-    background-color: #f5f5f5;
+    background-color: #f2f2f2;
 }
 
-.tab-button.active-tab {
+.active-tab {
     color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-    background-color: white;
+    font-weight: 600;
+    border-bottom: 3px solid var(--primary-color);
 }
 
 .tab-content {
-    padding: 25px;
-    background-color: white;
+    padding: 20px;
 }
 
 .tab-pane {
-    animation: fadeIn 0.5s ease;
-}
-
-.description-content {
-    line-height: 1.6;
-    color: #444;
-}
-
-.no-content {
-    text-align: center;
-    padding: 30px;
-    color: #888;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-}
-
-/* Specs section */
-.specs-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 20px;
-}
-
-.specs-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    padding: 5px;
-}
-
-.spec-card {
-    display: flex;
-    padding: 16px;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-    border: 1px solid #eee;
-    transition: all 0.2s ease;
-}
-
-.spec-card:hover {
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
-}
-
-.spec-icon {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    margin-right: 12px;
-    color: #666;
-    font-size: 18px;
-    width: 24px;
-}
-
-.spec-content {
-    display: flex;
-    flex-direction: column;
-}
-
-.spec-name {
-    font-weight: 400;
-    color: #666;
-    font-size: 14px;
-    margin-bottom: 5px;
-}
-
-.spec-value {
-    font-size: 16px;
-    color: #333;
-    font-weight: 500;
-}
-
-/* Responsive specs grid */
-@media (max-width: 992px) {
-    .specs-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 576px) {
-    .specs-grid {
-        grid-template-columns: 1fr;
-    }
+    animation: fadeIn 0.3s ease-in-out;
 }
 
 @keyframes fadeIn {
@@ -1541,6 +1577,133 @@ const scrollToReviewForm = () => {
     to {
         opacity: 1;
     }
+}
+
+.no-content {
+    text-align: center;
+    padding: 30px;
+    color: #999;
+    background-color: #f9f9f9;
+    border-radius: 6px;
+}
+
+.no-content i {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #ccc;
+}
+
+/* Card-based Specs */
+.specs-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.spec-card {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    transition: all 0.3s;
+    border: 1px solid #eee;
+}
+
+.spec-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    border-color: #ddd;
+}
+
+.spec-icon {
+    width: 36px;
+    height: 36px;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.spec-icon i {
+    font-size: 18px;
+}
+
+.spec-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+.spec-name {
+    font-weight: 500;
+    color: #666;
+    font-size: 13px;
+    margin-bottom: 3px;
+}
+
+.spec-value {
+    font-size: 15px;
+    color: #333;
+}
+
+/* Description Tab */
+.description-content {
+    line-height: 1.6;
+    color: #444;
+}
+
+/* Product Reviews */
+.product-reviews {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .specs-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .tabs-header {
+        flex-wrap: wrap;
+    }
+
+    .tab-button {
+        flex: 1;
+        justify-content: center;
+        padding: 12px 10px;
+        font-size: 14px;
+    }
+
+    .specs-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .spec-card {
+        padding: 12px;
+    }
+
+    .spec-icon {
+        width: 36px;
+        height: 36px;
+    }
+}
+
+.product-reviews h3 {
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: #333;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
 }
 
 /* Khi chưa có đánh giá */
@@ -1608,7 +1771,7 @@ const scrollToReviewForm = () => {
 
 .stars {
     margin: 5px 0;
-    color: #ff8fcf; /* Lighter pink color that still stands out for stars */
+    color: #ffc107;
 }
 
 .total-reviews {
@@ -1693,7 +1856,7 @@ const scrollToReviewForm = () => {
 }
 
 .review-rating {
-    color: #ff8fcf; /* Lighter pink color for stars, matching the other star ratings */
+    color: #ffc107;
 }
 
 .review-date {
@@ -1786,5 +1949,9 @@ const scrollToReviewForm = () => {
 
 .quantity-disabled .quantity-control {
     opacity: 0.7;
+}
+
+.quantity-disabled .out-of-stock-label {
+    opacity: 1;
 }
 </style>

@@ -12,9 +12,7 @@ namespace api.Services
         public DashboardService(IDashboardRepository dashboardRepository)
         {
             _dashboardRepository = dashboardRepository;
-        }
-
-        public async Task<List<TopProductDTO>> GetTopProductsAsync(DashboardDateRangeQuery query)
+        }        public async Task<List<TopProductDTO>> GetTopProductsAsync(DashboardDateRangeQuery query)
         {
             var data = await _dashboardRepository.GetTopProductsAsync(
                 query.StartDate,
@@ -23,17 +21,36 @@ namespace api.Services
             );
 
             return data;
-        }
-
-        public async Task<List<RevenueDTO>> GetRevenueAsync(DashboardDateRangeQuery query)
+        }        public async Task<OrderReportDTO> GetOrderStatisticsAsync(DashboardDateRangeQuery query)
         {
-            var data = await _dashboardRepository.GetRevenueAsync(
+            var statistics = await _dashboardRepository.GetOrderStatisticsAsync(
+                query.StartDate,
+                query.EndDate
+            );
+
+            var statusDistribution = await _dashboardRepository.GetOrderStatusDistributionAsync(
+                query.StartDate,
+                query.EndDate
+            );
+
+            var paymentMethods = await _dashboardRepository.GetPaymentMethodStatsAsync(
+                query.StartDate,
+                query.EndDate
+            );
+
+            var revenueChartData = await _dashboardRepository.GetRevenueChartDataAsync(
                 query.StartDate,
                 query.EndDate,
                 query.Period ?? "month"
             );
 
-            return data;
+            return new OrderReportDTO
+            {
+                Statistics = statistics,
+                StatusDistribution = statusDistribution,
+                PaymentMethods = paymentMethods,
+                RevenueChartData = revenueChartData
+            };
         }
     }
 }

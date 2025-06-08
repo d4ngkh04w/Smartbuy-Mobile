@@ -75,11 +75,12 @@ namespace api.Repositories
         }
 
         public async Task<(List<Product> Items, int TotalItems)> GetPagedProductsAsync(ProductQuery productQuery)
-        {
-            var query = _db.Products
+        {            var query = _db.Products
                 .Include(p => p.Colors)
                     .ThenInclude(c => c.Images)
                 .Include(p => p.ProductLine)
+                .Include(p => p.Discounts)
+                    .ThenInclude(pd => pd.Discount)
                 .AsQueryable();
 
             if (productQuery.IsActive.HasValue)
@@ -92,9 +93,7 @@ namespace api.Repositories
                 string lowerKey = productQuery.Search.Trim().ToLower();
                 query = query.Where(p =>
                     p.Name.ToLower().Contains(lowerKey));
-            }
-
-            if (!string.IsNullOrWhiteSpace(productQuery.BrandName))
+            }            if (!string.IsNullOrWhiteSpace(productQuery.BrandName))
             {
                 string lowerBrand = productQuery.BrandName.Trim().ToLower();
                 var brandInDb = _db.Brands
@@ -105,6 +104,11 @@ namespace api.Repositories
                 {
                     query = query.Where(p => p.ProductLine!.BrandId == brandInDb.Id);
                 }
+            }
+
+            if (productQuery.ProductLineId.HasValue)
+            {
+                query = query.Where(p => p.ProductLineId == productQuery.ProductLineId.Value);
             }
 
             if (productQuery.MinPrice.HasValue)

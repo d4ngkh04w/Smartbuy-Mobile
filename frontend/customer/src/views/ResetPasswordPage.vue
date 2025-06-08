@@ -88,7 +88,13 @@ const handleResetPassword = async () => {
 
         if (error.response) {
             const { data } = error.response;
-            errorMessage.value = data.message || "Không thể đặt lại mật khẩu";
+            if(data?.message === "Old password is incorrect"){
+                errorMessage.value = "Mật khẩu cũ không chính xác";
+            }
+            else if(data?.message === "New password must be different from old password"){
+                errorMessage.value = "Mật khẩu mới phải khác mật khẩu cũ";
+            }
+            else errorMessage.value = "Không thể đặt lại mật khẩu";
         } else {
             emitter.emit("show-notification", {
                 status: "error",
