@@ -1027,4 +1027,157 @@ onMounted(() => {
         max-width: 240px;
     }
 }
+@media (max-width: 480px) {
+    .chatbot-container {
+        bottom: 0;
+        right: 0;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .chatbot-toggle {
+        width: 56px;
+        height: 56px;
+        bottom: 20px;
+        right: 20px;
+    }
+
+    .chatbot-toggle i {
+        font-size: 22px;
+    }
+
+    .chatbot-window {
+        width: 100%;
+        height: 100vh;
+        max-height: -webkit-fill-available;
+        border-radius: 0;
+        position: fixed;
+        bottom: 0;
+        right: 0;
+    }
+
+    .messages-container {
+        padding: 15px;
+    }
+
+    .message-content {
+        max-width: 75%;
+    }
+
+    .input-area {
+        padding: 15px;
+        padding-bottom: max(15px, env(safe-area-inset-bottom));
+    }
+
+    .quick-questions-header {
+        padding: 12px 15px;
+    }
+
+    .questions-list {
+        padding: 0 15px 12px 15px;
+    }
+
+    .quick-question-btn {
+        padding: 10px 14px;
+        font-size: 12px;
+    }
+
+    .header-info h4 {
+        font-size: 13px;
+    }
+
+    .status {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 360px) {
+    .message-content {
+        max-width: 70%;
+        padding: 10px 14px;
+    }
+
+    .message-text {
+        font-size: 13px;
+    }
+
+    .message-time {
+        font-size: 10px;
+    }
+
+    .input-wrapper input {
+        padding: 10px 14px;
+        font-size: 13px;
+    }
+
+    .send-btn {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+/* Điều chỉnh cho các thiết bị có notch */
+@supports (padding-top: env(safe-area-inset-top)) {
+    .chatbot-window {
+        padding-top: env(safe-area-inset-top);
+    }
+    
+    .chatbot-header {
+        padding-top: calc(12px + env(safe-area-inset-top));
+    }
+}
+
+/* Điều chỉnh chiều cao trên mobile */
+@media (max-height: 700px) {
+    .chatbot-window {
+        height: 80vh;
+    }
+    
+    .messages-container {
+        max-height: calc(80vh - 160px);
+    }
+}
+
+/* Landscape mode */
+@media (max-width: 900px) and (orientation: landscape) {
+    .chatbot-window {
+        height: 80vh;
+        width: 400px;
+        right: 10px;
+        bottom: 10px;
+        border-radius: 15px;
+    }
+    
+    .messages-container {
+        max-height: calc(80vh - 160px);
+    }
+}
+
+/* Tablet portrait */
+@media (min-width: 481px) and (max-width: 768px) {
+    .chatbot-window {
+        width: 350px;
+        height: 70vh;
+    }
+    
+    .message-content {
+        max-width: 65%;
+    }
+}
+
+/* Very small devices (e.g. iPhone 5/SE) */
+@media (max-width: 320px) {
+    .message-content {
+        max-width: 65%;
+    }
+    
+    .quick-question-btn {
+        padding: 8px 12px;
+    }
+    
+    .input-wrapper {
+        gap: 8px;
+    }
+}
+
 </style>

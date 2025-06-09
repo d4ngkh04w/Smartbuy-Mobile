@@ -182,7 +182,7 @@ namespace api.Services
             {
                 throw new UnauthorizedException("Old password is incorrect");
             }
-            if(string.Equals(changePasswordDto.OldPassword, changePasswordDto.NewPassword, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(changePasswordDto.OldPassword, changePasswordDto.NewPassword))
             {
                 throw new BadRequestException("New password must be different from old password");
             }

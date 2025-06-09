@@ -160,17 +160,7 @@ class ProductService {
                 throw error;
             });
     }
-    async checkQuantityToToggleStatus(productId) {
-        const product = await this.getProductById(productId);
-        if (product) {
-            if (product.stock === 0) {
-                await this.deactivateProduct(productId);
-            } else {
-                await this.activateProduct(productId);
-            }
-        }
-        return;
-    }
+
     async getAllOrders() {
         return await axiosInstance
             .get("/order/me")

@@ -225,9 +225,6 @@
                                 :disabled="getQuanity <= 0"
                             >
                                 <span class="buy-now-text">MUA NGAY</span>
-                                <span class="delivery-note"
-                                    >(Giao tận nhà hoặc nhận tại cửa hàng)</span
-                                >
                             </button>
                         </div>
                     </div>
@@ -835,6 +832,7 @@ const buyNow = async () => {
             productId: productId,
             colorId: selectedColorId.value,
             productName: productData.value.name,
+            price: productData.value.price,
             salePrice: productData.value.salePrice,
             quantity: quantity.value,
             colorName: selectedColor?.name || "",
@@ -1504,12 +1502,6 @@ const scrollToReviewForm = () => {
     letter-spacing: 1px;
 }
 
-.delivery-note {
-    font-size: 12px;
-    font-weight: normal;
-    opacity: 0.9;
-    margin-top: 2px;
-}
 
 .buy-now-btn:hover:not(:disabled) {
     background-color: var(--hover-color);

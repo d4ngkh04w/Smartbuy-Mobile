@@ -69,7 +69,7 @@ const props = defineProps({
     },
     height: {
         type: String,
-        default: "370px",
+        default: "385px",
     },
 });
 // Hàm lấy link ảnh

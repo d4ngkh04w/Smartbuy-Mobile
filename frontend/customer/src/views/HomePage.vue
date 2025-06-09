@@ -237,7 +237,7 @@ const slides = ref([
 const priceRange = ref([0, 60000000]);
 const products = ref([]);
 const currentPage = ref(1);
-const pageSize = ref(20);
+const pageSize = ref(16);
 const totalProducts = ref(0);
 const selectedBrand = ref(null);
 const selectedProductLine = ref(null);
@@ -358,26 +358,34 @@ const fetchProducts = async (page = 1) => {
     // window.scrollTo({ top: 0, behavior: 'smooth' })
     // console.log('products.value', products.value)
 };
-
 const selectBrand = (brandName) => {
     selectedBrand.value = selectedBrand.value === brandName ? null : brandName;
-    selectedProductLine.value = null; // Reset product line when brand changes
+    selectedProductLine.value = null; // Reset product line khi đổi brand
 
-    // Update selectedBrandInfo when a brand is selected or deselected
+    // Reset product lines ngay lập tức để UI ẩn dòng sản phẩm cũ
+    productLines.value = [];
+
+    // Update selectedBrandInfo khi chọn brand
     if (selectedBrand.value) {
         selectedBrandInfo.value = brands.value.find(
             (brand) => brand.name === selectedBrand.value
         );
-        // Fetch product lines for selected brand
+        // Fetch product lines cho brand mới
         if (selectedBrandInfo.value) {
-            fetchProductLinesByBrand(selectedBrandInfo.value.id);
+            fetchProductLinesByBrand(selectedBrandInfo.value.id).then(() => {
+                // Nếu brand này không có product line nào, reset productLines
+                if (!productLines.value.length) {
+                    selectedProductLineInfo.value = null;
+                }
+            });
+        } else {
+            selectedProductLineInfo.value = null;
         }
     } else {
         selectedBrandInfo.value = null;
-        productLines.value = [];
+        selectedProductLineInfo.value = null;
     }
 
-    console.log("selectedBrand.value", selectedBrand.value);
     fetchProducts();
 };
 

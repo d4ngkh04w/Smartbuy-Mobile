@@ -114,7 +114,7 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(["update:address"]);
+const emit = defineEmits(["update:address", "address-status"]);
 
 // Danh sách địa chỉ
 const provinces = ref([]);
@@ -245,7 +245,19 @@ const fetchProvinces = async () => {
         loadingProvinces.value = false;
     }
 };
-
+const isAddressComplete = computed(() => {
+  return (
+    addressData.value.province &&
+    addressData.value.district &&
+    addressData.value.ward &&
+    addressData.value.detail.trim()
+  );
+});
+const emitAddressUpdate = () => {
+  const fullAddress = addressService.formatFullAddress(addressData.value);
+  emit("update:address", fullAddress);
+  emit("address-status", isAddressComplete.value);
+};
 /**
  * Xử lý khi thay đổi tỉnh/thành phố
  */
@@ -278,11 +290,6 @@ const handleDistrictChange = async () => {
     emitAddressUpdate();
 };
 
-// Hàm emit địa chỉ
-const emitAddressUpdate = () => {
-    const fullAddress = addressService.formatFullAddress(addressData.value);
-    emit("update:address", fullAddress);
-};
 
 /**
  * Lấy danh sách quận/huyện theo tỉnh đã chọn
@@ -336,14 +343,32 @@ const fetchWards = async () => {
     }
 };
 
-// Khởi tạo địa chỉ khi component được tạo
+// Trong phần script setup của AddressForm
 onMounted(async () => {
     await fetchProvinces();
     if (props.initialAddress) {
         await parseAddress(props.initialAddress);
     }
+    
+    // Thêm dòng này để emit trạng thái ban đầu
+    emitAddressUpdate();
 });
 
+// Thêm watcher để theo dõi thay đổi từ props
+watch(() => props.initialAddress, async (newVal) => {
+    if (newVal) {
+        await parseAddress(newVal);
+        emitAddressUpdate();
+    }
+});
+
+// Thêm watcher để theo dõi thay đổi từ modelValue (nếu cần)
+watch(() => props.modelValue, async (newVal) => {
+    if (newVal && newVal !== formattedAddress.value) {
+        await parseAddress(newVal);
+        emitAddressUpdate();
+    }
+});
 // Phơi bày phương thức reset cho component cha
 const resetAddress = () => {
     addressData.value = {

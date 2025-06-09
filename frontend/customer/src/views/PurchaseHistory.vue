@@ -32,7 +32,7 @@
 						<td data-label="Ngày mua">{{ format.formatDate(order.orderDate) }}</td>
 						<td data-label="Sản phẩm">
 							<div class="product-list-cell">
-								<div v-for="item in order.orderItems.slice(0, 1)" :key="item.id" class="product-item">
+								<div v-for="item in order.orderItems.slice(0, 1)" :key="item.id" class="product-item"  @click="goToProductDetail(item.product.id)">
 									<img :src=productService.getUrlImage(item.colorImage) :alt="item.name" class="product-thumb-small" />
 									<span class="product-name">{{ item.product.name }} - {{ item.colorName }}(x{{ item.quantity }})</span>
 								</div>
@@ -64,7 +64,7 @@
 
 				<h4>Sản phẩm:</h4>
 				<ul class="popup-product-list">
-				<li v-for="item in selectedOrder.orderItems" :key="item.id" class="popup-product-item">
+				<li v-for="item in selectedOrder.orderItems" :key="item.id" class="popup-product-item" @click="goToProductDetail(item.product.id)">
 					<img :src=productService.getUrlImage(item.colorImage) :alt="item.product.name" class="popup-product-thumbnail" />
 					<div>
 					<p class="popup-product-name">{{ item.product.name }}</p>
@@ -142,6 +142,9 @@ const fetchHistoryOrders = async () => {
 	
 };
 
+const goToProductDetail = (productId) => {
+    router.push(`/product/${productId}`);
+};
 const getOrderID = (order) => {
   return order.toString().substring(0,8);
 };
@@ -290,6 +293,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 0.8rem;
+  cursor: pointer;
 }
 
 .product-thumb-small {
@@ -451,6 +455,7 @@ onMounted(async () => {
   padding: 1rem 0;
   border-bottom: 1px solid #f5f5f5;
   align-items: center;
+  cursor: pointer;
 }
 
 .popup-product-item:last-child {

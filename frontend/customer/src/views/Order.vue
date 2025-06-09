@@ -1,6 +1,6 @@
 <template>
   <div class="order-container">
-  <h1 class="order">Đặt hàng</h1>
+    <h1 class="order">Đặt hàng</h1>
     <!-- Thanh lộ trình -->
     <div class="steps">
       <div
@@ -20,13 +20,13 @@
         <div>
           <h2>Sản phẩm</h2>
           <div class="product" v-for="product in products" :key="product.productId" :class="{ 'disabled-item': !product.isActive }">
-              <img :src="productService.getUrlImage(product.imagePath)" alt="product" />
-              <div class="product-info">
-                <h3>{{ product.productName }}</h3>
-                <button>{{ product.colorName }}</button>
-                <p style="color: red">{{ format.formatPrice(product.salePrice) }}₫</p>
-                <span>Số lượng: {{ product.quantity }}</span>
-              </div>
+            <img :src="productService.getUrlImage(product.imagePath)" alt="product" />
+            <div class="product-info">
+              <h3>{{ product.productName }}</h3>
+              <button>{{ product.colorName }}</button>
+              <p style="color: red">{{ format.formatPrice(product.price) }}₫</p>
+              <span>Số lượng: {{ product.quantity }}</span>
+            </div>
           </div>
           <div class="total-line">
             <strong>Tổng tiền:</strong>
@@ -38,7 +38,12 @@
           <input v-model="form.name" type="text" placeholder="Họ và tên" required />
           <input v-model="form.phone" type="tel" placeholder="Số điện thoại" required />
         </div>
-        <AddressForm v-model="form.address" :initial-address="userInfo.address" />
+        <AddressForm
+          v-model="form.address"
+          :initial-address="userInfo.address"
+          @address-status="handleAddressStatus"
+          @update:address="updateAddress"
+        />
         <button type="submit" class="btn">Tiếp theo</button>
       </form>
     </div>
@@ -100,7 +105,7 @@
           <h4>Sản phẩm đã đặt:</h4>
           <div v-for="(product, index) in products" :key="index" class="product-item">
             <span class="product-name">{{ product.productName }} (x{{ product.quantity }})</span>
-            <span>{{ format.formatPrice(product.salePrice * product.quantity) }}₫</span>
+            <span>{{ format.formatPrice(product.price * product.quantity) }}₫</span>
           </div>
         </div>
       </div>
@@ -113,12 +118,12 @@
           <i class="fas fa-receipt"></i> Xem chi tiết đơn hàng
         </button>
       </div>
-</div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref, computed, onMounted } from 'vue';
+import { reactive, ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AddressForm from '../components/account/AddressForm.vue';
 import productService from '@/services/productService';
@@ -129,11 +134,14 @@ import emitter from '../utils/evenBus.js';
 const router = useRouter();
 const route = useRoute();
 const products = ref([]);
+const isAddressValid = ref(false);
+const previousAddress = ref('');
 const totalAmount = computed(() => {
   return products.value.reduce((sum, product) => {
     return sum + (product.price * product.quantity);
   }, 0);
 });
+
 const userInfo = ref({
   name: '',
   phone: '',
@@ -144,9 +152,9 @@ const step = ref(1);
 const stepLabels = ['Thông tin', 'Thanh toán', 'Hoàn tất'];
 
 const form = reactive({
-  name: userInfo.name || '',
-  phone: userInfo.phone || '',
-  address: userInfo.address || '',
+  name: '',
+  phone: '',
+  address: '',
   payment: '',
 });
 
@@ -160,18 +168,63 @@ const paymentText = computed(() => {
   return paymentOptions.find(opt => opt.value === form.payment)?.label || '';
 });
 
+// Theo dõi thay đổi địa chỉ từ userInfo
+watch(() => userInfo.value.address, (newVal) => {
+  if (newVal && newVal !== form.address) {
+    form.address = newVal;
+    previousAddress.value = newVal;
+  }
+});
+
+const handleAddressStatus = async (isComplete) => {
+  isAddressValid.value = isComplete;
+};
+const updateAddress = async (newAddress) => {
+  try {
+    emitter.emit('show-loading', true);
+
+    // Gọi API cập nhật thông tin user (chỉ cập nhật địa chỉ)
+    const updatedUser = await meService.updateProfile({
+      ...userInfo.value,
+      address: newAddress,
+    });
+
+    // Nếu backend trả về user mới, đồng bộ lại dữ liệu
+    if (updatedUser && updatedUser.address) {
+      userInfo.value.address = updatedUser.address;
+      form.address = updatedUser.address;
+      previousAddress.value = updatedUser.address;
+    } else {
+      // Nếu không trả về, vẫn đồng bộ theo newAddress
+      userInfo.value.address = newAddress;
+      form.address = newAddress;
+      previousAddress.value = newAddress;
+    }
+
+  } catch (error) {
+    // Nếu lỗi, rollback lại địa chỉ cũ
+    form.address = previousAddress.value;
+  } finally {
+    emitter.emit('show-loading', false);
+  }
+};
 const goToOrders = () => {
-    router.push({ path: "/account", query: { section: "orders" } });
+  router.push({ path: "/account", query: { section: "orders" } });
 };
 
+const nextStep = () => {
+  if (form.name && form.phone && isAddressValid.value) {
+    step.value = 2;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    emitter.emit('show-notification', {
+      status: 'error',
+      message: 'Vui lòng điền đầy đủ thông tin địa chỉ'
+    });
+  }
+};
 
-
-function nextStep() {
-  if (form.name && form.phone && form.address) step.value = 2;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function submitOrder() {
+const submitOrder = () => {
   if (form.payment) {
     const orderData = {
       paymentMethod: form.payment,
@@ -187,18 +240,7 @@ function submitOrder() {
         console.log('Đặt hàng thành công:', response);
         step.value = 3;
         window.scrollTo({ top: 0, behavior: 'smooth' });
-
         emitter.emit('cart-updated');
-
-        // Kiểm tra tồn kho sau khi đặt hàng
-        Promise.all(
-          orderData.items.map(item =>
-            productService.checkQuantityToToggleStatus(item.productId)
-          )
-        ).then(() => {
-          console.log("Đã cập nhật trạng thái sản phẩm.");
-        });
-
       })
       .catch(error => {
         emitter.emit('show-notification', {
@@ -207,59 +249,71 @@ function submitOrder() {
         });
         console.error('Lỗi khi đặt hàng:', error);
       });
+  } else {
+    emitter.emit('show-notification', {
+      status: 'error',
+      message: 'Vui lòng chọn phương thức thanh toán',
+    });
   }
-}
+};
 
-function handleStepClick(targetStep) {
-  if(step.value === 3) {
-    return;
-  }
+const handleStepClick = (targetStep) => {
+  if(step.value === 3) return;
   if (targetStep < step.value) {
     step.value = targetStep;
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+};
 
-function backToHome() {
+const backToHome = () => {
   router.push('/');
-}
-
-
+};
 
 onMounted(async() => {
-  try{
+  try {
+    // Lấy thông tin user
     const user = await meService.getMe();
-    if(user) {
+    if (user) {
       userInfo.value = {
         name: user.name || '',
         phone: user.phoneNumber || '',
         address: user.address || ''
       };
       
+      // Khởi tạo form và previousAddress
       form.name = userInfo.value.name;
       form.phone = userInfo.value.phone;
       form.address = userInfo.value.address;
+      previousAddress.value = userInfo.value.address;
     }
-  }catch (error) {
+  } catch (error) {
     console.error('Lỗi khi lấy thông tin người dùng:', error);
   }
+
+  // Xử lý sản phẩm từ URL
   if (route.query.direct === 'true' && route.query.products) {
     try {
       const decodedProducts = decodeURIComponent(route.query.products);
-      products.value = JSON.parse(decodedProducts);
-      products.value = products.value.map(p => ({
+      products.value = JSON.parse(decodedProducts).map(p => ({
         ...p,
         isActive: true,
-        price: p.salePrice || 0 
+        price: p.price || 0 
       }));
     } catch (error) {
       console.error('Lỗi khi xử lý sản phẩm:', error);
     }
   }
-  console.log('Sản phẩm:', products.value);
-});
 
+  if (!products.value.length) {
+    emitter.emit('show-notification', {
+      status: 'warning',
+      message: 'Bạn chưa chọn sản phẩm nào.',
+    });
+    router.push('/');
+  }
+});
 </script>
+
 
 <style scoped>
 .order{

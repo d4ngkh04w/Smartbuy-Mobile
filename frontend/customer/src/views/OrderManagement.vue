@@ -35,7 +35,9 @@
                             v-for="item in order.orderItems.slice(0, 2)"
                             :key="item.id"
                             class="product-item-preview"
+                            @click="goToProductDetail(item.product.id)"
                         >
+
                             <img
                                 :src="
                                     productService.getUrlImage(item.colorImage)
@@ -122,6 +124,7 @@
                         v-for="item in selectedOrder.orderItems"
                         :key="item.id"
                         class="popup-product-item"
+                        @click="goToProductDetail(item.product.id)"
                     >
                         <img
                             :src="productService.getUrlImage(item.colorImage)"
@@ -206,12 +209,13 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import Loading from "../components/common/Loading.vue";
 import format from "@/utils/format";
 import productService from "@/services/productService";
 import emitter from "../utils/evenBus.js";
 import Pagi from "../components/common/Pagination.vue";
-
+const router = useRouter();
 const orders = ref([]);
 const allOrders = ref([]);
 const loading = ref(true);
@@ -349,6 +353,9 @@ const returnOrder = (orderId) => {
     var status = "Đã trả hàng";
     updateOrderStatus(orderId, status);
 };
+const goToProductDetail = (productId) => {
+    router.push(`/product/${productId}`);
+};
 
 const cancelOrder = (orderId) => {
     productService
@@ -468,19 +475,23 @@ onMounted(() => {
 }
 
 .status-pending {
-    background-color: #f3a3db;
+    background-color: #fff3f9;
+    color: #f98ad8;
 }
 
 .status-processing {
-    background-color: #ea5cbf;
+    background-color: #fdeef7;
+    color: #ea5cbf;
 }
 
 .status-shipping {
-    background-color: #e408a2;
+    background-color: #fce5f2;
+    color: #e408a2;
 }
 
 .status-delivered {
-    background-color: #c1118c;
+    background-color: #f8e2f1;
+    color: #c1118c;
 }
 
 .order-body {
@@ -506,6 +517,7 @@ onMounted(() => {
     padding: 0.3rem 0.6rem;
     border-radius: 10px;
     user-select: none;
+    cursor: pointer;
 }
 
 .product-thumbnail {
@@ -579,13 +591,13 @@ onMounted(() => {
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
+    background-color: #f47da4;  
+    color: var(--primary-color);
     color: white;
 }
-
 .btn-primary:hover {
-    background-color: var(--secondary-color);
-}
+    background-color: #e65082; 
+}   
 
 .btn-secondary {
     background-color: #8e96a7;
@@ -593,18 +605,19 @@ onMounted(() => {
 }
 
 .btn-confirm {
-    background-color: #10b981;
-    color: white;
+    background-color: #cef7d1;
+    color: #2e7d32;
 }
 .btn-confirm:hover {
-    background-color: #059669;
+    background-color: #76f5cd;
 }
 .btn-return {
-    background-color: #f59e0b;
-    color: white;
+    background-color: #fff9c4;  
+    color: #f57f17;             
+
 }
 .btn-return:hover {
-    background-color: #d97706;
+    background-color: #e6f582;
 }
 
 .btn-secondary:hover {
@@ -673,6 +686,7 @@ onMounted(() => {
     border-bottom: 1px solid #f3f4f6;
     padding-bottom: 1rem;
     user-select: none;
+    cursor: pointer;
 }
 
 .popup-product-thumbnail {
