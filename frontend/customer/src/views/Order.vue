@@ -437,23 +437,24 @@ onMounted(async () => {
 	align-items: center;
 	margin-top: 1.5rem;
 	margin-bottom: 2rem;
-	padding: 1rem 1.5rem;
+	padding: 0.7rem 1.2rem;
 	background-color: #f8f8f8;
 	border-radius: 8px;
 	border-left: 4px solid #fa46c1;
-	font-size: 1.2rem;
+	font-size: 1rem;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .total-line strong {
-	font-weight: 600;
+	font-weight: 500;
 	color: #333;
+	font-size: 0.9rem;
 }
 
 .total-line span {
-	font-weight: 700;
+	font-weight: 600;
 	color: #e91e63;
-	font-size: 1.3rem;
+	font-size: 0.9rem;
 }
 
 .product:hover {
@@ -660,14 +661,14 @@ input[type="tel"]:focus {
 
 .detail-row.highlight .detail-value {
 	color: #e91e63;
-	font-size: 1.3rem;
-	font-weight: 700;
+	font-size: 0.9rem;
+	font-weight: 600;
 }
 
 .detail-row.highlight {
 	background-color: #f8f8f8;
 	margin: 1rem -1.5rem;
-	padding: 1rem 1.5rem;
+	padding: 0.7rem 1.2rem;
 	border-left: 4px solid #fa46c1;
 	border-radius: 4px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
